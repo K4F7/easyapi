@@ -45,7 +45,7 @@ services:
     cpus: ${APP_CPUS:-2}
 
   redis:
-    image: redis:7.2-alpine
+    image: redis:7.2.11-alpine
     container_name: xbh-new-api-redis
     restart: unless-stopped
     command: ["sh", "-c", "redis-server --requirepass \"$${REDIS_PASSWORD}\""]
