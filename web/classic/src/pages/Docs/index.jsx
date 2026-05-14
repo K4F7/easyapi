@@ -19,13 +19,13 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React, { useMemo, useState } from 'react';
 import {
-  IconBook,
+  IconBookmark,
   IconCheckCircleStroked,
   IconChevronRight,
   IconCode,
   IconCopy,
+  IconDesktop,
   IconKey,
-  IconMonitor,
   IconSetting,
 } from '@douyinfe/semi-icons';
 import { Button, Card, Typography } from '@douyinfe/semi-ui';
@@ -128,7 +128,7 @@ function PlatformTabs({ active, onChange }) {
               : 'text-semi-color-text-2 hover:text-semi-color-text-0'
           }`}
         >
-          <IconMonitor />
+          <IconDesktop />
           {item.label}
         </button>
       ))}
@@ -259,7 +259,7 @@ codex`,
             <div className='mb-8 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between'>
               <div>
                 <div className='mb-2 flex items-center gap-2 text-sm font-semibold text-semi-color-text-2'>
-                  <IconBook />
+                  <IconBookmark />
                   Codex 教程
                 </div>
                 <Title heading={2} className='!m-0 !text-2xl md:!text-3xl'>
