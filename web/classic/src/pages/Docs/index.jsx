@@ -81,8 +81,13 @@ function CodeBlock({ code }) {
   return (
     <div className='relative overflow-hidden rounded-xl bg-[#111827] shadow-sm ring-1 ring-black/10'>
       <CopyButton text={code} />
-      <pre className='m-0 overflow-x-auto p-5 pr-16 text-sm leading-7 text-slate-100'>
-        <code>{code}</code>
+      <pre
+        className='m-0 overflow-x-auto p-5 pr-16 text-sm leading-7'
+        style={{ color: '#e5e7eb' }}
+      >
+        <code className='font-mono' style={{ color: 'inherit' }}>
+          {code}
+        </code>
       </pre>
     </div>
   );
