@@ -20,7 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useMemo, useState } from 'react';
 import {
   IconBook,
-  IconCheckCircle,
+  IconCheckCircleStroked,
   IconChevronRight,
   IconCode,
   IconCopy,
@@ -68,7 +68,7 @@ function CopyButton({ text }) {
     <Button
       size='small'
       theme='borderless'
-      icon={copied ? <IconCheckCircle /> : <IconCopy />}
+      icon={copied ? <IconCheckCircleStroked /> : <IconCopy />}
       onClick={handleCopy}
       className='!absolute top-3 right-3 !text-white/90 hover:!bg-white/10'
     >
@@ -300,7 +300,7 @@ codex`,
             </Paragraph>
             <SectionCard>
               <div className='flex items-center gap-3 text-sm font-semibold text-semi-color-text-0'>
-                <IconCheckCircle className='text-emerald-500' />
+                <IconCheckCircleStroked className='text-emerald-500' />
                 验证成功标志
               </div>
               <p className='mt-3 mb-0 text-sm leading-7 text-semi-color-text-1'>
