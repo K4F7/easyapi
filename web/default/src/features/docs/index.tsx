@@ -31,7 +31,7 @@ import {
 import { PublicLayout } from '@/components/layout'
 
 const API_KEY_PLACEHOLDER = 'sk-你的 API 密钥'
-const BASE_URL_PLACEHOLDER = 'https://你的域名/v1'
+const BASE_URL_PLACEHOLDER = 'https://dash.easyapi.work/v1'
 
 const toc = [
   { id: 'overview', title: '概览' },
