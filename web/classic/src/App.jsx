@@ -44,6 +44,7 @@ import Task from './pages/Task';
 import ModelPage from './pages/Model';
 import ModelDeploymentPage from './pages/ModelDeployment';
 import Playground from './pages/Playground';
+import Docs from './pages/Docs';
 import Subscription from './pages/Subscription';
 import OAuth2Callback from './components/auth/OAuth2Callback';
 import PersonalSetting from './components/settings/PersonalSetting';
@@ -332,6 +333,14 @@ function App() {
                 <Pricing />
               </Suspense>
             )
+          }
+        />
+        <Route
+          path='/docs'
+          element={
+            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+              <Docs />
+            </Suspense>
           }
         />
         <Route
