@@ -16,10 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { formatQuota } from '@/lib/format'
+import {
+  formatQuota,
+  parseQuotaFromDollars,
+  quotaUnitsToDollars,
+} from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -49,17 +53,27 @@ export function TransferDialog({
   transferring,
 }: TransferDialogProps) {
   const { t } = useTranslation()
-  const [amount, setAmount] = useState(QUOTA_PER_DOLLAR)
+  const minTransferQuota = QUOTA_PER_DOLLAR
+  const minTransferAmount = useMemo(
+    () => quotaUnitsToDollars(minTransferQuota),
+    [minTransferQuota]
+  )
+  const maxTransferAmount = useMemo(
+    () => quotaUnitsToDollars(availableQuota),
+    [availableQuota]
+  )
+  const [amount, setAmount] = useState(minTransferAmount)
 
   useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAmount(QUOTA_PER_DOLLAR)
+      setAmount(minTransferAmount)
     }
-  }, [open])
+  }, [open, minTransferAmount])
 
   const handleConfirm = async () => {
-    const success = await onConfirm(amount)
+    const quota = parseQuotaFromDollars(amount)
+    const success = await onConfirm(quota)
     if (success) {
       onOpenChange(false)
     }
@@ -99,13 +113,13 @@ export function TransferDialog({
               type='number'
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
-              min={QUOTA_PER_DOLLAR}
-              max={availableQuota}
-              step={QUOTA_PER_DOLLAR}
+              min={minTransferAmount}
+              max={maxTransferAmount}
+              step={minTransferAmount}
               className='font-mono text-lg'
             />
             <p className='text-muted-foreground text-xs'>
-              {t('Minimum:')} {formatQuota(QUOTA_PER_DOLLAR)}
+              {t('Minimum:')} {formatQuota(minTransferQuota)}
             </p>
           </div>
         </div>
