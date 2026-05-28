@@ -21,7 +21,7 @@ export {
   revealTokenKey,
   updateToken,
 } from "./tokens";
-export { adminAddQuota, adminCreateUser, getSelf, loginUser } from "./users";
+export { adminAddQuota, adminCreateUser, getSelf } from "./users";
 export type {
   NewApiAdminAddQuotaInput,
   NewApiAdminCreateUserInput,

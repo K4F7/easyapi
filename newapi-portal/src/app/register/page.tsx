@@ -24,18 +24,28 @@ function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState(refCode);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [turnstile, setTurnstile] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     setLoading(true);
 
     try {
       const body: Record<string, string> = { email, password };
       if (inviteCode.trim()) {
         body.inviteCode = inviteCode.trim();
+      }
+      if (verificationCode.trim()) {
+        body.verificationCode = verificationCode.trim();
+      }
+      if (turnstile.trim()) {
+        body.turnstile = turnstile.trim();
       }
 
       const res = await fetch("/api/auth/register", {
@@ -48,6 +58,14 @@ function RegisterForm() {
 
       if (!res.ok) {
         setError(data.error?.message ?? "Registration failed");
+        return;
+      }
+
+      if (res.status === 202) {
+        setNotice(
+          data.data?.message ??
+            "注册已提交，请完成 NewAPI 要求的验证后再登录。",
+        );
         return;
       }
 
@@ -74,7 +92,7 @@ function RegisterForm() {
           <CardHeader>
             <CardTitle>注册</CardTitle>
             <CardDescription>
-              创建账户后进入控制台管理 Token、充值和用量。
+              使用 NewAPI 原生注册，成功后进入控制台管理 Token、充值和用量。
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -82,6 +100,11 @@ function RegisterForm() {
               {error && (
                 <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {error}
+                </div>
+              )}
+              {notice && (
+                <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+                  {notice}
                 </div>
               )}
               <div className="space-y-2">
@@ -114,6 +137,25 @@ function RegisterForm() {
                   placeholder="ABCD1234"
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="verificationCode">邮箱验证码（如 NewAPI 要求）</Label>
+                <Input
+                  id="verificationCode"
+                  inputMode="numeric"
+                  placeholder="请输入验证码"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="turnstile">Turnstile Token（如 NewAPI 要求）</Label>
+                <Input
+                  id="turnstile"
+                  placeholder="由部署环境提供"
+                  value={turnstile}
+                  onChange={(e) => setTurnstile(e.target.value)}
                 />
               </div>
               <Button className="w-full" type="submit" disabled={loading}>

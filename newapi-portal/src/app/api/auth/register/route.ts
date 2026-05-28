@@ -3,19 +3,24 @@ import { z } from "zod";
 
 import {
   createSession,
-  encryptSecret,
-  generateInviteCode,
-  hashPassword,
   jsonError,
   jsonOk,
   readJson,
   toPublicUser,
   zodErrorResponse,
 } from "@/lib/auth";
+import { upsertPortalUserFromNewApiIdentity } from "@/lib/auth/newapi-user";
 import { db } from "@/lib/db";
 import { getServerEnv } from "@/lib/env";
-import { adminCreateUser, adminAddQuota } from "@/lib/newapi";
-import { NewApiError } from "@/lib/newapi/client";
+import { adminAddQuota } from "@/lib/newapi";
+import {
+  NewApiNativeAuthError,
+  registerNewApiUser,
+} from "@/lib/newapi/native-auth";
+import {
+  loginNewApiWithPassword,
+  NewApiPasswordLoginError,
+} from "@/lib/newapi/password-login";
 
 export const runtime = "nodejs";
 
@@ -33,21 +38,23 @@ const registerSchema = z.object({
     .toUpperCase()
     .regex(/^[A-Z0-9_-]{6,32}$/)
     .optional(),
+  verificationCode: z.string().trim().max(32).optional(),
+  turnstile: z.string().trim().max(2048).optional(),
 });
 
 export async function POST(request: Request) {
   try {
     const input = await readJson(request, registerSchema);
-    const existingUser = await db.user.findUnique({
+    const existingPortalUser = await db.user.findUnique({
       where: { email: input.email },
-      select: { id: true },
+      select: { id: true, newApiUserId: true },
     });
 
-    if (existingUser) {
+    if (existingPortalUser) {
       return jsonError(
         {
           code: "EMAIL_ALREADY_REGISTERED",
-          message: "Email is already registered",
+          message: "Email is already registered in the portal.",
         },
         409,
       );
@@ -64,177 +71,98 @@ export async function POST(request: Request) {
       return jsonError(
         {
           code: "INVALID_INVITE_CODE",
-          message: "Invite code is invalid",
+          message: "Invite code is invalid.",
         },
         400,
       );
     }
 
-    const passwordHash = await hashPassword(input.password);
-    const env = getServerEnv();
-
-    // --- Create local user in a transaction ---
-    const user = await db.$transaction(async (tx) => {
-      let inviteCode = generateInviteCode();
-
-      for (let attempt = 0; attempt < 5; attempt += 1) {
-        const inviteCodeOwner = await tx.user.findUnique({
-          where: { inviteCode },
-          select: { id: true },
-        });
-
-        if (!inviteCodeOwner) {
-          break;
-        }
-
-        inviteCode = generateInviteCode();
-      }
-
-      const createdUser = await tx.user.create({
-        data: {
-          email: input.email,
-          passwordHash,
-          inviteCode,
-          referredByUserId: referrer?.id,
-          newApiUserId: null,
-          newApiAccessTokenCiphertext: null,
-          newApiAccessTokenKeyId: null,
-        },
-      });
-
-      if (referrer) {
-        await tx.referral.create({
-          data: {
-            referrerId: referrer.id,
-            referredUserId: createdUser.id,
-            inviteCodeUsed: referrer.inviteCode,
-          },
-        });
-      }
-
-      await tx.auditLog.create({
-        data: {
-          actorType: "USER",
-          actorUserId: createdUser.id,
-          action: "auth.register",
-          targetType: "user",
-          targetId: createdUser.id,
-          metadata: {
-            newApiBinding: "pending",
-            signupCreditLedger: "pending",
-            referredByUserId: referrer?.id ?? null,
-          },
-        },
-      });
-
-      return createdUser;
-    });
-
-    // --- NewAPI integration (runtime only, outside transaction) ---
-    let newApiBinding: "ready" | "pending" = "pending";
-    let newApiUserId: string | null = null;
-    let signupCreditLedger: "done" | "pending" | "failed" = "pending";
-
     try {
-      const newApiUser = await adminCreateUser({
-        username: input.email,
+      await registerNewApiUser({
+        email: input.email,
         password: input.password,
-        displayName: input.email.split("@")[0],
+        verificationCode: input.verificationCode,
+        turnstile: input.turnstile,
+        affCode: input.inviteCode,
       });
-
-      if (newApiUser.id) {
-        newApiUserId = String(newApiUser.id);
-        newApiBinding = "ready";
-
-        const encryptedToken = newApiUser.accessToken
-          ? await encryptSecret(newApiUser.accessToken, env.AUTH_SECRET)
-          : null;
-
-        await db.user.update({
-          where: { id: user.id },
-          data: {
-            newApiUserId,
-            newApiAccessTokenCiphertext: encryptedToken,
-            newApiAccessTokenKeyId: encryptedToken ? "auth-secret-v1" : null,
-          },
-        });
+    } catch (error) {
+      if (error instanceof NewApiNativeAuthError) {
+        return newApiRegisterErrorResponse(error);
       }
 
-      // --- Signup bonus: write idempotent ledger entry then call adminAddQuota ---
-      const idempotencyKey = `signup:${user.id}`;
-      const quotaAmount = env.REGISTER_QUOTA;
-
-      await db.walletLedger.create({
-        data: {
-          userId: user.id,
-          type: "CREDIT",
-          amount: quotaAmount,
-          reason: "signup_bonus",
-          idempotencyKey,
-          metadata: {
-            source: "register",
-            newApiUserId,
-            quotaAmount,
-          },
-        },
-      });
-
-      if (newApiUserId) {
-        try {
-          await adminAddQuota({
-            userId: newApiUserId,
-            value: quotaAmount,
-          });
-          signupCreditLedger = "done";
-        } catch (quotaError) {
-          console.error("register: adminAddQuota failed", quotaError);
-          signupCreditLedger = "pending";
-        }
-      }
-    } catch (newApiError) {
-      if (newApiError instanceof NewApiError) {
-        console.error(
-          "register: NewAPI adminCreateUser failed",
-          newApiError.status,
-          newApiError.message,
-        );
-
-        // Rollback: remove the local user so we don't leave a half-created account
-        await db.user.delete({ where: { id: user.id } });
-
-        return jsonError(
-          {
-            code: "NEWAPI_BINDING_FAILED",
-            message:
-              "Upstream service unavailable. Registration could not be completed.",
-          },
-          502,
-        );
-      }
-
-      // Unknown error — still rollback
-      console.error("register: unexpected NewAPI error", newApiError);
-      await db.user.delete({ where: { id: user.id } });
-
-      return jsonError(
-        {
-          code: "INTERNAL_ERROR",
-          message: "Registration failed",
-        },
-        500,
-      );
+      throw error;
     }
 
-    // --- Create session ---
+    let newApiLogin;
+
+    try {
+      newApiLogin = await loginNewApiWithPassword({
+        username: input.email,
+        password: input.password,
+      });
+    } catch (error) {
+      if (error instanceof NewApiPasswordLoginError) {
+        return jsonOk(
+          {
+            status: "REGISTERED_LOGIN_REQUIRED",
+            message:
+              "Registration succeeded in NewAPI, but automatic login is blocked by NewAPI policy. Please sign in after completing the required verification.",
+            newApiBinding: "pending",
+            reason: error.code,
+          },
+          { status: 202 },
+        );
+      }
+
+      throw error;
+    }
+
+    const user = await upsertPortalUserFromNewApiIdentity({
+      userId: newApiLogin.userId,
+      username: newApiLogin.username,
+      email: input.email,
+      accessToken: newApiLogin.accessToken,
+    });
+
+    if (referrer) {
+      await db.referral.upsert({
+        where: { referredUserId: user.id },
+        update: {},
+        create: {
+          referrerId: referrer.id,
+          referredUserId: user.id,
+          inviteCodeUsed: referrer.inviteCode,
+        },
+      });
+    }
+
+    await db.auditLog.create({
+      data: {
+        actorType: "USER",
+        actorUserId: user.id,
+        action: "auth.register",
+        targetType: "user",
+        targetId: user.id,
+        metadata: {
+          newApiBinding: "ready",
+          signupCreditLedger: "pending",
+          referredByUserId: referrer?.id ?? null,
+          source: "newapi_native",
+        },
+      },
+    });
+
+    const signupCreditLedger = await grantSignupCredit(user.id, newApiLogin.userId);
     const session = await createSession(user.id);
 
     return jsonOk(
       {
-        user: toPublicUser({ ...user, newApiUserId }),
+        status: "REGISTERED_AND_LOGGED_IN",
+        user: toPublicUser(user),
         session: {
           expiresAt: session.expiresAt.toISOString(),
         },
-        newApiBinding,
+        newApiBinding: "ready",
         signupCreditLedger,
       },
       { status: 201 },
@@ -251,7 +179,7 @@ export async function POST(request: Request) {
       return jsonError(
         {
           code: "REGISTER_CONFLICT",
-          message: "Email or invite code already exists",
+          message: "Email, invite code, or NewAPI binding already exists.",
         },
         409,
       );
@@ -265,5 +193,77 @@ export async function POST(request: Request) {
       },
       500,
     );
+  }
+}
+
+function newApiRegisterErrorResponse(error: NewApiNativeAuthError) {
+  if (error.code === "NEWAPI_VERIFICATION_REQUIRED") {
+    return jsonError(
+      {
+        code: "NEWAPI_VERIFICATION_REQUIRED",
+        message:
+          "NewAPI requires email verification or bot verification before registration can continue.",
+      },
+      403,
+    );
+  }
+
+  if (error.code === "NEWAPI_REGISTER_DISABLED") {
+    return jsonError(
+      {
+        code: "NEWAPI_REGISTER_DISABLED",
+        message: "NewAPI registration is currently disabled.",
+      },
+      403,
+    );
+  }
+
+  return jsonError(
+    {
+      code: error.code,
+      message: error.message || "NewAPI registration failed.",
+    },
+    error.status >= 400 && error.status < 500 ? error.status : 502,
+  );
+}
+
+async function grantSignupCredit(
+  portalUserId: string,
+  newApiUserId: string,
+): Promise<"done" | "pending" | "failed"> {
+  const env = getServerEnv();
+  const quotaAmount = env.REGISTER_QUOTA;
+
+  try {
+    await db.walletLedger.upsert({
+      where: { idempotencyKey: `signup:${portalUserId}` },
+      update: {},
+      create: {
+        userId: portalUserId,
+        type: "CREDIT",
+        amount: quotaAmount,
+        reason: "signup_bonus",
+        idempotencyKey: `signup:${portalUserId}`,
+        metadata: {
+          source: "register",
+          newApiUserId,
+          quotaAmount,
+        },
+      },
+    });
+
+    try {
+      await adminAddQuota({
+        userId: newApiUserId,
+        value: quotaAmount,
+      });
+      return "done";
+    } catch (quotaError) {
+      console.error("register: adminAddQuota failed", quotaError);
+      return "pending";
+    }
+  } catch (ledgerError) {
+    console.error("register: signup ledger failed", ledgerError);
+    return "failed";
   }
 }
