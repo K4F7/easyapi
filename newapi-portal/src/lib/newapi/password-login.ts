@@ -4,9 +4,13 @@ import { getNewApiConfig } from "./client";
 
 type NewApiLoginData = {
   id?: number | string;
+  user_id?: number | string;
+  userId?: number | string;
   username?: string;
   display_name?: string;
+  displayName?: string;
   require_2fa?: boolean;
+  require2fa?: boolean;
 };
 
 type NewApiPasswordLoginResult = {
@@ -25,17 +29,19 @@ export class NewApiPasswordLoginError extends Error {
     | "NEWAPI_TOKEN_FAILED";
   readonly status: number;
   readonly payload?: unknown;
+  override readonly cause?: unknown;
 
   constructor(
     code: NewApiPasswordLoginError["code"],
     message: string,
-    options: { status?: number; payload?: unknown } = {},
+    options: { status?: number; payload?: unknown; cause?: unknown } = {},
   ) {
     super(message);
     this.name = "NewApiPasswordLoginError";
     this.code = code;
     this.status = options.status ?? 0;
     this.payload = options.payload;
+    this.cause = options.cause;
   }
 }
 
@@ -63,7 +69,7 @@ export async function loginNewApiWithPassword(input: {
 
   const loginData = extractData(loginPayload);
 
-  if (loginData.require_2fa) {
+  if (loginData.require_2fa || loginData.require2fa) {
     throw new NewApiPasswordLoginError(
       "NEWAPI_2FA_REQUIRED",
       "NewAPI account requires 2FA verification",
@@ -71,7 +77,8 @@ export async function loginNewApiWithPassword(input: {
     );
   }
 
-  const userId = loginData.id === undefined ? null : String(loginData.id);
+  const rawUserId = loginData.id ?? loginData.user_id ?? loginData.userId;
+  const userId = rawUserId === undefined ? null : String(rawUserId);
 
   if (!userId) {
     throw new NewApiPasswordLoginError(
@@ -131,13 +138,25 @@ function newApiUrl(path: string): string {
 }
 
 async function fetchNewApi(path: string, init: RequestInit): Promise<Response> {
+  let url: string;
+
   try {
-    return await fetch(newApiUrl(path), init);
+    url = newApiUrl(path);
   } catch (error) {
     throw new NewApiPasswordLoginError(
       path.endsWith("/token") ? "NEWAPI_TOKEN_FAILED" : "NEWAPI_LOGIN_FAILED",
-      "NewAPI request failed",
+      error instanceof Error ? error.message : "Invalid NewAPI configuration",
       { payload: error },
+    );
+  }
+
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    throw new NewApiPasswordLoginError(
+      path.endsWith("/token") ? "NEWAPI_TOKEN_FAILED" : "NEWAPI_LOGIN_FAILED",
+      `NewAPI request failed: ${formatFetchError(error)}`,
+      { cause: error, payload: sanitizeFetchError(error) },
     );
   }
 }
@@ -161,8 +180,19 @@ function extractData(payload: unknown): NewApiLoginData {
     return {};
   }
 
+  const user = findRecord(payload, ["user", "account"]);
+
+  if (user) {
+    return user;
+  }
+
   const data = payload.data;
-  return isRecord(data) ? data : {};
+
+  if (isRecord(data)) {
+    return findRecord(data, ["user", "account"]) ?? data;
+  }
+
+  return payload;
 }
 
 function extractAccessToken(payload: unknown): string | null {
@@ -186,6 +216,18 @@ function extractAccessToken(payload: unknown): string | null {
     }
   }
 
+  for (const key of ["data", "user"]) {
+    const value = payload[key];
+
+    if (isRecord(value)) {
+      const token = extractAccessToken(value);
+
+      if (token) {
+        return token;
+      }
+    }
+  }
+
   return null;
 }
 
@@ -206,6 +248,21 @@ function splitSetCookie(value: string | null): string[] {
   }
 
   return value.split(/,(?=\s*[^;,=\s]+=[^;,]+)/);
+}
+
+function findRecord(
+  source: Record<string, unknown>,
+  keys: string[],
+): NewApiLoginData | null {
+  for (const key of keys) {
+    const value = source[key];
+
+    if (isRecord(value)) {
+      return value;
+    }
+  }
+
+  return null;
 }
 
 function isSuccessFalse(payload: unknown): boolean {
@@ -297,6 +354,42 @@ function extractCode(payload: unknown): string | null {
 
 function normalizeFailureText(value: string | null): string {
   return value?.trim().toLowerCase() ?? "";
+}
+
+function formatFetchError(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = sanitizeFetchError(error.cause);
+    const detail =
+      cause && typeof cause === "object" && "code" in cause
+        ? ` (${String(cause.code)})`
+        : "";
+
+    return `${error.message}${detail}`;
+  }
+
+  return String(error);
+}
+
+function sanitizeFetchError(error: unknown): unknown {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      cause: sanitizeFetchError(error.cause),
+    };
+  }
+
+  if (isRecord(error)) {
+    return {
+      code: typeof error.code === "string" ? error.code : undefined,
+      errno: typeof error.errno === "number" ? error.errno : undefined,
+      syscall: typeof error.syscall === "string" ? error.syscall : undefined,
+      address: typeof error.address === "string" ? error.address : undefined,
+      port: typeof error.port === "number" ? error.port : undefined,
+    };
+  }
+
+  return error;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

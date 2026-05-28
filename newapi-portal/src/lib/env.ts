@@ -14,6 +14,13 @@ const serverEnvSchema = z.object({
   INVITE_REWARD_QUOTA: quotaSchema,
 });
 
+const authSecretSchema = serverEnvSchema.shape.AUTH_SECRET;
+const newApiBaseUrlSchema = serverEnvSchema.shape.NEWAPI_BASE_URL;
+const newApiAdminEnvSchema = serverEnvSchema.pick({
+  NEWAPI_ADMIN_TOKEN: true,
+  NEWAPI_ADMIN_USER_ID: true,
+});
+
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
 export function getServerEnv(): ServerEnv {
@@ -28,6 +35,51 @@ export function getServerEnv(): ServerEnv {
   }
 
   return parsed.data;
+}
+
+export function getAuthSecret(): string {
+  return parseEnvValue("AUTH_SECRET", authSecretSchema);
+}
+
+export function getNewApiBaseUrl(): string {
+  return parseEnvValue("NEWAPI_BASE_URL", newApiBaseUrlSchema);
+}
+
+export function getNewApiAdminEnv(): Pick<
+  ServerEnv,
+  "NEWAPI_ADMIN_TOKEN" | "NEWAPI_ADMIN_USER_ID"
+> {
+  const parsed = newApiAdminEnvSchema.safeParse(process.env);
+
+  if (!parsed.success) {
+    throw new Error(`Invalid server environment. ${formatZodIssues(parsed.error)}`);
+  }
+
+  return parsed.data;
+}
+
+function parseEnvValue<T>(
+  key: string,
+  schema: z.ZodType<T>,
+): T {
+  const parsed = schema.safeParse(process.env[key]);
+
+  if (!parsed.success) {
+    throw new Error(`Invalid server environment. ${formatZodIssues(parsed.error, key)}`);
+  }
+
+  return parsed.data;
+}
+
+function formatZodIssues(error: z.ZodError, prefix?: string): string {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.join(".");
+      const key = prefix && !path ? prefix : [prefix, path].filter(Boolean).join(".");
+
+      return `${key}: ${issue.message}`;
+    })
+    .join("; ");
 }
 
 export const plannedServerEnvKeys = serverEnvSchema.keyof().options;

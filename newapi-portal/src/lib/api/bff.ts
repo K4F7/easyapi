@@ -11,7 +11,7 @@ import {
   type PublicUser,
 } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getServerEnv } from "@/lib/env";
+import { getAuthSecret } from "@/lib/env";
 import { NewApiError, type NewApiAuth } from "@/lib/newapi";
 
 export type PortalUserForApi = {
@@ -98,7 +98,7 @@ export async function resolveAccessToken(ciphertext: string): Promise<string> {
     return ciphertext;
   }
 
-  return decryptSecret(ciphertext, getServerEnv().AUTH_SECRET);
+  return decryptSecret(ciphertext, getAuthSecret());
 }
 
 export function publicUserFromPortalUser(user: PortalUserForApi) {

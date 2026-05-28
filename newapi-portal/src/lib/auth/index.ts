@@ -9,7 +9,7 @@ import type { User } from "@prisma/client";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
-import { getServerEnv } from "@/lib/env";
+import { getAuthSecret } from "@/lib/env";
 
 export { encryptSecret, decryptSecret } from "./crypto";
 
@@ -92,7 +92,7 @@ function sessionCookieOptions(expiresAt?: Date) {
 
 export async function createSession(userId: string): Promise<{ expiresAt: Date }> {
   const token = generateSessionToken();
-  const { AUTH_SECRET } = getServerEnv();
+  const AUTH_SECRET = getAuthSecret();
   const tokenHash = hashSessionTokenWithSecret(token, AUTH_SECRET);
   const expiresAt = new Date(Date.now() + sessionMaxAgeSeconds * 1000);
 
@@ -115,7 +115,7 @@ export async function destroySession(): Promise<void> {
   const token = cookieStore.get(sessionCookieName)?.value;
 
   if (token) {
-    const { AUTH_SECRET } = getServerEnv();
+    const AUTH_SECRET = getAuthSecret();
     await db.session.updateMany({
       where: {
         tokenHash: {
@@ -140,7 +140,7 @@ export async function getCurrentUser(): Promise<PublicUser | null> {
     return null;
   }
 
-  const { AUTH_SECRET } = getServerEnv();
+  const AUTH_SECRET = getAuthSecret();
 
   const session = await db.session.findFirst({
     where: {

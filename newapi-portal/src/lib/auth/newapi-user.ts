@@ -8,7 +8,7 @@ import {
   hashPassword,
 } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getServerEnv } from "@/lib/env";
+import { getAuthSecret } from "@/lib/env";
 
 export type NewApiPortalIdentity = {
   userId: string;
@@ -32,7 +32,7 @@ export async function upsertPortalUserFromNewApiIdentity(
 ) {
   const encryptedToken = await encryptSecret(
     identity.accessToken,
-    getServerEnv().AUTH_SECRET,
+    getAuthSecret(),
   );
   const now = new Date();
   const existingLinkedUser = await db.user.findUnique({

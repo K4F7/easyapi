@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getServerEnv } from "@/lib/env";
+import { getNewApiAdminEnv, getNewApiBaseUrl } from "@/lib/env";
 
 import type { NewApiAuth, NewApiEnvelope } from "./types";
 
@@ -53,16 +53,16 @@ export function normalizeNewApiBaseUrl(baseUrl: string): string {
 }
 
 export function getNewApiConfig() {
-  const env = getServerEnv();
+  const baseUrl = getNewApiBaseUrl();
 
   return {
-    baseUrl: normalizeNewApiBaseUrl(env.NEWAPI_BASE_URL),
-    adminUserId: env.NEWAPI_ADMIN_USER_ID,
+    baseUrl: normalizeNewApiBaseUrl(baseUrl),
+    adminUserId: process.env.NEWAPI_ADMIN_USER_ID,
   };
 }
 
 export function getNewApiAdminAuth(): NewApiAuth {
-  const env = getServerEnv();
+  const env = getNewApiAdminEnv();
 
   return {
     accessToken: env.NEWAPI_ADMIN_TOKEN,

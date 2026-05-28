@@ -223,7 +223,13 @@ async function loginWithNewApi(input: {
         };
       }
 
-      console.error("NewAPI fallback login failed", error.status, error.message);
+      console.error("NewAPI fallback login failed", {
+        code: error.code,
+        status: error.status,
+        message: error.message,
+        payload: error.payload,
+        cause: error.cause,
+      });
       return {
         ok: false as const,
         response: jsonError(
