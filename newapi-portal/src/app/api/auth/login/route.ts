@@ -14,16 +14,33 @@ import { db } from "@/lib/db";
 export const runtime = "nodejs";
 
 const loginSchema = z.object({
-  email: z.string().trim().email().max(320).transform((value) => value.toLowerCase()),
+  identifier: z
+    .string()
+    .trim()
+    .min(1)
+    .max(320)
+    .transform((value) => value.toLowerCase())
+    .optional(),
+  email: z
+    .string()
+    .trim()
+    .min(1)
+    .max(320)
+    .transform((value) => value.toLowerCase())
+    .optional(),
   password: z.string().min(1).max(128),
 });
 
 export async function POST(request: Request) {
   try {
     const input = await readJson(request, loginSchema);
-    const user = await db.user.findUnique({
-      where: { email: input.email },
-    });
+    const identifier = input.identifier || input.email;
+
+    if (!identifier) {
+      return invalidCredentials();
+    }
+
+    const user = await findUserByLoginIdentifier(identifier);
 
     if (!user) {
       return invalidCredentials();
@@ -67,8 +84,27 @@ function invalidCredentials() {
   return jsonError(
     {
       code: "INVALID_CREDENTIALS",
-      message: "Email or password is incorrect",
+      message: "Email/username or password is incorrect",
     },
     401,
   );
+}
+
+async function findUserByLoginIdentifier(identifier: string) {
+  if (identifier.includes("@")) {
+    return db.user.findUnique({
+      where: { email: identifier },
+    });
+  }
+
+  const users = await db.user.findMany({
+    where: {
+      email: {
+        startsWith: `${identifier}@`,
+      },
+    },
+    take: 2,
+  });
+
+  return users.length === 1 ? users[0] : null;
 }

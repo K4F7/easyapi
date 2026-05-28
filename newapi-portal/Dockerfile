@@ -4,15 +4,18 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl
 
-COPY package.json package-lock.json ./
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
 RUN apk add --no-cache openssl
+RUN corepack enable
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -27,7 +30,7 @@ ENV REGISTER_QUOTA="100000"
 ENV CHECKIN_QUOTA="1000"
 ENV INVITE_REWARD_QUOTA="5000"
 
-RUN npm run build
+RUN pnpm build
 
 FROM node:22-alpine AS runner
 
@@ -43,7 +46,7 @@ RUN apk add --no-cache openssl \
   && adduser -S nextjs -G nodejs
 
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
-COPY --from=builder --chown=nextjs:nodejs /app/package-lock.json ./package-lock.json
+COPY --from=builder --chown=nextjs:nodejs /app/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
@@ -53,4 +56,4 @@ USER nextjs
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && ./node_modules/.bin/next start -H 0.0.0.0 -p ${PORT:-3000}"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && ./node_modules/.bin/next start -H 0.0.0.0 -p ${PORT:-3000}"]
