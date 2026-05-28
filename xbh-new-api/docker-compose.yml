@@ -1,0 +1,128 @@
+version: '3.4'
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: ${LOG_MAX_SIZE:-20m}
+    max-file: ${LOG_MAX_FILE:-5}
+
+services:
+  xbh-new-api:
+    build:
+      context: ${APP_BUILD_CONTEXT:-/opt/xbh-new-api}
+      dockerfile: Dockerfile
+    image: ${APP_IMAGE:-xbh-new-api:1.0.0}
+    container_name: xbh-new-api
+    restart: unless-stopped
+    command: --log-dir /app/logs
+    ports:
+      - "${APP_PORT_BIND:-127.0.0.1:3000}:3000"
+    environment:
+      SQL_DSN: postgresql://${POSTGRES_USER:-newapi}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-new-api}
+      REDIS_CONN_STRING: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      TZ: ${TZ:-Asia/Shanghai}
+      ERROR_LOG_ENABLED: ${ERROR_LOG_ENABLED:-true}
+      MEMORY_CACHE_ENABLED: ${MEMORY_CACHE_ENABLED:-true}
+    volumes:
+      - ${APP_DATA_DIR:-/opt/xbh-new-api-data}:/data
+      - ${APP_LOG_DIR:-/opt/xbh-new-api-logs}:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - xbh-new-api-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/status | grep -o '\"success\":\\s*true' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging: *default-logging
+    mem_limit: ${APP_MEM_LIMIT:-2g}
+    cpus: ${APP_CPUS:-2}
+
+  newapi-portal:
+    build:
+      context: ${PORTAL_BUILD_CONTEXT:-../newapi-portal}
+      dockerfile: Dockerfile
+    image: ${PORTAL_IMAGE:-newapi-portal:1.0.0}
+    container_name: newapi-portal
+    restart: unless-stopped
+    ports:
+      - "${PORTAL_PORT_BIND:-127.0.0.1:3001}:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-newapi}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-new-api}?schema=${PORTAL_DB_SCHEMA:-newapi_portal}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/${PORTAL_REDIS_DB:-1}
+      AUTH_SECRET: ${PORTAL_AUTH_SECRET:?PORTAL_AUTH_SECRET is required}
+      APP_URL: ${PORTAL_APP_URL:-http://localhost:3001}
+      NEWAPI_BASE_URL: ${PORTAL_NEWAPI_BASE_URL:-http://xbh-new-api:3000}
+      NEWAPI_ADMIN_TOKEN: ${NEWAPI_ADMIN_TOKEN:?NEWAPI_ADMIN_TOKEN is required}
+      NEWAPI_ADMIN_USER_ID: ${NEWAPI_ADMIN_USER_ID:-1}
+      REGISTER_QUOTA: ${REGISTER_QUOTA:-100000}
+      CHECKIN_QUOTA: ${CHECKIN_QUOTA:-1000}
+      INVITE_REWARD_QUOTA: ${INVITE_REWARD_QUOTA:-5000}
+      TZ: ${TZ:-Asia/Shanghai}
+    depends_on:
+      xbh-new-api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - xbh-new-api-network
+    logging: *default-logging
+    mem_limit: ${PORTAL_MEM_LIMIT:-1g}
+    cpus: ${PORTAL_CPUS:-1}
+
+  redis:
+    image: redis:7.2.11-alpine
+    container_name: xbh-new-api-redis
+    restart: unless-stopped
+    command: ["sh", "-c", "redis-server --requirepass \"$${REDIS_PASSWORD}\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    networks:
+      - xbh-new-api-network
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging: *default-logging
+    mem_limit: ${REDIS_MEM_LIMIT:-512m}
+    cpus: ${REDIS_CPUS:-1}
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: xbh-new-api-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-newapi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-new-api}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - xbh_pg_data:/var/lib/postgresql/data
+    networks:
+      - xbh-new-api-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *default-logging
+    mem_limit: ${POSTGRES_MEM_LIMIT:-2g}
+    cpus: ${POSTGRES_CPUS:-2}
+
+volumes:
+  xbh_pg_data:
+
+networks:
+  xbh-new-api-network:
+    driver: bridge

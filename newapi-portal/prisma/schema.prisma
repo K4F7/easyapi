@@ -1,0 +1,211 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["newapi_portal"]
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELED
+  REFUNDED
+  EXPIRED
+
+  @@schema("newapi_portal")
+}
+
+enum WalletLedgerType {
+  CREDIT
+  DEBIT
+  HOLD
+  RELEASE
+  ADJUSTMENT
+
+  @@schema("newapi_portal")
+}
+
+enum CheckinStatus {
+  CLAIMED
+  REVERSED
+
+  @@schema("newapi_portal")
+}
+
+enum ReferralStatus {
+  PENDING
+  REWARDED
+  CANCELED
+
+  @@schema("newapi_portal")
+}
+
+enum AuditActorType {
+  USER
+  ADMIN
+  SYSTEM
+
+  @@schema("newapi_portal")
+}
+
+model User {
+  id                            String    @id @default(cuid())
+  email                         String    @unique
+  passwordHash                  String    @map("password_hash")
+  inviteCode                    String    @unique @map("invite_code")
+  newApiUserId                  String?   @unique @map("newapi_user_id")
+  newApiAccessTokenCiphertext   String?   @map("newapi_access_token_ciphertext")
+  newApiAccessTokenKeyId        String?   @map("newapi_access_token_key_id")
+  newApiAccessTokenUpdatedAt    DateTime? @map("newapi_access_token_updated_at")
+  referredByUserId              String?   @map("referred_by_user_id")
+  lastLoginAt                   DateTime? @map("last_login_at")
+  createdAt                     DateTime  @default(now()) @map("created_at")
+  updatedAt                     DateTime  @updatedAt @map("updated_at")
+
+  referredBy                    User?          @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull)
+  referredUsers                 User[]         @relation("UserReferrals")
+  sessions                      Session[]
+  checkins                      Checkin[]
+  referralsMade                 Referral[]     @relation("ReferralReferrer")
+  referralSignup                Referral?      @relation("ReferralReferred")
+  orders                        Order[]
+  walletLedgerEntries           WalletLedger[]
+  auditLogs                     AuditLog[]
+
+  @@index([referredByUserId])
+  @@map("users")
+  @@schema("newapi_portal")
+}
+
+model Session {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  tokenHash   String    @unique @map("token_hash")
+  expiresAt   DateTime  @map("expires_at")
+  lastSeenAt  DateTime  @default(now()) @map("last_seen_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+  @@schema("newapi_portal")
+}
+
+model Checkin {
+  id            String          @id @default(cuid())
+  userId        String          @map("user_id")
+  checkedInOn   DateTime        @map("checked_in_on") @db.Date
+  status        CheckinStatus   @default(CLAIMED)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ledgerEntries WalletLedger[]
+
+  @@unique([userId, checkedInOn])
+  @@index([checkedInOn])
+  @@map("checkins")
+  @@schema("newapi_portal")
+}
+
+model Referral {
+  id             String         @id @default(cuid())
+  referrerId     String         @map("referrer_id")
+  referredUserId String         @unique @map("referred_user_id")
+  inviteCodeUsed String         @map("invite_code_used")
+  status         ReferralStatus @default(PENDING)
+  rewardedAt     DateTime?      @map("rewarded_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  referrer       User           @relation("ReferralReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUser   User           @relation("ReferralReferred", fields: [referredUserId], references: [id], onDelete: Cascade)
+  ledgerEntries  WalletLedger[]
+
+  @@index([referrerId])
+  @@index([inviteCodeUsed])
+  @@map("referrals")
+  @@schema("newapi_portal")
+}
+
+model Order {
+  id              String       @id @default(cuid())
+  userId          String       @map("user_id")
+  status          OrderStatus  @default(PENDING)
+  amountCents     Int          @map("amount_cents")
+  currency        String       @default("CNY")
+  productCode     String?      @map("product_code")
+  quotaAmount     Int?         @map("quota_amount")
+  idempotencyKey  String?      @unique @map("idempotency_key")
+  provider        String?
+  providerTradeNo String?      @unique @map("provider_trade_no")
+  paidAt          DateTime?    @map("paid_at")
+  expiresAt       DateTime?    @map("expires_at")
+  metadata        Json?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ledgerEntries   WalletLedger[]
+
+  @@index([userId, status])
+  @@index([createdAt])
+  @@map("orders")
+  @@schema("newapi_portal")
+}
+
+model WalletLedger {
+  id             String           @id @default(cuid())
+  userId         String           @map("user_id")
+  type           WalletLedgerType
+  amount         Int
+  balanceAfter   Int?             @map("balance_after")
+  reason         String
+  idempotencyKey String           @unique @map("idempotency_key")
+  orderId        String?          @map("order_id")
+  referralId     String?          @map("referral_id")
+  checkinId      String?          @map("checkin_id")
+  metadata       Json?
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order          Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  referral       Referral?        @relation(fields: [referralId], references: [id], onDelete: SetNull)
+  checkin        Checkin?         @relation(fields: [checkinId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([orderId])
+  @@index([referralId])
+  @@index([checkinId])
+  @@map("wallet_ledger")
+  @@schema("newapi_portal")
+}
+
+model AuditLog {
+  id          String         @id @default(cuid())
+  actorType   AuditActorType @map("actor_type")
+  actorUserId String?        @map("actor_user_id")
+  action      String
+  targetType  String?        @map("target_type")
+  targetId    String?        @map("target_id")
+  ipHash      String?        @map("ip_hash")
+  userAgent   String?        @map("user_agent")
+  metadata    Json?
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  actorUser   User?          @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+  @@schema("newapi_portal")
+}
