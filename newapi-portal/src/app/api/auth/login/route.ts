@@ -2,14 +2,19 @@ import { z } from "zod";
 
 import {
   createSession,
+  encryptSecret,
+  generateInviteCode,
   jsonError,
   jsonOk,
   readJson,
+  hashPassword,
   toPublicUser,
   verifyPassword,
   zodErrorResponse,
 } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getServerEnv } from "@/lib/env";
+import { loginUser } from "@/lib/newapi";
 
 export const runtime = "nodejs";
 
@@ -40,16 +45,28 @@ export async function POST(request: Request) {
       return invalidCredentials();
     }
 
-    const user = await findUserByLoginIdentifier(identifier);
+    let user = await findUserByLoginIdentifier(identifier);
 
     if (!user) {
-      return invalidCredentials();
+      const newApiUser = await loginWithNewApiCredentials(identifier, input.password);
+
+      if (!newApiUser) {
+        return invalidCredentials();
+      }
+
+      user = newApiUser;
     }
 
     const passwordMatches = await verifyPassword(input.password, user.passwordHash);
 
     if (!passwordMatches) {
-      return invalidCredentials();
+      const newApiUser = await loginWithNewApiCredentials(identifier, input.password);
+
+      if (!newApiUser) {
+        return invalidCredentials();
+      }
+
+      user = newApiUser;
     }
 
     const updatedUser = await db.user.update({
@@ -107,4 +124,64 @@ async function findUserByLoginIdentifier(identifier: string) {
   });
 
   return users.length === 1 ? users[0] : null;
+}
+
+async function loginWithNewApiCredentials(identifier: string, password: string) {
+  try {
+    const newApiUser = await loginUser({
+      username: identifier,
+      password,
+    });
+
+    const email = identifier.includes("@") ? identifier : `${identifier}@newapi.local`;
+    const passwordHash = await hashPassword(password);
+    const env = getServerEnv();
+    const encryptedToken = newApiUser.accessToken
+      ? await encryptSecret(newApiUser.accessToken, env.AUTH_SECRET)
+      : null;
+    const existingUser = await findExistingPortalUser(email, newApiUser.id);
+
+    if (existingUser) {
+      return db.user.update({
+        where: { id: existingUser.id },
+        data: {
+          email,
+          passwordHash,
+          newApiUserId: newApiUser.id === undefined ? existingUser.newApiUserId : String(newApiUser.id),
+          newApiAccessTokenCiphertext: encryptedToken ?? existingUser.newApiAccessTokenCiphertext,
+          newApiAccessTokenKeyId: encryptedToken ? "auth-secret-v1" : existingUser.newApiAccessTokenKeyId,
+          newApiAccessTokenUpdatedAt: encryptedToken ? new Date() : existingUser.newApiAccessTokenUpdatedAt,
+        },
+      });
+    }
+
+    return db.user.create({
+      data: {
+        email,
+        passwordHash,
+        inviteCode: generateInviteCode(),
+        newApiUserId: newApiUser.id === undefined ? null : String(newApiUser.id),
+        newApiAccessTokenCiphertext: encryptedToken,
+        newApiAccessTokenKeyId: encryptedToken ? "auth-secret-v1" : null,
+        newApiAccessTokenUpdatedAt: encryptedToken ? new Date() : null,
+      },
+    });
+  } catch (error) {
+    console.warn("NewAPI credential login failed", error);
+    return null;
+  }
+}
+
+async function findExistingPortalUser(email: string, newApiUserId?: number) {
+  const userByEmail = await db.user.findUnique({
+    where: { email },
+  });
+
+  if (userByEmail || newApiUserId === undefined) {
+    return userByEmail;
+  }
+
+  return db.user.findUnique({
+    where: { newApiUserId: String(newApiUserId) },
+  });
 }
