@@ -1,3 +1,11 @@
+> [!WARNING]
+> This directory is a transitional/reference backend only for the portal repository.
+>
+> - Portal CI does not build or validate this backend.
+> - The backend target is expected to move to the official upstream `QuantumNous/new-api`.
+> - Do not continue long-term backend development in this directory.
+> - For temporary integration work, you may reference the compose files and observed API behavior here.
+
 <div align="center">
 
 ![new-api](/web/default/public/logo.png)
