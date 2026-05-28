@@ -42,3 +42,31 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+@layer utilities {
+  .page-transition {
+    animation: page-enter 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    will-change: opacity, transform, filter;
+  }
+
+  @keyframes page-enter {
+    from {
+      opacity: 0;
+      filter: blur(4px);
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      filter: blur(0);
+      transform: translateY(0);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: none;
+    filter: none;
+    transform: none;
+  }
+}

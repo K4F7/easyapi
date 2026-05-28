@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { DuckLogo } from "@/components/duck-logo";
+import { PageTransition } from "@/components/page-transition";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -56,7 +57,7 @@ function LoginForm() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
-      <div className="w-full max-w-sm">
+      <PageTransition className="w-full max-w-sm">
         <Link
           href="/"
           className="mb-6 flex items-center justify-center gap-3"
@@ -114,7 +115,7 @@ function LoginForm() {
             </p>
           </CardContent>
         </Card>
-      </div>
+      </PageTransition>
     </main>
   );
 }

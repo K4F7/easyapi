@@ -3,6 +3,7 @@ import { ArrowRight, KeyRound, ReceiptText, ShieldCheck } from "lucide-react";
 
 import { BrandMark } from "@/components/brand-mark";
 import { DuckLogo } from "@/components/duck-logo";
+import { PageTransition } from "@/components/page-transition";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,7 +29,7 @@ const capabilities = [
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-5 md:px-6">
+      <PageTransition className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-5 md:px-6">
         <header className="flex items-center justify-between border-b border-divider pb-4">
           <Link href="/" className="flex items-center gap-3">
             <DuckLogo />
@@ -101,7 +102,7 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-      </div>
+      </PageTransition>
     </main>
   );
 }
