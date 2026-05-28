@@ -28,10 +28,7 @@ import {
   User,
   Command,
   Radio,
-  FlaskConical,
-  MessageSquare,
   CreditCard,
-  ListTodo,
   Settings,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -51,22 +48,6 @@ export function useSidebarData(): SidebarData {
       },
     ],
     navGroups: [
-      {
-        id: 'chat',
-        title: t('Chat'),
-        items: [
-          {
-            title: t('Playground'),
-            url: '/playground',
-            icon: FlaskConical,
-          },
-          {
-            title: t('Chat'),
-            icon: MessageSquare,
-            type: 'chat-presets',
-          },
-        ],
-      },
       {
         id: 'general',
         title: t('General'),
@@ -90,13 +71,6 @@ export function useSidebarData(): SidebarData {
             title: t('Usage Logs'),
             url: '/usage-logs/common',
             icon: FileText,
-          },
-          {
-            title: t('Task Logs'),
-            url: '/usage-logs/task',
-            activeUrls: ['/usage-logs/drawing'],
-            configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
-            icon: ListTodo,
           },
         ],
       },

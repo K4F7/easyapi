@@ -21,20 +21,20 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowRight,
-  BookOpen,
   Check,
   ChevronDown,
   ChevronUp,
   Circle,
   CreditCard,
   FileText,
+  Gift,
   KeyRound,
   ListChecks,
-  Play,
   RadioTower,
   ShieldCheck,
   TerminalSquare,
   Timer,
+  UserCheck,
   type LucideIcon,
 } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
@@ -76,10 +76,9 @@ const SETUP_GUIDE_CODE_PATTERN = [
 type DashboardActionPath =
   | '/keys'
   | '/wallet'
-  | '/playground'
+  | '/profile'
   | '/channels'
   | '/usage-logs'
-  | '/pricing'
 
 interface StartStep {
   title: string
@@ -468,13 +467,6 @@ export function OverviewDashboard() {
   const startSteps = useMemo<StartStep[]>(
     () => [
       {
-        title: t('Create API Key'),
-        description: t('Create a key for your app or service'),
-        to: '/keys',
-        icon: KeyRound,
-        completed: Boolean(preferredKey),
-      },
-      {
         title: t('Add credits'),
         description: t('Keep enough balance before production traffic'),
         to: '/wallet',
@@ -482,23 +474,43 @@ export function OverviewDashboard() {
         completed: remainQuota > 0 || usedQuota > 0,
       },
       {
-        title: t('Send a request'),
-        description: t('Verify routing with Playground or your client'),
-        to: '/playground',
-        icon: TerminalSquare,
+        title: t('Create API Key'),
+        description: t('Create a token for your app or service'),
+        to: '/keys',
+        icon: KeyRound,
+        completed: Boolean(preferredKey),
+      },
+      {
+        title: t('View usage logs'),
+        description: t('Inspect requests, errors, and billing details'),
+        to: '/usage-logs',
+        icon: FileText,
         completed: requestCount > 0,
       },
+      {
+        title: t('Invite or check in'),
+        description: t('Use wallet invites and profile check-in rewards'),
+        to: '/wallet',
+        icon: Gift,
+        completed: Boolean(user?.aff_code) || requestCount > 0,
+      },
     ],
-    [preferredKey, remainQuota, requestCount, t, usedQuota]
+    [preferredKey, remainQuota, requestCount, t, usedQuota, user?.aff_code]
   )
 
   const quickActions = useMemo<QuickAction[]>(
     () => [
       {
-        title: t('Playground'),
-        description: t('Test models and prompts from the browser'),
-        to: '/playground',
-        icon: Play,
+        title: t('Wallet'),
+        description: t('Recharge, redeem codes, and copy invite links'),
+        to: '/wallet',
+        icon: CreditCard,
+      },
+      {
+        title: t('API Keys'),
+        description: t('Create and rotate API tokens'),
+        to: '/keys',
+        icon: KeyRound,
       },
       {
         title: t('Channels'),
@@ -514,10 +526,10 @@ export function OverviewDashboard() {
         icon: FileText,
       },
       {
-        title: t('Pricing'),
-        description: t('Review model rates before scaling traffic'),
-        to: '/pricing',
-        icon: BookOpen,
+        title: t('Daily Check-in'),
+        description: t('Open Profile to claim daily rewards when enabled'),
+        to: '/profile',
+        icon: UserCheck,
       },
     ],
     [t]

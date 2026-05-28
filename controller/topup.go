@@ -118,6 +118,7 @@ func GetTopUpInfo(c *gin.Context) {
 type EpayRequest struct {
 	Amount        int64  `json:"amount"`
 	PaymentMethod string `json:"payment_method"`
+	ReturnUrl     string `json:"return_url"`
 }
 
 type AmountRequest struct {
@@ -208,7 +209,11 @@ func RequestEpay(c *gin.Context) {
 	}
 
 	callBackAddress := service.GetCallbackAddress()
-	returnUrl, _ := url.Parse(system_setting.ServerAddress + "/console/log")
+	returnUrl, err := getEpayReturnUrl(req.ReturnUrl)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "return_url 不合法", "data": ""})
+		return
+	}
 	notifyUrl, _ := url.Parse(callBackAddress + "/api/user/epay/notify")
 	tradeNo := fmt.Sprintf("%s%d", common.GetRandomString(6), time.Now().Unix())
 	tradeNo = fmt.Sprintf("USR%dNO%s", id, tradeNo)
@@ -452,6 +457,32 @@ func GetUserTopUps(c *gin.Context) {
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(topups)
 	common.ApiSuccess(c, pageInfo)
+}
+
+func getEpayReturnUrl(rawReturnUrl string) (*url.URL, error) {
+	if rawReturnUrl == "" {
+		return url.Parse(system_setting.ServerAddress + "/console/log")
+	}
+
+	returnUrl, err := url.Parse(rawReturnUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	if !returnUrl.IsAbs() || returnUrl.Host == "" {
+		return nil, fmt.Errorf("return_url must be absolute")
+	}
+
+	if returnUrl.Scheme != "http" && returnUrl.Scheme != "https" {
+		return nil, fmt.Errorf("return_url scheme must be http or https")
+	}
+
+	if returnUrl.User != nil {
+		return nil, fmt.Errorf("return_url userinfo is not allowed")
+	}
+
+	returnUrl.Fragment = ""
+	return returnUrl, nil
 }
 
 // GetAllTopUps 管理员获取全平台充值记录

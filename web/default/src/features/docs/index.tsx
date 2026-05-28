@@ -21,7 +21,6 @@ import {
   BookOpen,
   CheckCircle2,
   ChevronRight,
-  Code2,
   Copy,
   KeyRound,
   Monitor,
