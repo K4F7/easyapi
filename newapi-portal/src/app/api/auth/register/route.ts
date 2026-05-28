@@ -153,7 +153,7 @@ export async function POST(request: Request) {
     });
 
     const signupCreditLedger = await grantSignupCredit(user.id, newApiLogin.userId);
-    const session = await createSession(user.id);
+    const session = await createSession(user.id, request);
 
     return jsonOk(
       {

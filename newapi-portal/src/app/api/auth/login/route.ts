@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     });
 
     if (newApiLogin.ok) {
-      const session = await createSession(newApiLogin.user.id);
+      const session = await createSession(newApiLogin.user.id, request);
 
       return jsonOk({
         user: toPublicUser(newApiLogin.user),
@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       ? await loginWithLocalCompatibility({
           identifier,
           password: input.password,
+          request,
         })
       : { ok: false as const };
 
@@ -121,6 +122,7 @@ async function findUserByLoginIdentifier(identifier: string) {
 async function loginWithLocalCompatibility(input: {
   identifier: string;
   password: string;
+  request: Request;
 }) {
   const user = await findUserByLoginIdentifier(input.identifier);
 
@@ -138,7 +140,7 @@ async function loginWithLocalCompatibility(input: {
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
   });
-  const session = await createSession(user.id);
+  const session = await createSession(user.id, input.request);
 
   return {
     ok: true as const,

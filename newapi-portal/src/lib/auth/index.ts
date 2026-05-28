@@ -79,18 +79,45 @@ export function hashSessionTokenWithSecret(token: string, secret: string): strin
   return createHmac("sha256", secret).update(token).digest("hex");
 }
 
-function sessionCookieOptions(expiresAt?: Date) {
+function sessionCookieOptions(expiresAt?: Date, request?: Request) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureSessionCookie(request),
     path: "/",
     maxAge: sessionMaxAgeSeconds,
     expires: expiresAt,
   };
 }
 
-export async function createSession(userId: string): Promise<{ expiresAt: Date }> {
+function shouldUseSecureSessionCookie(request?: Request): boolean {
+  const appUrl = process.env.APP_URL;
+
+  if (appUrl) {
+    try {
+      return new URL(appUrl).protocol === "https:";
+    } catch {
+      return process.env.NODE_ENV === "production";
+    }
+  }
+
+  if (request) {
+    const forwardedProto = request.headers.get("x-forwarded-proto");
+
+    if (forwardedProto) {
+      return forwardedProto.split(",")[0]?.trim() === "https";
+    }
+
+    return new URL(request.url).protocol === "https:";
+  }
+
+  return process.env.NODE_ENV === "production";
+}
+
+export async function createSession(
+  userId: string,
+  request?: Request,
+): Promise<{ expiresAt: Date }> {
   const token = generateSessionToken();
   const AUTH_SECRET = getAuthSecret();
   const tokenHash = hashSessionTokenWithSecret(token, AUTH_SECRET);
@@ -105,7 +132,11 @@ export async function createSession(userId: string): Promise<{ expiresAt: Date }
   });
 
   const cookieStore = await cookies();
-  cookieStore.set(sessionCookieName, token, sessionCookieOptions(expiresAt));
+  cookieStore.set(
+    sessionCookieName,
+    token,
+    sessionCookieOptions(expiresAt, request),
+  );
 
   return { expiresAt };
 }
