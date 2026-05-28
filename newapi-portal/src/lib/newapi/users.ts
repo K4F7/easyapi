@@ -89,7 +89,9 @@ export async function loginUser(
   }
 
   const accessToken = parsed.accessToken ??
-    (login.cookie ? await fetchAccessToken(login.cookie) : undefined);
+    (login.cookie && parsed.id !== undefined
+      ? await fetchAccessToken(login.cookie, parsed.id)
+      : undefined);
 
   return {
     id: parsed.id,
@@ -100,11 +102,15 @@ export async function loginUser(
   };
 }
 
-async function fetchAccessToken(cookie: string): Promise<string | undefined> {
+async function fetchAccessToken(
+  cookie: string,
+  userId: number,
+): Promise<string | undefined> {
   const token = await newApiRawRequest("/api/user/token", {
     method: "GET",
     headers: {
       Cookie: cookie,
+      "New-Api-User": String(userId),
     },
   });
 
