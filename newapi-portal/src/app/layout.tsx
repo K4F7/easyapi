@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Toaster } from "sonner";
 
 import "./globals.css";
 
@@ -15,10 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <body className="font-sans">
-        {children}
-        <Toaster position="top-center" richColors closeButton />
-      </body>
+      <body className="font-sans">{children}</body>
     </html>
   );
 }

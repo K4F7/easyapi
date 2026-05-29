@@ -23,6 +23,7 @@ export const sessionCookieName = "portal_session";
 export const sessionMaxAgeSeconds = 60 * 60 * 24 * 30;
 
 const passwordHashRounds = 12;
+const sessionLastSeenUpdateIntervalMs = 5 * 60 * 1000;
 
 export type PublicUser = {
   id: string;
@@ -193,14 +194,16 @@ export async function getCurrentUser(): Promise<PublicUser | null> {
     return null;
   }
 
-  await db.session.update({
-    where: {
-      id: session.id,
-    },
-    data: {
-      lastSeenAt: new Date(),
-    },
-  });
+  if (Date.now() - session.lastSeenAt.getTime() > sessionLastSeenUpdateIntervalMs) {
+    await db.session.update({
+      where: {
+        id: session.id,
+      },
+      data: {
+        lastSeenAt: new Date(),
+      },
+    });
+  }
 
   return toPublicUser(session.user);
 }
