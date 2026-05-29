@@ -1,0 +1,193 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: ${LOG_MAX_SIZE:-10m}
+    max-file: ${LOG_MAX_FILE:-3}
+
+name: easyapi-portal
+
+services:
+  postgres-test:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    container_name: easyapi-portal-postgres-test
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-new-api}
+      POSTGRES_USER: ${POSTGRES_USER:-newapi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - easyapi-portal_pg_data_test:/var/lib/postgresql/data
+      - type: bind
+        source: ${BACKUP_SQL_GZ:-D:/Download/xbh-new-api-2026-05-23-172431.sql.gz}
+        target: /docker-entrypoint-initdb.d/10-xbh-new-api.sql.gz
+        read_only: true
+    cpus: ${POSTGRES_CPU_LIMIT:-1.0}
+    mem_limit: ${POSTGRES_MEMORY_LIMIT:-512M}
+    mem_reservation: ${POSTGRES_MEMORY_RESERVATION:-128M}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - easyapi-portal-network-test
+    deploy:
+      resources:
+        limits:
+          cpus: ${POSTGRES_CPU_LIMIT:-1.0}
+          memory: ${POSTGRES_MEMORY_LIMIT:-512M}
+        reservations:
+          memory: ${POSTGRES_MEMORY_RESERVATION:-128M}
+
+  redis-test:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    container_name: easyapi-portal-redis-test
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me}
+    command: ["sh", "-c", "redis-server --requirepass \"$${REDIS_PASSWORD}\""]
+    volumes:
+      - easyapi-portal_redis_data_test:/data
+    cpus: ${REDIS_CPU_LIMIT:-0.5}
+    mem_limit: ${REDIS_MEMORY_LIMIT:-256M}
+    mem_reservation: ${REDIS_MEMORY_RESERVATION:-64M}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - easyapi-portal-network-test
+    deploy:
+      resources:
+        limits:
+          cpus: ${REDIS_CPU_LIMIT:-0.5}
+          memory: ${REDIS_MEMORY_LIMIT:-256M}
+        reservations:
+          memory: ${REDIS_MEMORY_RESERVATION:-64M}
+
+  new-api-test:
+    image: ${NEWAPI_IMAGE:-calciumion/new-api:latest}
+    container_name: easyapi-portal-new-api-test
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      PORT: ${NEWAPI_INTERNAL_PORT:-3000}
+      SQL_DSN: ${NEWAPI_SQL_DSN:-postgresql://${POSTGRES_USER:-newapi}:${POSTGRES_PASSWORD:-change-me}@postgres-test:5432/${POSTGRES_DB:-new-api}}
+      REDIS_CONN_STRING: ${NEWAPI_REDIS_CONN_STRING:-redis://:${REDIS_PASSWORD:-change-me}@redis-test:6379/0}
+      SESSION_SECRET: ${SESSION_SECRET:-replace-with-at-least-32-characters}
+      CRYPTO_SECRET: ${CRYPTO_SECRET:-replace-with-at-least-32-characters}
+      BATCH_UPDATE_ENABLED: ${BATCH_UPDATE_ENABLED:-true}
+      NODE_NAME: ${NODE_NAME:-easyapi-new-api-test}
+      ERROR_LOG_ENABLED: ${ERROR_LOG_ENABLED:-true}
+      MEMORY_CACHE_ENABLED: ${MEMORY_CACHE_ENABLED:-true}
+    ports:
+      - "${NEWAPI_PORT:-3002}:${NEWAPI_INTERNAL_PORT:-3000}"
+    volumes:
+      - easyapi-portal_newapi_data_test:/data
+    cpus: ${NEWAPI_CPU_LIMIT:-2.0}
+    mem_limit: ${NEWAPI_MEMORY_LIMIT:-1G}
+    mem_reservation: ${NEWAPI_MEMORY_RESERVATION:-256M}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --spider \"http://127.0.0.1:$${PORT:-3000}/api/status\" || wget -q --spider \"http://127.0.0.1:$${PORT:-3000}/\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - easyapi-portal-network-test
+    deploy:
+      resources:
+        limits:
+          cpus: ${NEWAPI_CPU_LIMIT:-2.0}
+          memory: ${NEWAPI_MEMORY_LIMIT:-1G}
+        reservations:
+          memory: ${NEWAPI_MEMORY_RESERVATION:-256M}
+
+  portal-test:
+    build:
+      context: ./newapi-portal
+      dockerfile: Dockerfile
+    image: ${PORTAL_IMAGE:-easyapi/newapi-portal:latest}
+    container_name: easyapi-portal-portal-test
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      new-api-test:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: ${PORTAL_INTERNAL_PORT:-3000}
+      DATABASE_URL: ${PORTAL_DATABASE_URL:-postgresql://${POSTGRES_USER:-newapi}:${POSTGRES_PASSWORD:-change-me}@postgres-test:5432/${POSTGRES_DB:-new-api}?schema=newapi_portal}
+      REDIS_URL: ${PORTAL_REDIS_URL:-redis://:${REDIS_PASSWORD:-change-me}@redis-test:6379/1}
+      AUTH_SECRET: ${PORTAL_AUTH_SECRET:-replace-with-at-least-32-characters}
+      APP_URL: ${PORTAL_APP_URL:-http://localhost:3000}
+      NEWAPI_BASE_URL: ${NEWAPI_BASE_URL:-http://new-api-test:3000}
+      NEWAPI_ADMIN_TOKEN: ${NEWAPI_ADMIN_TOKEN:-replace-me}
+      NEWAPI_ADMIN_USER_ID: ${NEWAPI_ADMIN_USER_ID:-1}
+      REGISTER_QUOTA: ${REGISTER_QUOTA:-100000}
+      CHECKIN_QUOTA: ${CHECKIN_QUOTA:-1000}
+      INVITE_REWARD_QUOTA: ${INVITE_REWARD_QUOTA:-5000}
+    ports:
+      - "${PORTAL_PORT:-3001}:${PORTAL_INTERNAL_PORT:-3000}"
+    cpus: ${PORTAL_CPU_LIMIT:-1.0}
+    mem_limit: ${PORTAL_MEMORY_LIMIT:-768M}
+    mem_reservation: ${PORTAL_MEMORY_RESERVATION:-256M}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - easyapi-portal-network-test
+    deploy:
+      resources:
+        limits:
+          cpus: ${PORTAL_CPU_LIMIT:-1.0}
+          memory: ${PORTAL_MEMORY_LIMIT:-768M}
+        reservations:
+          memory: ${PORTAL_MEMORY_RESERVATION:-256M}
+
+networks:
+  easyapi-portal-network-test:
+    name: easyapi-portal-network-test
+    driver: bridge
+
+volumes:
+  easyapi-portal_pg_data_test:
+    name: easyapi-portal_pg_data_test
+  easyapi-portal_redis_data_test:
+    name: easyapi-portal_redis_data_test
+  easyapi-portal_newapi_data_test:
+    name: easyapi-portal_newapi_data_test
