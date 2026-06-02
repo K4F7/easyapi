@@ -288,3 +288,15 @@ docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easy
 - [ ] `curl https://test.easyapi.work/api/health` → `ok: true`
 - [ ] `pnpm seed:screenshot-user` 成功
 - [ ] `pnpm screenshots:e2e` 生成 9 张截图
+
+### Portal static assets (public/)
+
+Duck/brand images (e.g. `duck.webp`, `duck-icon.png`) live under `newapi-portal/public/`. The repo root `.gitignore` ignores `*.png` / `*.webp` globally; keep the exceptions `!newapi-portal/public/` and `!newapi-portal/public/**` so these files are committed. The `newapi-portal/Dockerfile` runner stage must `COPY --from=builder /app/public ./public` or the container will not serve them (broken `next/image` icons on staging).
+
+Verify after deploy:
+
+`ash
+curl -I https://test.easyapi.work/duck.webp
+`
+
+Expect `HTTP/2 200` and `content-type: image/webp`.
