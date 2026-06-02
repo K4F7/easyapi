@@ -13,11 +13,9 @@
  */
 
 import { spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
 import { mkdir, access } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { pipeline } from "node:stream/promises";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
@@ -126,29 +124,12 @@ async function main() {
 
   console.log(`Downloading database snapshot to ${outputBackup} ...`);
 
-  const dump = spawn(
-    "ssh",
-    [
-      remoteHost,
-      `docker exec ${postgresContainer} pg_dump -U ${postgresUser} -d ${postgresDb} --clean --if-exists | gzip -c`,
-    ],
-    { stdio: ["ignore", "pipe", "inherit"] },
-  );
-
-  const output = createWriteStream(outputBackup);
-  await pipeline(dump.stdout, output);
-
-  await new Promise((resolve, reject) => {
-    dump.on("close", (code) => {
-      if (code === 0) {
-        resolve(undefined);
-        return;
-      }
-
-      reject(new Error(`remote pg_dump exited with code ${code}`));
-    });
-    dump.on("error", reject);
-  });
+  const remoteDumpPath = "/tmp/easyapi-portal-with-screenshot-user.sql.gz";
+  await run("ssh", [
+    remoteHost,
+    `docker exec ${postgresContainer} pg_dump -U ${postgresUser} -d ${postgresDb} --clean --if-exists | gzip -c > ${remoteDumpPath}`,
+  ]);
+  await run("scp", [`${remoteHost}:${remoteDumpPath}`, outputBackup]);
 
   console.log("\nTest database prepared on server and exported locally.");
   console.log(`Output backup: ${outputBackup}`);

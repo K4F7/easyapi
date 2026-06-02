@@ -12,18 +12,18 @@ const screenshotDir = path.join(
 );
 
 const PUBLIC_ROUTES = [
-  { slug: "home", path: "/", heading: "管令牌、看用量、随时充值" },
+  { slug: "home", path: "/", heading: "给普通用户使用的 API 控制台" },
   { slug: "login", path: "/login", heading: "登录" },
   { slug: "register", path: "/register", heading: "注册" },
 ] as const;
 
 const AUTH_ROUTES = [
   { slug: "dashboard", path: "/dashboard", heading: "概览" },
-  { slug: "dashboard-tokens", path: "/dashboard/tokens", heading: "令牌" },
+  { slug: "dashboard-tokens", path: "/dashboard/tokens", heading: "Tokens" },
   { slug: "dashboard-billing", path: "/dashboard/billing", heading: "充值" },
   { slug: "dashboard-referral", path: "/dashboard/referral", heading: "邀请" },
   { slug: "dashboard-usage", path: "/dashboard/usage", heading: "用量" },
-  { slug: "dashboard-profile", path: "/dashboard/profile", heading: "设置" },
+  { slug: "dashboard-profile", path: "/dashboard/profile", heading: "账户" },
 ] as const;
 
 test.describe.configure({ mode: "serial" });
