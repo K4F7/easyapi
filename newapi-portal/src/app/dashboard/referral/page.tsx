@@ -111,11 +111,11 @@ export default function ReferralPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-normal">邀请</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          分享邀请码，查看邀请人数和奖励记录。
+          把你的邀请码分享给朋友，朋友注册后你们都能拿到奖励。
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Metric title="累计邀请" value={formatQuota(data.invitedCount.total)} />
         <Metric title="已奖励" value={formatQuota(data.invitedCount.rewarded)} />
         <Metric title="奖励额度" value={formatQuota(rewardTotal)} />
@@ -124,7 +124,7 @@ export default function ReferralPage() {
       <Card>
         <CardHeader>
           <CardTitle>邀请入口</CardTitle>
-          <CardDescription>注册页会读取 inviteCode query 并自动填充。</CardDescription>
+          <CardDescription>好友用你的链接注册时，邀请码会自动帮他填好。</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[220px_1fr]">
           <div className="space-y-2">
@@ -180,7 +180,7 @@ export default function ReferralPage() {
           {data.rewards.length === 0 ? (
             <EmptyState
               title="暂无奖励"
-              description="被邀请用户注册后，奖励记录会显示在这里。"
+              description="好友注册成功后，你的奖励记录会显示在这里。"
             />
           ) : (
             <Table>

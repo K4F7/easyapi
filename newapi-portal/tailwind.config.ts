@@ -10,6 +10,28 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          '"Noto Sans SC"',
+          '"PingFang SC"',
+          '"Microsoft YaHei"',
+          '"Hiragino Sans GB"',
+          "sans-serif",
+        ],
+        display: [
+          '"ZCOOL KuaiLe"',
+          '"Noto Sans SC"',
+          '"PingFang SC"',
+          "sans-serif",
+        ],
+        mono: [
+          '"JetBrains Mono"',
+          '"SF Mono"',
+          "Consolas",
+          '"Liberation Mono"',
+          "monospace",
+        ],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -49,11 +71,14 @@ const config: Config = {
         divider: "hsl(var(--divider))",
       },
       borderRadius: {
+        "2xl": "calc(var(--radius) + 4px)",
+        xl: "calc(var(--radius) + 2px)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
+        soft: "0 10px 40px -10px rgba(0,0,0,0.05)",
         subtle: "0 1px 2px rgb(23 23 23 / 0.05)",
       },
     },

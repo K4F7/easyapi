@@ -135,7 +135,7 @@ export default function UsagePage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-normal">用量</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          查看额度消耗、Token 使用和最近请求日志。
+          看看你的 API 用了多少额度，哪个令牌用得最多。
         </p>
       </div>
 
@@ -193,10 +193,10 @@ export default function UsagePage() {
         />
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Metric title="消耗额度" value={formatQuota(usage?.totals.quota)} />
             <Metric title="请求次数" value={formatQuota(usage?.totals.count)} />
-            <Metric title="Token 用量" value={formatQuota(usage?.totals.tokenUsed)} />
+            <Metric title="令牌用量" value={formatQuota(usage?.totals.tokenUsed)} />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -249,7 +249,7 @@ export default function UsagePage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>时间</TableHead>
-                        <TableHead>Token</TableHead>
+                        <TableHead>令牌</TableHead>
                         <TableHead>模型</TableHead>
                         <TableHead>额度</TableHead>
                       </TableRow>
@@ -293,7 +293,7 @@ function Metric({ title, value }: { title: string; value: string }) {
 function UsageSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {["quota", "count", "tokens"].map((key) => (
           <Card key={key}>
             <CardContent className="space-y-3 p-6">

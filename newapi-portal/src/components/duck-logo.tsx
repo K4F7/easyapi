@@ -1,21 +1,31 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 type DuckLogoProps = {
   className?: string;
+  size?: number;
 };
 
-export function DuckLogo({ className }: DuckLogoProps) {
+export function DuckLogo({ className, size = 32 }: DuckLogoProps) {
+  const sizedByClass = /\b(h-|w-|size-)/.test(className ?? "");
+
   return (
     <div
       aria-hidden="true"
       className={cn(
-        "relative h-8 w-8 rounded-full border border-border bg-card shadow-subtle",
+        "relative flex shrink-0 items-center justify-center",
         className,
       )}
+      style={sizedByClass ? undefined : { width: size, height: size }}
     >
-      <span className="absolute left-2 top-2 h-1.5 w-1.5 rounded-full bg-foreground" />
-      <span className="absolute -right-1 top-3 h-2.5 w-4 rounded-full bg-primary" />
-      <span className="absolute bottom-0 left-2 h-1 w-4 rounded-full bg-primary" />
+      <Image
+        src="/duck.webp"
+        alt=""
+        width={size}
+        height={size}
+        className="h-full w-full object-contain"
+        unoptimized
+      />
     </div>
   );
 }

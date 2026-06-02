@@ -153,7 +153,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">概览</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            查看账户余额、用量、Token 和邀请奖励。
+            一眼看清你的账户：余额还剩多少、今天用了多少、令牌有几个。
           </p>
         </div>
         <Badge variant={ready ? "secondary" : "outline"}>
@@ -170,7 +170,7 @@ export default function DashboardPage() {
                 <div className="text-sm font-medium">上游账户尚未就绪</div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {summary.newApi.message ??
-                    "Token、充值兑换和用量日志会在 NewAPI 绑定完成后可用。"}
+                    "令牌、充值兑换和用量日志会在 NewAPI 绑定完成后可用。"}
                 </p>
               </div>
             </div>
@@ -182,7 +182,7 @@ export default function DashboardPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="可用余额"
           value={formatQuota(remaining)}
@@ -196,7 +196,7 @@ export default function DashboardPage() {
           icon={BadgeCheck}
         />
         <MetricCard
-          title="Token 数"
+          title="令牌数"
           value={
             summary.tokens.count === null ? "-" : formatQuota(summary.tokens.count)
           }
@@ -215,28 +215,28 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>快捷入口</CardTitle>
-            <CardDescription>常用账户操作和 BFF 功能入口。</CardDescription>
+            <CardDescription>点这里快速完成常用操作。</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
             <QuickLink
               href="/dashboard/tokens"
-              title="管理 Tokens"
-              description="创建、查看 masked key、删除 Token。"
+              title="管理令牌"
+              description="新建、查看或删除你的访问令牌。"
             />
             <QuickLink
               href="/dashboard/billing"
               title="充值与兑换"
-              description="易支付充值、兑换码、订单记录。"
+              description="在线充值、核销兑换码、查充值记录。"
             />
             <QuickLink
               href="/dashboard/usage"
               title="用量日志"
-              description="按周查看消耗统计和请求日志。"
+              description="看看最近用了多少，哪些请求最费额度。"
             />
             <QuickLink
               href="/dashboard/referral"
               title="邀请奖励"
-              description="复制邀请链接并查看奖励记录。"
+              description="分享你的专属链接，好友注册你来拿钱。"
             />
           </CardContent>
         </Card>
@@ -256,7 +256,7 @@ export default function DashboardPage() {
                   {summary.checkin.checkedInToday ? "今日已签到" : "今日可签到"}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
-                  签到奖励会通过服务端写入 NewAPI 额度。
+                  每天签到领额度，奖励直接加到你的账户余额里。
                 </p>
               </div>
             </div>
@@ -335,7 +335,7 @@ function DashboardSkeleton() {
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-4 w-72" />
       </div>
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {["a", "b", "c", "d"].map((key) => (
           <Card key={key}>
             <CardContent className="space-y-3 p-6">

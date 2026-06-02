@@ -74,7 +74,7 @@ export default function TokensPage() {
       const page = await apiFetch<TokenPage>("/api/tokens?p=1&size=50");
       setTokens(page.items);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Token 加载失败");
+      setError(loadError instanceof Error ? loadError.message : "令牌加载失败");
     } finally {
       setLoading(false);
     }
@@ -107,11 +107,11 @@ export default function TokensPage() {
       setName("");
       setRemainQuota("");
       setExpiredAt("");
-      toast.success("Token 已创建");
+      toast.success("令牌已创建");
       await loadTokens();
     } catch (createError) {
       toast.error(
-        createError instanceof Error ? createError.message : "Token 创建失败",
+        createError instanceof Error ? createError.message : "令牌创建失败",
       );
     } finally {
       setCreating(false);
@@ -123,11 +123,11 @@ export default function TokensPage() {
 
     try {
       await apiDelete(`/api/tokens/${encodeURIComponent(String(token.id))}`);
-      toast.success("Token 已删除");
+      toast.success("令牌已删除");
       await loadTokens();
     } catch (deleteError) {
       toast.error(
-        deleteError instanceof Error ? deleteError.message : "Token 删除失败",
+        deleteError instanceof Error ? deleteError.message : "令牌删除失败",
       );
     } finally {
       setDeletingId(null);
@@ -150,25 +150,25 @@ export default function TokensPage() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-normal">Tokens</h1>
+        <h1 className="text-2xl font-semibold tracking-normal">令牌</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          创建和管理调用 NewAPI 的访问 Token。明文 key 只会在创建后显示一次。
+          创建你的 API 访问令牌。密钥只在创建成功时显示一次，记得及时复制。
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>创建 Token</CardTitle>
+          <CardTitle>创建令牌</CardTitle>
           <CardDescription>不设置额度或过期时间时使用上游默认配置。</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4 md:grid-cols-[1fr_180px_220px_auto]" onSubmit={handleCreate}>
+          <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_180px_220px_auto]" onSubmit={handleCreate}>
             <div className="space-y-2">
               <Label htmlFor="tokenName">名称</Label>
               <Input
                 id="tokenName"
                 maxLength={64}
-                placeholder="production"
+                placeholder="例如：生产环境"
                 required
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -224,21 +224,21 @@ export default function TokensPage() {
         <TokenSkeleton />
       ) : error ? (
         <ErrorState
-          title="Token 列表加载失败"
+          title="令牌列表加载失败"
           description={error}
           actionLabel="重新加载"
           onAction={loadTokens}
         />
       ) : tokens.length === 0 ? (
         <EmptyState
-          title="还没有 Token"
-          description="创建一个 Token 后即可在这里查看 masked key、额度和状态。"
+          title="还没有令牌"
+          description="创建一个就能在这里看到它的状态和剩余额度了。"
         />
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Token 列表</CardTitle>
-            <CardDescription>列表只展示 masked key，不展示明文。</CardDescription>
+            <CardTitle>令牌列表</CardTitle>
+            <CardDescription>为了安全，这里只显示密钥的一部分，不显示完整内容。</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>

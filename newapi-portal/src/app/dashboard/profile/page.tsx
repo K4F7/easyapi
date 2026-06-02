@@ -95,9 +95,9 @@ export default function ProfilePage() {
     <div className="mx-auto w-full max-w-4xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-normal">账户</h1>
+          <h1 className="text-2xl font-semibold tracking-normal">设置</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            查看登录账户信息和上游绑定状态。
+            查看你的账户信息，或者退出当前登录。
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={loadMe}>
@@ -109,7 +109,7 @@ export default function ProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>账户信息</CardTitle>
-          <CardDescription>仅显示门户公开账户字段。</CardDescription>
+          <CardDescription>你当前登录账户的基本资料。</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <InfoRow label="邮箱" value={me.user.email} />
@@ -127,8 +127,8 @@ export default function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>会话</CardTitle>
-          <CardDescription>退出后将清除当前 portal session。</CardDescription>
+          <CardTitle>登录状态</CardTitle>
+          <CardDescription>退出后你需要重新登录才能使用。</CardDescription>
         </CardHeader>
         <CardContent>
           <Button

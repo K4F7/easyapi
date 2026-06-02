@@ -42,14 +42,14 @@ function LoginForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error?.message ?? "Login failed");
+        setError(data.error?.message ?? "登录失败");
         return;
       }
 
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError("Network error. Please try again.");
+      setError("网络错误，请重试。");
     } finally {
       setLoading(false);
     }
@@ -63,12 +63,12 @@ function LoginForm() {
           className="mb-6 flex items-center justify-center gap-3"
         >
           <DuckLogo />
-          <span className="text-sm font-semibold">NewAPI Portal</span>
+          <span className="text-sm font-semibold">EZAPI 控制台</span>
         </Link>
         <Card>
           <CardHeader>
             <CardTitle>登录</CardTitle>
-            <CardDescription>登录后进入 EZAPI 控制台。</CardDescription>
+            <CardDescription>欢迎回来！登录后即可管理你的令牌和用量。</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -105,12 +105,12 @@ function LoginForm() {
               </Button>
             </form>
             <p className="mt-4 text-center text-sm text-muted-foreground">
-              还没有账户？{" "}
+              还没注册？{" "}
               <Link
                 className="font-medium text-foreground hover:underline"
                 href="/register"
               >
-                注册
+                免费创建账户
               </Link>
             </p>
           </CardContent>

@@ -156,7 +156,7 @@ export default function BillingPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">充值</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            使用易支付充值额度；支付完成与到账由 NewAPI 确认。
+            用支付宝给账户充值，支付完成后额度自动到账。
           </p>
         </div>
         <Badge variant="outline">本地发起记录 {formatCurrencyCny(totalRecorded)}</Badge>
@@ -187,7 +187,7 @@ export default function BillingPage() {
                 <Label htmlFor="payType">支付方式</Label>
                 <Input
                   id="payType"
-                  placeholder="alipay / wxpay"
+                  placeholder="alipay"
                   value={payType}
                   onChange={(event) => setPayType(event.target.value)}
                 />
@@ -235,8 +235,8 @@ export default function BillingPage() {
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>支付发起记录</CardTitle>
-            <CardDescription>最近 50 条 portal 发起记录；不是累计支付或到账流水。</CardDescription>
+            <CardTitle>充值记录</CardTitle>
+            <CardDescription>这里记录你最近发起的 50 次充值，不包括历史总流水。</CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={loadOrders}>
             <RefreshCw className="h-4 w-4" />
@@ -257,7 +257,7 @@ export default function BillingPage() {
               onAction={loadOrders}
             />
           ) : orders.length === 0 ? (
-            <EmptyState title="暂无记录" description="创建支付发起记录后会显示在这里。" />
+            <EmptyState title="暂无记录" description="发起充值后，记录会出现在这里。" />
           ) : (
             <Table>
               <TableHeader>

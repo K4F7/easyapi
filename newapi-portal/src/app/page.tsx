@@ -1,108 +1,201 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, KeyRound, ReceiptText, ShieldCheck } from "lucide-react";
+import { motion, type Variants } from "framer-motion";
 
 import { BrandMark } from "@/components/brand-mark";
 import { DuckLogo } from "@/components/duck-logo";
-import { PageTransition } from "@/components/page-transition";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 const capabilities = [
   {
-    title: "普通用户入口",
-    description: "注册后进入控制台，创建 Token、充值额度、查看用量。",
+    title: "注册就能用",
+    description: "三分钟完成注册，立刻创建你的第一个令牌，开始调用 API。",
     icon: KeyRound,
+    color: "bg-blue-50 text-blue-500",
   },
   {
-    title: "账单与兑换",
-    description: "易支付订单、兑换码和邀请奖励统一由 portal API 处理。",
+    title: "充值 & 赚奖励",
+    description: "支持支付宝充值，还能用兑换码，邀请好友注册还有返利。",
     icon: ReceiptText,
+    color: "bg-green-50 text-green-500",
   },
   {
-    title: "安全代理",
-    description: "浏览器只访问 `/api/*`，不会接触 NewAPI access token。",
+    title: "密钥不外露",
+    description: "你的真实 API 密钥由我们代为保管，对外只暴露你自己的令牌。",
     icon: ShieldCheck,
+    color: "bg-purple-50 text-purple-500",
   },
 ];
 
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { y: 20, opacity: 0 },
+  show: {
+    y: 0,
+    opacity: 1,
+    transition: { type: "spring", stiffness: 100, damping: 20 },
+  },
+};
+
+const floatingVariants: Variants = {
+  animate: {
+    y: [0, -8, 0],
+    transition: {
+      duration: 4,
+      repeat: Infinity,
+      ease: "easeInOut",
+    },
+  },
+};
+
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-background">
-      <PageTransition className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-5 md:px-6">
-        <header className="flex items-center justify-between border-b border-divider pb-4">
-          <Link href="/" className="flex items-center gap-3">
-            <DuckLogo />
-            <span className="text-sm font-semibold">EZAPI</span>
+    <main className="min-h-screen bg-slate-50/50 overflow-x-hidden relative selection:bg-primary selection:text-primary-foreground">
+      {/* Soft background blobs */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[500px] bg-primary opacity-5 rounded-full blur-3xl -z-10 pointer-events-none" />
+      
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-6 relative z-10">
+        <motion.header 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="flex items-center justify-between bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-sm border border-slate-100"
+        >
+          <Link href="/" className="flex items-center gap-3 group">
+            <motion.div 
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 400, damping: 10 }}
+            >
+              <DuckLogo size={36} />
+            </motion.div>
+            <span className="text-xl font-bold tracking-tight text-slate-800">EZAPI</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
+          <div className="flex items-center gap-3">
+            <Button asChild variant="ghost" className="hidden md:flex rounded-xl hover:bg-slate-100 text-slate-600">
               <Link href="/login">登录</Link>
             </Button>
-            <Button asChild size="sm">
+            <Button asChild className="rounded-xl shadow-sm hover:shadow-md transition-all">
               <Link href="/register">注册</Link>
             </Button>
           </div>
-        </header>
+        </motion.header>
 
-        <section className="grid flex-1 items-center gap-8 py-10 md:grid-cols-[1fr_380px] md:py-16">
-          <div className="max-w-2xl">
-            <Badge variant="secondary" className="mb-5">
-              NewAPI customer portal
-            </Badge>
-            <h1 className="text-balance text-4xl font-semibold tracking-normal text-foreground md:text-5xl">
-              给普通用户使用的 API 控制台
-            </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
-              通过简洁的门户完成注册登录、Token 管理、额度充值、邀请奖励和用量查看。
-              所有操作都经由本站 BFF API 转发，不直接暴露上游凭据。
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button asChild size="lg">
-                <Link href="/register">
-                  创建账户
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="/login">已有账户登录</Link>
-              </Button>
-              <Button asChild variant="ghost" size="lg">
-                <Link href="/dashboard">进入控制台</Link>
-              </Button>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-divider bg-card p-5 shadow-subtle">
-            <div className="flex items-center gap-4">
-              <BrandMark compact={false} />
-              <div>
-                <div className="text-lg font-semibold">EZAPI Console</div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Tokens · Billing · Usage · Referral
+        <section className="flex-1 py-16 md:py-24 flex items-center">
+          <div className="grid gap-16 lg:grid-cols-[1.1fr_1fr] items-center w-full">
+            
+            <motion.div 
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="max-w-2xl relative"
+            >
+              <motion.div variants={itemVariants}>
+                <Badge variant="secondary" className="mb-6 text-sm px-4 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border-0">
+                  不懂技术？也能轻松管好 API
+                </Badge>
+              </motion.div>
+              
+              <motion.h1 
+                variants={itemVariants}
+                className="text-4xl sm:text-5xl lg:text-6xl xl:text-[4rem] font-extrabold tracking-normal text-slate-900 leading-[1.2] sm:leading-[1.15]"
+              >
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500 inline-block">
+                  管令牌、看用量、随时充值
+                </span>
+              </motion.h1>
+              
+              <motion.div variants={itemVariants} className="mt-6 max-w-xl">
+                <p className="text-lg leading-relaxed text-slate-600">
+                  不需要配置服务器，注册即用。管令牌、看用量、在线充值，就这么简单。
                 </p>
-              </div>
-            </div>
-            <div className="mt-6 grid gap-3">
-              {capabilities.map((item) => (
-                <Card key={item.title}>
-                  <CardContent className="flex gap-3 p-4">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-soft">
-                      <item.icon className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium">{item.title}</div>
-                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        {item.description}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+              </motion.div>
+              
+              <motion.div variants={itemVariants} className="mt-10 flex flex-wrap gap-4">
+                <Button asChild size="lg" className="h-14 px-8 rounded-2xl text-base shadow-sm hover:shadow-md transition-all">
+                  <Link href="/register">
+                    免费注册，马上试用
+                    <ArrowRight className="h-5 w-5 ml-2" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="h-14 px-8 rounded-2xl text-base border-slate-200 text-slate-700 hover:bg-slate-50 transition-all">
+                  <Link href="/dashboard">进入控制台</Link>
+                </Button>
+              </motion.div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
+              className="relative"
+            >
+              <motion.div 
+                variants={floatingVariants}
+                animate="animate"
+                className="rounded-3xl border border-slate-100 bg-white/60 backdrop-blur-xl p-8 shadow-xl shadow-slate-200/40 relative z-10"
+              >
+                <div className="flex items-center gap-5 mb-8 pb-6 border-b border-slate-100">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-slate-50 bg-white p-1.5 shadow-sm">
+                    <BrandMark compact className="h-full w-full" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-800">系统状态</h2>
+                    <p className="text-sm text-emerald-500 font-medium flex items-center gap-1.5 mt-0.5">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                      所有服务运行正常
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="grid gap-4">
+                  {capabilities.map((item, i) => (
+                    <motion.div 
+                      key={item.title}
+                      initial={{ x: 20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: 0.4 + i * 0.1, duration: 0.5 }}
+                      whileHover={{ scale: 1.02 }}
+                      className="group cursor-default"
+                    >
+                      <Card className="border-0 shadow-sm hover:shadow-md transition-all bg-white rounded-2xl overflow-hidden">
+                        <CardContent className="flex items-center gap-4 p-4">
+                          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${item.color} transition-colors`}>
+                            <item.icon className="h-6 w-6" strokeWidth={2} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-base font-semibold text-slate-800">{item.title}</h3>
+                            <p className="mt-0.5 text-sm text-slate-500 leading-snug">
+                              {item.description}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            </motion.div>
+            
           </div>
         </section>
-      </PageTransition>
+      </div>
     </main>
   );
 }

@@ -58,14 +58,14 @@ function RegisterForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error?.message ?? "Registration failed");
+        setError(data.error?.message ?? "注册失败");
         return;
       }
 
       if (res.status === 202) {
         setNotice(
           data.data?.message ??
-            "注册已提交，请完成 NewAPI 要求的验证后再登录。",
+            "注册成功！请验证邮箱后再登录。",
         );
         return;
       }
@@ -73,7 +73,7 @@ function RegisterForm() {
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError("Network error. Please try again.");
+      setError("网络错误，请重试。");
     } finally {
       setLoading(false);
     }
@@ -87,13 +87,13 @@ function RegisterForm() {
           className="mb-6 flex items-center justify-center gap-3"
         >
           <DuckLogo />
-          <span className="text-sm font-semibold">NewAPI Portal</span>
+          <span className="text-sm font-semibold">EZAPI 控制台</span>
         </Link>
         <Card>
           <CardHeader>
             <CardTitle>注册</CardTitle>
             <CardDescription>
-              使用 NewAPI 原生注册，成功后进入控制台管理 Token、充值和用量。
+              注册后立刻拥有你的专属控制台，管令牌、充值、看用量。
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -160,7 +160,7 @@ function RegisterForm() {
                 />
               </div>
               <Button className="w-full" type="submit" disabled={loading}>
-                {loading ? "注册中..." : "创建账户"}
+                {loading ? "注册中..." : "免费注册"}
               </Button>
             </form>
             <p className="mt-4 text-center text-sm text-muted-foreground">
@@ -169,7 +169,7 @@ function RegisterForm() {
                 className="font-medium text-foreground hover:underline"
                 href="/login"
               >
-                登录
+                直接登录
               </Link>
             </p>
           </CardContent>

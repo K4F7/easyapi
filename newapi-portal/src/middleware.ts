@@ -3,6 +3,9 @@ import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE = "portal_session";
 
+/** Files in /public — must bypass auth or <Image src="/..."> returns HTML redirects */
+const PUBLIC_STATIC = /\.(?:avif|gif|ico|jpe?g|png|svg|webp|woff2?)$/i;
+
 const PUBLIC_PATHS = [
   "/",
   "/login",
@@ -24,6 +27,11 @@ function isAuthPage(pathname: string): boolean {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (PUBLIC_STATIC.test(pathname)) {
+    return NextResponse.next();
+  }
+
   const hasSession = request.cookies.has(SESSION_COOKIE);
 
   // Allow public paths, APIs, and static assets through. API routes enforce
@@ -56,6 +64,6 @@ export const config = {
      * - _next/image (image optimization)
      * - favicon.ico
      */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:avif|gif|ico|jpe?g|png|svg|webp|woff2?)$).*)",
   ],
 };
