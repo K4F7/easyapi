@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:6670";
+const baseURL = process.env.E2E_BASE_URL ?? "https://test.easyapi.work";
 
 export default defineConfig({
   testDir: "./tests/e2e",

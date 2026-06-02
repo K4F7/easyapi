@@ -28,3 +28,6 @@ temp/
 *.webp
 *.mp4
 *.mov
+
+test-data/*.sql.gz
+newapi-portal/screenshots/
