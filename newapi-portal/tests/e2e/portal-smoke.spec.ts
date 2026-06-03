@@ -48,13 +48,59 @@ test.describe("NewAPI Portal smoke", () => {
     await expect(page.getByLabel("邮箱", { exact: true })).toBeVisible();
     await expect(page.getByLabel("密码", { exact: true })).toBeVisible();
     await expect(page.getByLabel("邀请码（可选）")).toBeVisible();
+    await expect(page.getByLabel("邀请码（可选）")).toHaveValue("");
+    await page.goto("/register?inviteCode=ABC123");
+    await expect(page.getByLabel("邀请码（可选）")).toHaveValue("");
+    await expect(page.getByLabel("邮箱验证码")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "发送邮箱验证码" })).toBeDisabled();
+    await page.getByLabel("邮箱", { exact: true }).fill("user@example.com");
+    await expect(page.getByRole("button", { name: "发送邮箱验证码" })).toBeEnabled();
+    await expect(page.getByLabel(/turnstile/i)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "免费注册" })).toBeDisabled();
+
+    await page.route("**/api/auth/verification", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          data: { status: "SENT" },
+        }),
+      });
+    });
+    await page.getByRole("button", { name: "发送邮箱验证码" }).click();
+    await expect(page.getByLabel("邮箱验证码")).toBeVisible();
     await expect(
-      page.getByLabel("邮箱验证码（如 NewAPI 要求）"),
+      page.getByRole("button", { name: /60s 后重发|重新发送/ }),
     ).toBeVisible();
-    await expect(
-      page.getByLabel("Turnstile Token（如 NewAPI 要求）"),
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: "创建账户" })).toBeVisible();
+
+    const registerRequests: Array<Record<string, unknown>> = [];
+    await page.route("**/api/auth/register", async (route) => {
+      registerRequests.push(JSON.parse(route.request().postData() ?? "{}"));
+      await route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          data: { message: "ok" },
+        }),
+      });
+    });
+
+    await page.getByLabel("密码", { exact: true }).fill("Password123!");
+    await page.getByLabel("确认密码").fill("Password123!");
+    await page.getByLabel("邮箱验证码").fill("654321");
+    await page.getByLabel(/我已阅读并同意/).check();
+    await page.getByRole("button", { name: "免费注册" }).click();
+    expect(registerRequests).toEqual([
+      expect.objectContaining({
+        email: "user@example.com",
+        password: "Password123!",
+        inviteCode: "ABC123",
+        verificationCode: "654321",
+      }),
+    ]);
+    expect(registerRequests[0]).not.toHaveProperty("turnstile");
     await expect(page.getByRole("link", { name: "登录" })).toHaveAttribute(
       "href",
       "/login",

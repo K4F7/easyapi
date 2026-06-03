@@ -7,6 +7,7 @@ export class NewApiNativeAuthError extends Error {
     | "NEWAPI_2FA_REQUIRED"
     | "NEWAPI_INVALID_CREDENTIALS"
     | "NEWAPI_VERIFICATION_REQUIRED"
+    | "NEWAPI_VERIFICATION_SEND_FAILED"
     | "NEWAPI_REGISTER_DISABLED"
     | "NEWAPI_REGISTER_FAILED";
   readonly status: number;
@@ -51,6 +52,24 @@ export async function registerNewApiUser(input: {
     throw new NewApiNativeAuthError(
       classifyRegisterFailure(response.status, payload),
       extractMessage(payload) || "NewAPI registration failed",
+      { status: response.status, payload },
+    );
+  }
+}
+
+export async function sendNewApiVerificationEmail(input: {
+  email: string;
+}): Promise<void> {
+  const response = await fetchNewApi("/api/verification", {
+    method: "GET",
+    cache: "no-store",
+  }, { email: input.email });
+  const payload = await parseJson(response);
+
+  if (!response.ok || isSuccessFalse(payload)) {
+    throw new NewApiNativeAuthError(
+      "NEWAPI_VERIFICATION_SEND_FAILED",
+      extractMessage(payload) || "NewAPI verification email send failed",
       { status: response.status, payload },
     );
   }
