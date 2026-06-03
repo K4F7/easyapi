@@ -15,19 +15,19 @@ const capabilities = [
     title: "注册就能用",
     description: "三分钟完成注册，立刻创建你的第一个令牌，开始调用 API。",
     icon: KeyRound,
-    color: "bg-blue-50 text-blue-500",
+    color: "bg-blue-50 text-blue-700",
   },
   {
     title: "充值 & 赚奖励",
     description: "支持支付宝充值，还能用兑换码，邀请好友注册还有返利。",
     icon: ReceiptText,
-    color: "bg-green-50 text-green-500",
+    color: "bg-green-50 text-green-700",
   },
   {
     title: "密钥不外露",
     description: "你的真实 API 密钥由我们代为保管，对外只暴露你自己的令牌。",
     icon: ShieldCheck,
-    color: "bg-purple-50 text-purple-500",
+    color: "bg-purple-50 text-purple-700",
   },
 ];
 
@@ -104,8 +104,8 @@ export default function HomePage() {
               className="max-w-2xl relative"
             >
               <motion.div variants={itemVariants}>
-                <Badge variant="secondary" className="mb-6 text-sm px-4 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border-0">
-                  不懂技术？也能轻松管好 API
+                <Badge variant="secondary" className="mb-6 text-base font-medium px-5 py-2 shadow-sm rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border-0">
+                  不懂技术也能轻松调用AI
                 </Badge>
               </motion.div>
               
@@ -113,7 +113,7 @@ export default function HomePage() {
                 variants={itemVariants}
                 className="text-4xl sm:text-5xl lg:text-6xl xl:text-[4rem] font-extrabold tracking-normal text-slate-900 leading-[1.2] sm:leading-[1.15]"
               >
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500 inline-block">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-blue-600 inline-block">
                   管令牌、看用量、随时充值
                 </span>
               </motion.h1>
@@ -154,7 +154,7 @@ export default function HomePage() {
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-slate-800">系统状态</h2>
-                    <p className="text-sm text-emerald-500 font-medium flex items-center gap-1.5 mt-0.5">
+                    <p className="text-sm text-emerald-700 font-medium flex items-center gap-1.5 mt-0.5">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -181,7 +181,7 @@ export default function HomePage() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <h3 className="text-base font-semibold text-slate-800">{item.title}</h3>
-                            <p className="mt-0.5 text-sm text-slate-500 leading-snug">
+                            <p className="mt-0.5 text-sm text-slate-600 leading-snug">
                               {item.description}
                             </p>
                           </div>
