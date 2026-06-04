@@ -114,7 +114,7 @@ const PAY_METHODS = [
   { value: "wechat", label: "微信" },
 ] as const;
 
-const AMOUNT_PRESETS = [10, 20, 50, 100, 200, 500] as const;
+const AMOUNT_PRESETS = [10, 50, 100, 200] as const;
 
 export default function CombinedBillingReferralPage() {
   const { formatQuota, quotaPerCny, config: quotaConfig, applyConfig, refresh } =
@@ -265,7 +265,7 @@ export default function CombinedBillingReferralPage() {
   const totalInvited = referralData?.invitedCount.total || 0;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8 page-transition">
+    <div className="mx-auto w-full max-w-7xl space-y-6 page-transition">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
@@ -276,287 +276,265 @@ export default function CombinedBillingReferralPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2 items-start">
-        {/* Left Card: Account Recharge */}
-        <Card className="overflow-hidden border-border/40 bg-card shadow-soft relative group">
-          {/* Top Stats Section - High Contrast */}
-          <div className="relative p-8 bg-foreground text-background overflow-hidden">
-            {/* Geometric Pattern Overlay */}
-            <div 
-              className="absolute inset-0 opacity-10 pointer-events-none" 
-              style={{ 
-                backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', 
-                backgroundSize: '24px 24px' 
-              }} 
-            />
-            {/* Primary Color Glow */}
-            <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary rounded-full mix-blend-screen filter blur-[80px] opacity-30 pointer-events-none transition-opacity group-hover:opacity-50 duration-700" />
-            
-            <div className="relative z-10">
-              <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-2.5 font-medium text-background/80">
-                  <div className="p-1.5 bg-background/10 rounded-md backdrop-blur-sm">
-                    <Wallet className="w-4 h-4" />
-                  </div>
-                  账户余额
+      {/* Top Stats: Balance & Referral */}
+      <div className="grid gap-6 xl:grid-cols-2 items-stretch">
+        {/* Balance Card */}
+        <Card className="relative overflow-hidden border-border/40 bg-foreground text-background shadow-soft rounded-3xl p-8 flex flex-col">
+          {/* Geometric Pattern Overlay */}
+          <div 
+            className="absolute inset-0 opacity-10 pointer-events-none" 
+            style={{ 
+              backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', 
+              backgroundSize: '24px 24px' 
+            }} 
+          />
+          {/* Primary Color Glow */}
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary rounded-full mix-blend-screen filter blur-[80px] opacity-30 pointer-events-none" />
+          
+          <div className="relative z-10 flex-1">
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center gap-2.5 font-medium text-background/80">
+                <div className="p-1.5 bg-background/10 rounded-md backdrop-blur-sm">
+                  <Wallet className="w-4 h-4" />
                 </div>
-                <Badge variant="outline" className="bg-background/10 text-background border-background/20 backdrop-blur-sm font-mono tracking-wider">
-                  LIVE
-                </Badge>
+                当前可用额度
               </div>
+              <Badge variant="outline" className="bg-background/10 text-background border-background/20 backdrop-blur-sm font-mono tracking-wider">
+                LIVE
+              </Badge>
+            </div>
 
-              <div className="mb-8">
-                <div className="text-5xl sm:text-6xl font-bold tracking-tighter font-mono mb-2">
-                  {balanceLoading ? <Skeleton className="h-14 w-48 bg-background/20" /> : formatQuota(remaining)}
-                </div>
-                <div className="text-sm text-background/60 flex items-center gap-2">
-                  可用额度 <span className="inline-block w-1 h-1 rounded-full bg-primary animate-pulse" />
-                </div>
+            <div className="mb-8">
+              <div className="text-5xl sm:text-6xl font-bold tracking-tighter font-mono mb-2">
+                {balanceLoading ? <Skeleton className="h-14 w-48 bg-background/20" /> : formatQuota(remaining)}
               </div>
-
-              <div className="grid grid-cols-2 gap-4 border-t border-background/10 pt-6">
-                <div>
-                  <div className="text-sm text-background/60 mb-1">历史消耗</div>
-                  <div className="text-xl font-mono font-medium">
-                    {balanceLoading ? <Skeleton className="h-7 w-24 bg-background/20" /> : formatQuota(usedQuota)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-background/60 mb-1">请求次数</div>
-                  <div className="text-xl font-mono font-medium">
-                    {ordersLoading ? <Skeleton className="h-7 w-16 bg-background/20" /> : orders.length}
-                  </div>
-                </div>
+              <div className="text-sm text-background/60 flex items-center gap-2">
+                可用额度 <span className="inline-block w-1 h-1 rounded-full bg-primary animate-pulse" />
               </div>
             </div>
           </div>
-          
-          {/* Action Section */}
-          <CardContent className="p-8 bg-card">
-            <div className="space-y-8">
-              {/* Amount Selection */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <Label className="text-sm font-semibold text-foreground">充值金额</Label>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {amountValue ? `实付 ¥${amountValue}` : '—'}
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  {AMOUNT_PRESETS.map(val => (
-                    <button 
-                      key={val}
-                      type="button"
-                      onClick={() => setAmount(String(val))}
-                      className={cn(
-                        "relative p-4 rounded-xl border text-center transition-all duration-200 overflow-hidden",
-                        amountValue === val 
-                          ? "border-primary bg-primary/5 text-primary shadow-[0_0_0_1px_hsl(var(--primary))]" 
-                          : "border-border/60 hover:border-primary/40 hover:bg-muted/30 text-foreground"
-                      )}
-                    >
-                      {amountValue === val && (
-                        <div className="absolute top-0 right-0 w-8 h-8 bg-primary/10 rounded-bl-xl flex items-center justify-center">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-                        </div>
-                      )}
-                      <div className="font-mono font-bold text-xl mb-1">{val}</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                        USD
-                      </div>
-                    </button>
-                  ))}
-                </div>
 
+          <div className="relative z-10 grid grid-cols-2 gap-4 border-t border-background/10 pt-6 mt-auto">
+            <div>
+              <div className="text-sm text-background/60 mb-1">历史消耗</div>
+              <div className="text-xl font-mono font-medium">
+                {balanceLoading ? <Skeleton className="h-7 w-24 bg-background/20" /> : formatQuota(usedQuota)}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-background/60 mb-1">请求次数</div>
+              <div className="text-xl font-mono font-medium">
+                {ordersLoading ? <Skeleton className="h-7 w-16 bg-background/20" /> : orders.length}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Referral Stats Card */}
+        <Card className="relative overflow-hidden border-border/40 bg-muted/30 shadow-soft rounded-3xl p-8 flex flex-col">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full mix-blend-multiply filter blur-[60px] pointer-events-none" />
+          
+          <div className="relative z-10 flex-1">
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center gap-2.5 font-medium text-foreground">
+                <div className="p-1.5 bg-background rounded-md shadow-sm border border-border/50">
+                  <Gift className="w-4 h-4 text-primary" />
+                </div>
+                邀请奖励
+              </div>
+              <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-border/60 bg-background hover:bg-muted rounded-full">
+                <ArrowRightLeft className="w-3 h-3 mr-1.5" />
+                划转收益
+              </Button>
+            </div>
+
+            <div className="mb-8">
+              <div className="text-4xl sm:text-5xl font-bold tracking-tighter font-mono mb-2 text-foreground">
+                {referralLoading ? <Skeleton className="h-12 w-40 bg-muted" /> : formatQuota(pendingReward)}
+              </div>
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                待划转收益
+              </div>
+            </div>
+          </div>
+
+          <div className="relative z-10 mt-auto space-y-6">
+            <div className="grid grid-cols-2 gap-4 border-t border-border/40 pt-6">
+              <div>
+                <div className="text-sm text-muted-foreground mb-1">累计收益</div>
+                <div className="text-xl font-mono font-medium text-foreground">
+                  {referralLoading ? <Skeleton className="h-7 w-24 bg-muted" /> : formatQuota(rewardTotal)}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground mb-1">成功邀请</div>
+                <div className="text-xl font-mono font-medium text-foreground">
+                  {referralLoading ? <Skeleton className="h-7 w-16 bg-muted" /> : totalInvited}
+                  <span className="text-sm text-muted-foreground ml-1 font-sans font-normal">人</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 bg-background p-1.5 pl-4 rounded-full border border-border/60 group-hover:border-primary/30 transition-colors">
+                <div className="flex-1 text-sm font-mono truncate text-muted-foreground select-all">
+                  {referralLoading ? "加载中..." : inviteUrl}
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={() => copyToClipboard(inviteUrl, "邀请链接已复制")}
+                  className="h-9 px-4 shrink-0 shadow-none rounded-full"
+                >
+                  <Copy className="w-3.5 h-3.5 mr-1.5" />
+                  复制
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Middle: Recharge & Redeem */}
+      <div className="grid gap-6 xl:grid-cols-2 items-start">
+        {/* Recharge Card */}
+        <Card className="rounded-[24px] border border-border/50 shadow-sm bg-card p-6 md:p-8">
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-foreground mb-1.5">易支付充值</h2>
+            <p className="text-sm text-muted-foreground">选择金额与支付方式，确认后跳转支付网关。</p>
+          </div>
+
+          <div className="space-y-8">
+            {/* Amount Selection */}
+            <div>
+              <Label className="text-sm font-bold text-foreground mb-3 block">充值金额（CNY）</Label>
+              <div className="flex flex-wrap gap-2.5 mb-3">
+                {AMOUNT_PRESETS.map(val => (
+                  <button 
+                    key={val}
+                    type="button"
+                    onClick={() => setAmount(String(val))}
+                    className={cn(
+                      "h-9 px-5 rounded-full border text-sm font-medium transition-colors",
+                      amountValue === val 
+                        ? "bg-[#FF9800] text-white border-[#FF9800]" 
+                        : "bg-background text-foreground border-border hover:border-border/80"
+                    )}
+                  >
+                    ¥{val}
+                  </button>
+                ))}
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <span className="text-muted-foreground font-mono">¥</span>
-                  </div>
                   <Input 
-                    className="pl-8 bg-muted/20 border-border/60 h-12 font-mono text-lg transition-all focus-visible:ring-primary focus-visible:border-primary" 
+                    className={cn(
+                      "h-9 w-24 rounded-full text-sm font-medium text-center transition-colors focus-visible:ring-[#FF9800] focus-visible:border-[#FF9800] focus-visible:ring-offset-0",
+                      !AMOUNT_PRESETS.includes(amountValue as any) && amountValue !== null
+                        ? "bg-[#FF9800] text-white border-[#FF9800] placeholder:text-white/70"
+                        : "bg-background text-foreground border-border hover:border-border/80"
+                    )}
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     type="number"
                     min="1"
-                    placeholder="自定义金额"
+                    placeholder="自定义"
                   />
-                  {quotaPreview !== null && (
-                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                      <span className="text-xs text-primary font-medium bg-primary/10 px-2 py-1 rounded-md">
-                        +{formatQuota(quotaPreview)}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
-
-              {/* Payment Methods */}
-              <div>
-                <Label className="text-sm font-semibold text-foreground mb-3 block">支付方式</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    type="button"
-                    onClick={() => setPayType('alipay')}
-                    className={cn(
-                      "flex items-center justify-center gap-2 h-12 rounded-xl border transition-all font-medium",
-                      payType === 'alipay' 
-                        ? "bg-[#1677FF] text-white border-[#1677FF] shadow-md shadow-[#1677FF]/20" 
-                        : "bg-muted/20 text-muted-foreground border-border/60 hover:bg-muted/50"
-                    )}
-                  >
-                    支付宝
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setPayType('wechat')}
-                    className={cn(
-                      "flex items-center justify-center gap-2 h-12 rounded-xl border transition-all font-medium",
-                      payType === 'wechat' 
-                        ? "bg-[#09B659] text-white border-[#09B659] shadow-md shadow-[#09B659]/20" 
-                        : "bg-muted/20 text-muted-foreground border-border/60 hover:bg-muted/50"
-                    )}
-                  >
-                    微信支付
-                  </button>
-                </div>
-              </div>
-              
-              {/* Pay Button */}
-              <Button 
-                className="w-full h-14 text-base font-bold shadow-soft transition-all hover:scale-[1.02] active:scale-[0.98]"
-                onClick={submitOrder}
-                disabled={creating || !amountValue}
-              >
-                {creating ? (
-                  <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-                ) : (
-                  <Zap className="w-5 h-5 mr-2" />
-                )}
-                {creating ? "处理中..." : amountValue ? `立即支付 ¥${amountValue}` : "请输入金额"}
-              </Button>
-
-              {/* Redeem Code */}
-              <div className="pt-6 border-t border-border/40">
-                <Label className="text-sm font-semibold text-foreground mb-3 block">兑换码</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                      className="pl-10 bg-muted/20 border-border/60 h-11 font-mono transition-colors focus-visible:ring-primary focus-visible:border-primary" 
-                      placeholder="输入兑换码"
-                      value={redeemCode}
-                      onChange={e => setRedeemCode(e.target.value)}
-                    />
-                  </div>
-                  <Button 
-                    variant="secondary"
-                    onClick={handleRedeem} 
-                    disabled={redeeming || !redeemCode}
-                    className="h-11 px-6 shrink-0 font-medium"
-                  >
-                    {redeeming ? "兑换中..." : "兑换"}
-                  </Button>
-                </div>
+              <div className="text-xs text-muted-foreground">
+                ¥{amountValue || 0} → 约 {formatQuota(quotaPreview || 0)} 额度 <span className="text-muted-foreground/60">（预估，以实际到账为准）</span>
               </div>
             </div>
-          </CardContent>
+
+            {/* Payment Method */}
+            <div>
+              <Label className="text-sm font-bold text-foreground mb-3 block">支付方式</Label>
+              <div className="space-y-3">
+                <button 
+                  type="button"
+                  onClick={() => setPayType('alipay')}
+                  className={cn(
+                    "w-full flex items-center justify-between p-3.5 rounded-xl border transition-all",
+                    payType === 'alipay' 
+                      ? "bg-[#FFF6E5] border-[#FF9800] dark:bg-[#FF9800]/10" 
+                      : "bg-background border-border hover:border-border/80"
+                  )}
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-8 h-8 rounded-full bg-[#FF9800] flex items-center justify-center text-white">
+                      <Wallet className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-bold text-foreground text-sm">支付宝</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">扫码 / 跳转支付</div>
+                    </div>
+                  </div>
+                  <div className={cn(
+                    "w-4 h-4 rounded-full border flex items-center justify-center",
+                    payType === 'alipay' ? "border-[#FF9800]" : "border-muted-foreground/30"
+                  )}>
+                    {payType === 'alipay' && <div className="w-2 h-2 rounded-full bg-[#FF9800]" />}
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Pay Button */}
+            <Button 
+              className={cn(
+                "w-full h-11 rounded-full text-sm font-bold shadow-none text-white transition-colors disabled:opacity-100",
+                amountValue && !creating
+                  ? "bg-[#FF9800] hover:bg-[#FF9800]/90"
+                  : "bg-[#FCD399] hover:bg-[#FCD399] cursor-not-allowed"
+              )}
+              onClick={submitOrder}
+              disabled={creating || !amountValue}
+            >
+              <CreditCard className="w-4 h-4 mr-2" />
+              去支付 ¥{amountValue || 0}
+            </Button>
+          </div>
         </Card>
 
-        {/* Right Card: Referral Reward */}
-        <Card className="overflow-hidden border-border/40 bg-card shadow-soft relative group h-full flex flex-col">
-          {/* Top Stats Section - Refined Light */}
-          <div className="relative p-8 bg-muted/30 border-b border-border/40 overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full mix-blend-multiply filter blur-[60px] pointer-events-none" />
-            
-            <div className="relative z-10">
-              <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-2.5 font-medium text-foreground">
-                  <div className="p-1.5 bg-background rounded-md shadow-sm border border-border/50">
-                    <Gift className="w-4 h-4 text-primary" />
-                  </div>
-                  邀请奖励
-                </div>
-                <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-border/60 bg-background hover:bg-muted">
-                  <ArrowRightLeft className="w-3 h-3 mr-1.5" />
-                  划转收益
-                </Button>
-              </div>
-
-              <div className="mb-8">
-                <div className="text-4xl sm:text-5xl font-bold tracking-tighter font-mono mb-2 text-foreground">
-                  {referralLoading ? <Skeleton className="h-12 w-40 bg-muted" /> : formatQuota(pendingReward)}
-                </div>
-                <div className="text-sm text-muted-foreground flex items-center gap-2">
-                  待划转收益
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 border-t border-border/40 pt-6">
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">累计收益</div>
-                  <div className="text-xl font-mono font-medium text-foreground">
-                    {referralLoading ? <Skeleton className="h-7 w-24 bg-muted" /> : formatQuota(rewardTotal)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">成功邀请</div>
-                  <div className="text-xl font-mono font-medium text-foreground">
-                    {referralLoading ? <Skeleton className="h-7 w-16 bg-muted" /> : totalInvited}
-                    <span className="text-sm text-muted-foreground ml-1 font-sans font-normal">人</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Redeem Card */}
+        <Card className="rounded-[24px] border border-border/50 shadow-sm bg-card p-6 md:p-8">
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-foreground mb-1.5">兑换码</h2>
+            <p className="text-sm text-muted-foreground">兑换成功后额度将自动到账。</p>
           </div>
 
-          <CardContent className="p-8 bg-card flex-1 flex flex-col">
-            <div className="space-y-6 flex-1">
-              <div>
-                <Label className="text-sm font-semibold text-foreground mb-3 block">您的专属邀请链接</Label>
-                <div className="flex items-center gap-2 bg-muted/30 p-1.5 pl-4 rounded-xl border border-border/60 group-hover:border-primary/30 transition-colors">
-                  <div className="flex-1 text-sm font-mono truncate text-muted-foreground select-all">
-                    {referralLoading ? "加载中..." : inviteUrl}
-                  </div>
-                  <Button 
-                    size="sm" 
-                    onClick={() => copyToClipboard(inviteUrl, "邀请链接已复制")}
-                    className="h-9 px-4 shrink-0 shadow-none rounded-lg"
-                  >
-                    <Copy className="w-3.5 h-3.5 mr-1.5" />
-                    复制
-                  </Button>
-                </div>
-              </div>
-
-              <div className="bg-muted/20 rounded-xl p-5 border border-border/40">
-                <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  奖励规则
-                </h4>
-                <ul className="space-y-3">
-                  {[
-                    "邀请好友注册，好友充值后您可获得相应比例的额度奖励。",
-                    "奖励将发放至「待划转收益」中。",
-                    "您可随时将收益划转至账户余额，用于 API 调用。",
-                    "邀请人数无上限，多邀多得。"
-                  ].map((rule, idx) => (
-                    <li key={idx} className="flex items-start gap-3 text-sm text-muted-foreground leading-relaxed">
-                      <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-[10px] font-bold mt-0.5">
-                        {idx + 1}
-                      </div>
-                      {rule}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          <div className="space-y-8">
+            <div>
+              <Label className="text-sm font-bold text-foreground mb-3 block">兑换码</Label>
+              <Input 
+                className="h-11 rounded-full bg-background border-border px-5 text-sm focus-visible:ring-[#FF9800] focus-visible:border-[#FF9800] focus-visible:ring-offset-0" 
+                placeholder="请输入兑换码"
+                value={redeemCode}
+                onChange={e => setRedeemCode(e.target.value)}
+              />
             </div>
-          </CardContent>
+
+            <Button 
+              className={cn(
+                "w-full h-11 rounded-full text-sm font-bold shadow-none text-white transition-colors disabled:opacity-100",
+                redeemCode && !redeeming 
+                  ? "bg-[#FF9800] hover:bg-[#FF9800]/90" 
+                  : "bg-[#FCD399] hover:bg-[#FCD399] cursor-not-allowed"
+              )}
+              onClick={handleRedeem} 
+              disabled={redeeming || !redeemCode}
+            >
+              <Gift className="w-4 h-4 mr-2" />
+              立即兑换
+            </Button>
+
+            <p className="text-xs text-muted-foreground">
+              兑换成功后额度会即时加入上方「当前可用额度」。
+            </p>
+          </div>
         </Card>
       </div>
 
       {/* History Tables */}
-      <Card className="border-border/40 shadow-soft mt-8 overflow-hidden">
+      <Card className="rounded-3xl border-border/40 shadow-soft overflow-hidden">
         <Tabs defaultValue="billing" className="w-full">
           <CardHeader className="pb-0 border-b border-border/40 bg-muted/10">
             <TabsList className="bg-transparent h-auto p-0 border-b-0 space-x-8">
@@ -691,3 +669,4 @@ export default function CombinedBillingReferralPage() {
     </div>
   );
 }
+
