@@ -23,12 +23,15 @@
 | GHA 工作流 | [`.github/workflows/portal-staging.yml`](../.github/workflows/portal-staging.yml) |
 | 部署脚本 | [`scripts/deploy-portal-staging.sh`](../scripts/deploy-portal-staging.sh) |
 
-**标准流程顺序（CI 自动部署 + 本地验证）：**
+**标准流程顺序（CI 自动部署 + 自动界面验证）：**
 
 ```
-推送 dev/main（newapi-portal 有变更）→ GHA 构建并推送镜像 → SSH 仅重建 portal-test → 公网 health check
-→ （本地可选）seed 测试用户 → Playwright 截图
+推送 dev/main（newapi-portal 有变更）→ GHA 构建并推送镜像 → SSH 部署 portal-test → health check
+→ seed 测试用户 + 登录校验 → verify_ui（Playwright 全站 + smoke）
+→ （本地可选）pnpm screenshots:e2e 生成截图
 ```
+
+`feat/*` 等功能分支**不会**自动跑 staging E2E；需合并到 `dev` 或 `main` 后，部署到 `test.easyapi.work` 的提交才会被 CI 验证。
 
 `dev` 与 `main` 推送到默认会**自动部署** staging；仅改 `docs/` 等路径不会触发工作流。
 
@@ -40,18 +43,30 @@
 
 | 分支 | 推送的镜像 tag | 部署到 staging |
 |------|----------------|----------------|
-| `dev` | `dev-latest`、`dev-<sha>` | 是：先**从生产快照恢复库**，再部署 `portal-test`，再 **seed** `scr@easyapi.work` |
-| `main` | `test-latest`、`test-<sha>` | 是（仅 `portal-test`，**不**重建库、不 seed） |
+| `dev` | `dev-latest`、`dev-<sha>` | 是：先**从生产快照恢复库**，再部署 `portal-test`，再 **seed** + **Playwright UI 验证** |
+| `main` | `test-latest`、`test-<sha>` | 是：仅 `portal-test`（**不**重建库），同样 **seed** + **Playwright UI 验证** |
 
 **dev 专用数据步骤**（每次 push `dev` 且触发 workflow 时）：
 
 1. SSH 执行 [`scripts/restore-staging-production-db.sh`](../scripts/restore-staging-production-db.sh)：`down` → 删除 `easyapi-portal_pg_data_test` volume → 用服务器上的 `xbh-new-api-2026-05-23-172431.sql.gz` 重新 `up` 全栈  
 2. 等待 `https://test.easyapi.work/api/health`  
 3. 部署新 Portal 镜像（仅 `portal-test`）  
-4. [`scripts/seed-staging-via-api.mjs`](../scripts/seed-staging-via-api.mjs) 注册/验证截图账号 `scr@easyapi.work` / `ScreenshotTest123!`  
+4. [`scripts/seed-staging-via-api.mjs`](../scripts/seed-staging-via-api.mjs) 注册/验证截图账号 `scr@easyapi.work` / `ScreenshotTest123!`（**dev 与 main 均执行**，幂等：已存在则仅验证登录）  
 5. CI 内 POST login 校验该账号  
+6. **`verify_ui` job**：Playwright 跑 [`ui-pages.spec.ts`](../newapi-portal/tests/e2e/ui-pages.spec.ts) + [`portal-smoke.spec.ts`](../newapi-portal/tests/e2e/portal-smoke.spec.ts)；失败时上传 `playwright-report` artifact  
 
-恢复库后会在 seed 前执行 [`scripts/configure-staging-registration.sh`](../scripts/configure-staging-registration.sh)（关闭邮箱域名限制等）。可选 Secrets：`STAGING_NEWAPI_BASE_URL`、`STAGING_NEWAPI_ADMIN_TOKEN`（注册失败时 admin fallback）。
+恢复库后会在 seed 前执行 [`scripts/configure-staging-registration.sh`](../scripts/configure-staging-registration.sh)（关闭邮箱域名限制等，**仅 dev**）。可选 Secrets：`STAGING_NEWAPI_BASE_URL`、`STAGING_NEWAPI_ADMIN_TOKEN`（注册失败时 admin fallback）。
+
+### 自动 UI 验证覆盖的页面（9 个）
+
+路由清单见 [`newapi-portal/tests/e2e/routes.ts`](../newapi-portal/tests/e2e/routes.ts)：
+
+| 类型 | 路径 |
+|------|------|
+| 公开 | `/`、`/login`、`/register`、`/forgot-password` |
+| 登录后 | `/dashboard`、`/dashboard/tokens`、`/dashboard/billing`、`/dashboard/usage`、`/dashboard/profile` |
+
+每条路由检查：关键标题/文案可见、无 5xx 响应、无页面级 JS 错误；dashboard 页额外断言无「加载失败」类错误文案。
 
 `main` 部署不会清空测试库；若只需更新 Portal 代码用 `main`，需要可重复的生产+测试数据用 `dev`。
 
@@ -67,6 +82,10 @@
 | `STAGING_SSH_USER` | `root` |
 | `STAGING_SSH_PRIVATE_KEY` | 部署用 SSH 私钥（对应服务器 `authorized_keys`） |
 | `GHCR_PULL_TOKEN`（可选） | 若服务器未持久 `docker login ghcr.io`，填只读 PAT（`read:packages`）；workflow 会传给部署脚本临时登录 |
+| `E2E_PORTAL_IDENTIFIER`（推荐） | `scr@easyapi.work`；未配置时 CI 使用文档默认账号 |
+| `E2E_PORTAL_PASSWORD`（推荐） | `ScreenshotTest123!`；未配置时 CI 使用文档默认密码 |
+| `STAGING_NEWAPI_BASE_URL`（可选） | seed admin fallback 用 NewAPI 地址 |
+| `STAGING_NEWAPI_ADMIN_TOKEN`（可选） | seed admin fallback 用管理 token |
 
 查看运行状态：
 
@@ -104,7 +123,19 @@ ssh root@45.142.115.128 'bash -s' < scripts/deploy-portal-staging.sh
 
 staging 仅有一个 `portal-test` 实例：`dev` 与 `main` 若连续部署，**后完成的一次**生效。
 
-Playwright 在**本地**运行，通过公网访问 `test.easyapi.work`；seed 脚本通过 HTTPS 调用 Portal API，无需 SSH 进容器写库。
+部署成功后，GHA **`verify_ui`** 与本地 Playwright 均通过公网访问 `test.easyapi.work`；seed 脚本通过 HTTPS 调用 Portal API，无需 SSH 进容器写库。
+
+本地快速复现 CI 界面检查：
+
+```bash
+cd newapi-portal
+export E2E_BASE_URL="https://test.easyapi.work"
+export E2E_PORTAL_IDENTIFIER="scr@easyapi.work"
+export E2E_PORTAL_PASSWORD="ScreenshotTest123!"
+pnpm install
+npx playwright install chromium
+pnpm test:ui
+```
 
 ---
 
@@ -236,7 +267,7 @@ curl -s https://test.easyapi.work/api/health
 {"ok":true}
 ```
 
-### 步骤 4：Seed 截图测试用户（本地，CI 不包含）
+### 步骤 4：Seed 截图测试用户（本地；CI 在 deploy 后已自动 seed）
 
 在本地 **`newapi-portal`** 目录（部署完成且 health 正常后）：
 
@@ -259,7 +290,7 @@ npx playwright install chromium   # 首次需要
 pnpm screenshots:e2e
 ```
 
-输出目录：`newapi-portal/screenshots/<YYYY-MM-DD>/`（9 张 PNG：首页、登录、注册 + 6 个 dashboard 页）。
+输出目录：`newapi-portal/screenshots/<YYYY-MM-DD>/`（9 张 PNG：4 个公开页 + 5 个 dashboard 页，含 `/forgot-password` 与 `/dashboard/profile`）。
 
 ---
 
@@ -269,6 +300,8 @@ pnpm screenshots:e2e
 
 | 脚本 | 作用 |
 |------|------|
+| `test:ui` | 全站界面可用性（9 页，与 CI `verify_ui` 中 ui-pages spec 一致） |
+| `test:e2e` | 全部 Playwright spec（ui + smoke + screenshots） |
 | `seed:screenshot-user` | 对 `SEED_BASE_URL`（默认 staging）注册/验证 `scr@easyapi.work` |
 | `prepare:test-db` | SSH 远程重建 easyapi-portal 测试库、seed、导出 `test-data/*.sql.gz` |
 | `screenshots:e2e` | 仅运行 Playwright 截图 spec（需已部署新镜像 + 测试用户可登录） |
@@ -276,6 +309,9 @@ pnpm screenshots:e2e
 
 相关文件：
 
+- 路由清单：[`newapi-portal/tests/e2e/routes.ts`](../newapi-portal/tests/e2e/routes.ts)
+- UI 验证：[`newapi-portal/tests/e2e/ui-pages.spec.ts`](../newapi-portal/tests/e2e/ui-pages.spec.ts)
+- Smoke：[`newapi-portal/tests/e2e/portal-smoke.spec.ts`](../newapi-portal/tests/e2e/portal-smoke.spec.ts)
 - Seed：[`newapi-portal/scripts/seed-screenshot-user.mjs`](../newapi-portal/scripts/seed-screenshot-user.mjs)
 - 截图 spec：[`newapi-portal/tests/e2e/screenshots.spec.ts`](../newapi-portal/tests/e2e/screenshots.spec.ts)
 - Playwright 配置：[`newapi-portal/playwright.config.ts`](../newapi-portal/playwright.config.ts)
@@ -283,6 +319,13 @@ pnpm screenshots:e2e
 ---
 
 ## 6. 故障排查
+
+### CI `verify_ui` 失败
+
+1. 在 Actions 中打开 **Verify portal UI on staging** job，下载 `playwright-report` artifact（含 trace / 截图）。
+2. 确认 **Deploy** job 中 seed 与 login 校验已通过。
+3. 本地用相同凭据执行 `pnpm test:ui` 与 `pnpm test:e2e tests/e2e/portal-smoke.spec.ts` 复现。
+4. 若仅 `main` 失败且为登录问题，检查 `STAGING_NEWAPI_*` Secrets 是否可用于 seed admin fallback。
 
 ### CI 部署失败：SSH / pull / health
 

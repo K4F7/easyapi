@@ -263,10 +263,10 @@ export default function CombinedBillingReferralPage() {
     toast.success(message);
   };
 
-  const inviteUrl = origin && referralData ? `${origin}/register?aff=${referralData.inviteCode}` : referralData?.inviteLink || "";
+  const inviteUrl = origin && referralData ? `${origin}/register?inviteCode=${referralData.inviteCode}` : referralData?.inviteLink || "";
   const rewardTotal = referralData?.rewards.reduce((sum, reward) => sum + reward.amount, 0) || 0;
-  const pendingReward = referralData?.invitedCount.pending || 0;
-  const totalInvited = referralData?.invitedCount.total || 0;
+  const pendingInvites = referralData?.invitedCount.pending || 0;
+  const rewardedInvites = referralData?.invitedCount.rewarded || 0;
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 page-transition">
@@ -354,10 +354,10 @@ export default function CombinedBillingReferralPage() {
 
             <div className="mb-8">
               <div className="text-4xl sm:text-5xl font-bold tracking-tighter font-mono mb-2 text-foreground">
-                {referralLoading ? <Skeleton className="h-12 w-40 bg-muted" /> : formatQuota(pendingReward)}
+                {referralLoading ? <Skeleton className="h-12 w-40 bg-muted" /> : formatQuota(rewardTotal)}
               </div>
               <div className="text-sm text-muted-foreground flex items-center gap-2">
-                待划转收益
+                累计已发奖励
               </div>
             </div>
           </div>
@@ -365,18 +365,35 @@ export default function CombinedBillingReferralPage() {
           <div className="relative z-10 mt-auto space-y-6">
             <div className="grid grid-cols-2 gap-4 border-t border-border/40 pt-6">
               <div>
-                <div className="text-sm text-muted-foreground mb-1">累计收益</div>
+                <div className="text-sm text-muted-foreground mb-1">待确认邀请</div>
                 <div className="text-xl font-mono font-medium text-foreground">
-                  {referralLoading ? <Skeleton className="h-7 w-24 bg-muted" /> : formatQuota(rewardTotal)}
+                  {referralLoading ? <Skeleton className="h-7 w-24 bg-muted" /> : pendingInvites}
+                  <span className="text-sm text-muted-foreground ml-1 font-sans font-normal">人</span>
                 </div>
               </div>
               <div>
                 <div className="text-sm text-muted-foreground mb-1">成功邀请</div>
                 <div className="text-xl font-mono font-medium text-foreground">
-                  {referralLoading ? <Skeleton className="h-7 w-16 bg-muted" /> : totalInvited}
+                  {referralLoading ? <Skeleton className="h-7 w-16 bg-muted" /> : rewardedInvites}
                   <span className="text-sm text-muted-foreground ml-1 font-sans font-normal">人</span>
                 </div>
               </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3">
+              {[
+                { title: "分享链接", desc: "把专属邀请链接发给好友" },
+                { title: "好友注册", desc: "好友用邀请码完成注册" },
+                { title: "奖励到账", desc: "系统结算后额度自动发放" },
+              ].map((step, index) => (
+                <div key={step.title} className="rounded-2xl border border-border/60 bg-background/80 p-3">
+                  <div className="mb-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                    {index + 1}
+                  </div>
+                  <div className="text-sm font-medium text-foreground">{step.title}</div>
+                  <div className="mt-1 text-xs leading-5 text-muted-foreground">{step.desc}</div>
+                </div>
+              ))}
             </div>
 
             <div>
@@ -673,4 +690,6 @@ export default function CombinedBillingReferralPage() {
     </div>
   );
 }
+
+
 

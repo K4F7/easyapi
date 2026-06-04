@@ -1,16 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+import { AUTH_ROUTES, isBenign404, routeLocator } from "./routes";
+
 const identifier = process.env.E2E_PORTAL_IDENTIFIER;
 const password = process.env.E2E_PORTAL_PASSWORD;
-
-/** Browsers may request /favicon.ico even when the app icon is duck.webp. */
-function isBenign404(url: string): boolean {
-  try {
-    return new URL(url).pathname === "/favicon.ico";
-  } catch {
-    return false;
-  }
-}
 
 test.describe("NewAPI Portal smoke", () => {
   test("health endpoint reports the portal service as OK", async ({ request }) => {
@@ -189,17 +182,18 @@ test.describe("NewAPI Portal smoke", () => {
     expect(logs.status()).toBeLessThan(500);
     expect(logs.ok()).toBeTruthy();
 
-    await page.goto("/dashboard/tokens");
-    await expect(page.getByRole("heading", { name: "令牌", level: 1 })).toBeVisible();
-    await expect(page.getByText("Token 列表加载失败")).toHaveCount(0);
-
-    await page.goto("/dashboard/usage");
-    await expect(page.getByRole("heading", { name: "用量", exact: true })).toBeVisible();
-    await expect(page.getByText("用量加载失败")).toHaveCount(0);
-
-    await page.goto("/dashboard/profile");
-    await expect(page.getByRole("heading", { name: "个人资料" })).toBeVisible();
-    await expect(page.getByText(/Application error: a server-side exception has occurred/i)).toHaveCount(0);
+    for (const route of AUTH_ROUTES) {
+      if (route.path === "/dashboard") {
+        continue;
+      }
+      await page.goto(route.path);
+      await expect(routeLocator(page, route.marker)).toBeVisible();
+      if (route.errorTexts?.length) {
+        for (const text of route.errorTexts) {
+          await expect(page.getByText(text)).toHaveCount(0);
+        }
+      }
+    }
 
     expect(failedResponses).toEqual([]);
     expect(notFoundResponses).toEqual([]);
