@@ -18,6 +18,7 @@ const navItems = [
   { href: "/dashboard/tokens", label: "令牌", icon: KeyRound },
   { href: "/dashboard/billing", label: "充值", icon: CreditCard },
   { href: "/dashboard/usage", label: "用量", icon: ChartNoAxesColumn },
+  { href: "/dashboard/profile", label: "个人", icon: UserRound },
 ];
 
 export function DashboardNav() {

@@ -45,6 +45,9 @@ export function UserMenu({ email }: UserMenuProps) {
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>账户</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
+          个人资料
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleLogout}>退出登录</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
