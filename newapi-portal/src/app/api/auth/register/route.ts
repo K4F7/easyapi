@@ -32,7 +32,6 @@ const registerSchema = z.object({
     .max(320)
     .transform((value) => value.toLowerCase()),
   password: z.string().min(8).max(128),
-  acceptedTerms: z.literal(true),
   inviteCode: z
     .string()
     .trim()
