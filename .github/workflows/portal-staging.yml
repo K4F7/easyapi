@@ -9,6 +9,7 @@ on:
       - "newapi-portal/**"
       - "scripts/deploy-portal-staging.sh"
       - "scripts/restore-staging-production-db.sh"
+      - "scripts/configure-staging-registration.sh"
       - "scripts/seed-staging-via-api.mjs"
       - ".github/workflows/portal-staging.yml"
   workflow_dispatch:
@@ -143,8 +144,24 @@ jobs:
           echo "Timed out waiting for $url"
           exit 1
 
+      - name: Allow staging registration for seed (dev only)
+        if: github.ref_name == 'dev'
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          script_path: scripts/configure-staging-registration.sh
+
+      - name: Wait after registration config (dev only)
+        if: github.ref_name == 'dev'
+        run: sleep 20
+
       - name: Seed screenshot test user (dev only)
         if: github.ref_name == 'dev'
+        env:
+          NEWAPI_BASE_URL: ${{ secrets.STAGING_NEWAPI_BASE_URL }}
+          NEWAPI_ADMIN_TOKEN: ${{ secrets.STAGING_NEWAPI_ADMIN_TOKEN }}
         run: node scripts/seed-staging-via-api.mjs
 
       - name: Verify screenshot login (dev only)
