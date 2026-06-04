@@ -51,7 +51,11 @@
 4. [`scripts/seed-staging-via-api.mjs`](../scripts/seed-staging-via-api.mjs) 注册/验证截图账号 `scr@easyapi.work` / `ScreenshotTest123!`  
 5. CI 内 POST login 校验该账号  
 
+恢复库后会在 seed 前执行 [`scripts/configure-staging-registration.sh`](../scripts/configure-staging-registration.sh)（关闭邮箱域名限制等）。可选 Secrets：`STAGING_NEWAPI_BASE_URL`、`STAGING_NEWAPI_ADMIN_TOKEN`（注册失败时 admin fallback）。
+
 `main` 部署不会清空测试库；若只需更新 Portal 代码用 `main`，需要可重复的生产+测试数据用 `dev`。
+
+**注意**：每次 `dev` 部署会**清空并重建** staging Postgres（生产快照非实时同步）；`dev` 上在测试期间手工改库的数据会在下次 `dev` push 后丢失。
 
 `workflow_dispatch` 默认只构建；勾选 **Deploy to staging after build** 才会执行部署 job（`dev` 分支手动触发时同样会恢复库+seed）。
 

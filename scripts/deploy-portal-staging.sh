@@ -29,7 +29,19 @@ fi
 cd "${REMOTE_DIR}"
 
 echo "Pulling ${PORTAL_IMAGE} ..."
-docker pull "${PORTAL_IMAGE}"
+pull_ok=0
+for attempt in 1 2 3 4 5; do
+  if docker pull "${PORTAL_IMAGE}"; then
+    pull_ok=1
+    break
+  fi
+  echo "docker pull failed (attempt ${attempt}/5), retrying in 15s ..."
+  sleep 15
+done
+if [ "${pull_ok}" -ne 1 ]; then
+  echo "docker pull failed after retries: ${PORTAL_IMAGE}" >&2
+  exit 1
+fi
 
 echo "Recreating ${SERVICE_NAME} only (project=${COMPOSE_PROJECT}) ..."
 export PORTAL_IMAGE
