@@ -17,9 +17,7 @@ const navItems = [
   { href: "/dashboard", label: "总览", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/tokens", label: "令牌", icon: KeyRound },
   { href: "/dashboard/billing", label: "充值", icon: CreditCard },
-  { href: "/dashboard/referral", label: "邀请", icon: Share2 },
   { href: "/dashboard/usage", label: "用量", icon: ChartNoAxesColumn },
-  { href: "/dashboard/profile", label: "设置", icon: UserRound },
 ];
 
 export function DashboardNav() {

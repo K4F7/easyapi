@@ -14,9 +14,6 @@ importers:
       '@fontsource/noto-sans-sc':
         specifier: ^5.2.9
         version: 5.2.9
-      '@fontsource/zcool-kuaile':
-        specifier: ^5.2.8
-        version: 5.2.8
       '@prisma/client':
         specifier: ^5.22.0
         version: 5.22.0(prisma@5.22.0)
@@ -55,7 +52,7 @@ importers:
         version: 0.468.0(react@19.2.6)
       next:
         specifier: ^15.0.4
-        version: 15.5.18(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        version: 15.5.18(@playwright/test@1.61.0-alpha-2026-06-02)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       react:
         specifier: ^19.0.0
         version: 19.2.6
@@ -76,8 +73,8 @@ importers:
         version: 3.25.76
     devDependencies:
       '@playwright/test':
-        specifier: ^1.60.0
-        version: 1.60.0
+        specifier: 1.61.0-alpha-2026-06-02
+        version: 1.61.0-alpha-2026-06-02
       '@types/node':
         specifier: ^22.10.2
         version: 22.19.19
@@ -165,9 +162,6 @@ packages:
 
   '@fontsource/noto-sans-sc@5.2.9':
     resolution: {integrity: sha512-bTUIWGBgJDpwi5qAr+x0/lcgv80IHTB9vl6s2f6EymZEa7qYV99yNRBZuKFT+SYDKVunZrjCEhWtpxqmbXWl5Q==}
-
-  '@fontsource/zcool-kuaile@5.2.8':
-    resolution: {integrity: sha512-pIeFNRM0rwrJkO+TP7WG+KXvqy0YFRrPecNNzHTNOQLYhxrqN67/wzyx3fH+Ky63Y/Am5heB5XIzsEx/Io+P4w==}
 
   '@humanwhocodes/config-array@0.13.0':
     resolution: {integrity: sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw==}
@@ -428,8 +422,8 @@ packages:
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
 
-  '@playwright/test@1.60.0':
-    resolution: {integrity: sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag==}
+  '@playwright/test@1.61.0-alpha-2026-06-02':
+    resolution: {integrity: sha512-Bq2pXcVLr660dZGjZ5pWBRpRAjVW/rb7pTOTS6/rYWgG+8T9bLhv+Nol1MK14WHqX9OhZ61BnQ5nqloLGINtzQ==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -1989,13 +1983,13 @@ packages:
     resolution: {integrity: sha512-TfySrs/5nm8fQJDcBDuUng3VOUKsd7S+zqvbOTiGXHfxX4wK31ard+hoNuvkicM/2YFzlpDgABOevKSsB4G/FA==}
     engines: {node: '>= 6'}
 
-  playwright-core@1.60.0:
-    resolution: {integrity: sha512-9bW6zvX/m0lEbgTKJ6YppOKx8H3VOPBMOCFh2irXFOT4BbHgrx5hPjwJYLT40Lu+4qtD36qKc/Hn56StUW57IA==}
+  playwright-core@1.61.0-alpha-2026-06-02:
+    resolution: {integrity: sha512-uJf0M/7+pmrfQ/7lZOimhI8M+nn9flXmWs6T3TN2+35rVYtmyijUQK4KcDGAuEbd6daNzZ5lpFGRh9qmYsv/fA==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.60.0:
-    resolution: {integrity: sha512-hheHdokM8cdqCb0lcE3s+zT4t4W+vvjpGxsZlDnikarzx8tSzMebh3UiFtgqwFwnTnjYQcsyMF8ei2mCO/tpeA==}
+  playwright@1.61.0-alpha-2026-06-02:
+    resolution: {integrity: sha512-6bmf286w3iRSfiiztA3yJ2aaBgFOxvgQrQ7i+ji/6Y45TPdXTFUKtbulFPoHci3gJf0VQ5648HFkmmufAqmlmA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -2520,8 +2514,6 @@ snapshots:
 
   '@fontsource/noto-sans-sc@5.2.9': {}
 
-  '@fontsource/zcool-kuaile@5.2.8': {}
-
   '@humanwhocodes/config-array@0.13.0':
     dependencies:
       '@humanwhocodes/object-schema': 2.0.3
@@ -2696,9 +2688,9 @@ snapshots:
 
   '@nolyfill/is-core-module@1.0.39': {}
 
-  '@playwright/test@1.60.0':
+  '@playwright/test@1.61.0-alpha-2026-06-02':
     dependencies:
-      playwright: 1.60.0
+      playwright: 1.61.0-alpha-2026-06-02
 
   '@prisma/client@5.22.0(prisma@5.22.0)':
     optionalDependencies:
@@ -4245,7 +4237,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  next@15.5.18(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
+  next@15.5.18(@playwright/test@1.61.0-alpha-2026-06-02)(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
     dependencies:
       '@next/env': 15.5.18
       '@swc/helpers': 0.5.15
@@ -4263,7 +4255,7 @@ snapshots:
       '@next/swc-linux-x64-musl': 15.5.18
       '@next/swc-win32-arm64-msvc': 15.5.18
       '@next/swc-win32-x64-msvc': 15.5.18
-      '@playwright/test': 1.60.0
+      '@playwright/test': 1.61.0-alpha-2026-06-02
       sharp: 0.34.5
     transitivePeerDependencies:
       - '@babel/core'
@@ -4373,11 +4365,11 @@ snapshots:
 
   pirates@4.0.7: {}
 
-  playwright-core@1.60.0: {}
+  playwright-core@1.61.0-alpha-2026-06-02: {}
 
-  playwright@1.60.0:
+  playwright@1.61.0-alpha-2026-06-02:
     dependencies:
-      playwright-core: 1.60.0
+      playwright-core: 1.61.0-alpha-2026-06-02
     optionalDependencies:
       fsevents: 2.3.2
 

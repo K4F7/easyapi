@@ -4,9 +4,10 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl
 
-RUN corepack enable
+ENV NPM_CONFIG_REGISTRY=https://repo.huaweicloud.com/repository/npm/
+RUN npm install -g pnpm@10.11.0
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 COPY prisma ./prisma
 RUN pnpm install --frozen-lockfile
 
@@ -15,7 +16,9 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 RUN apk add --no-cache openssl
-RUN corepack enable
+
+ENV NPM_CONFIG_REGISTRY=https://repo.huaweicloud.com/repository/npm/
+RUN npm install -g pnpm@10.11.0
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
