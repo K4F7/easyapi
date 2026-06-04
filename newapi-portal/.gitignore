@@ -10,3 +10,4 @@ screenshots/
 .env*.local
 *.tsbuildinfo
 prisma/dev.db
+semgrep.sarif

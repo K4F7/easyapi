@@ -5,6 +5,7 @@ import {
   handleApiError,
   publicUserFromPortalUser,
 } from "@/lib/api/bff";
+import { isCheckinQuotaApplied } from "@/lib/checkin/quota";
 import { db } from "@/lib/db";
 import {
   getLogStats,
@@ -48,6 +49,10 @@ export async function GET(request: Request) {
           status: true,
           checkedInOn: true,
           createdAt: true,
+          ledgerEntries: {
+            select: { metadata: true },
+            take: 1,
+          },
         },
       }),
       db.referral.groupBy({
@@ -215,14 +220,21 @@ function formatCheckin(
     status: "CLAIMED" | "REVERSED";
     checkedInOn: Date;
     createdAt: Date;
+    ledgerEntries: Array<{ metadata: unknown }>;
   } | null,
 ) {
+  const quotaApplied =
+    checkin?.ledgerEntries[0]?.metadata !== undefined &&
+    isCheckinQuotaApplied(checkin.ledgerEntries[0]?.metadata);
+
   return {
     checkedInToday: Boolean(checkin),
     checkedInOn: checkin ? dateKey(checkin.checkedInOn) : dateKey(todayDateOnly()),
     status: checkin?.status ?? "AVAILABLE",
     checkinId: checkin?.id ?? null,
     createdAt: checkin?.createdAt.toISOString() ?? null,
+    quotaApplied: checkin ? quotaApplied : null,
+    quotaPending: Boolean(checkin && !quotaApplied),
   };
 }
 

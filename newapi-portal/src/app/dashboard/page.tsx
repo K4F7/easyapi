@@ -81,6 +81,8 @@ type DashboardSummary = {
     checkedInToday: boolean;
     checkedInOn: string;
     status: string;
+    quotaApplied?: boolean | null;
+    quotaPending?: boolean;
   };
   referral: {
     inviteCode: string;
@@ -141,13 +143,13 @@ export default function DashboardPage() {
     try {
       await apiPost("/api/checkin");
       toast.success("签到完成");
-      await loadSummary();
     } catch (checkinError) {
       toast.error(
         checkinError instanceof Error ? checkinError.message : "签到失败",
       );
     } finally {
       setCheckingIn(false);
+      await loadSummary();
     }
   }
 
@@ -361,7 +363,7 @@ export default function DashboardPage() {
         />
         <MetricCard
           href="/dashboard/usage"
-          title="tpm/rpm"
+          title="TPM/RPM"
           value={
             rpm === null && tpm === null
               ? "-"
@@ -407,9 +409,19 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between gap-2">
               <CardTitle>每日签到</CardTitle>
               <Badge
-                variant={summary.checkin.checkedInToday ? "success" : "neutral"}
+                variant={
+                  summary.checkin.quotaPending
+                    ? "warning"
+                    : summary.checkin.checkedInToday
+                      ? "success"
+                      : "neutral"
+                }
               >
-                {summary.checkin.checkedInToday ? "今日已签到" : "今日可签到"}
+                {summary.checkin.quotaPending
+                  ? "额度待发放"
+                  : summary.checkin.checkedInToday
+                    ? "今日已签到"
+                    : "今日可签到"}
               </Badge>
             </div>
             <CardDescription>
@@ -421,7 +433,11 @@ export default function DashboardPage() {
               <Gift className="h-5 w-5 text-muted-foreground" />
               <div className="min-w-0">
                 <div className="text-sm font-medium">
-                  {summary.checkin.checkedInToday ? "今日已签到" : "今日可签到"}
+                  {summary.checkin.quotaPending
+                    ? "签到成功，额度发放中"
+                    : summary.checkin.checkedInToday
+                      ? "今日已签到"
+                      : "今日可签到"}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
                   每天签到领余额，奖励直接加到你的账户里。
@@ -431,14 +447,21 @@ export default function DashboardPage() {
             <Button
               className="w-full"
               variant="outline"
-              disabled={summary.checkin.checkedInToday || !ready || checkingIn}
+              disabled={
+                (summary.checkin.checkedInToday &&
+                  !summary.checkin.quotaPending) ||
+                !ready ||
+                checkingIn
+              }
               onClick={handleCheckin}
             >
               {checkingIn
                 ? "签到中..."
-                : summary.checkin.checkedInToday
-                  ? "已完成"
-                  : "签到领取"}
+                : summary.checkin.quotaPending
+                  ? "重试发放"
+                  : summary.checkin.checkedInToday
+                    ? "已完成"
+                    : "签到领取"}
             </Button>
           </CardContent>
         </Card>

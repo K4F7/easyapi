@@ -197,6 +197,10 @@ test.describe("NewAPI Portal smoke", () => {
     await expect(page.getByRole("heading", { name: "用量", exact: true })).toBeVisible();
     await expect(page.getByText("用量加载失败")).toHaveCount(0);
 
+    await page.goto("/dashboard/profile");
+    await expect(page.getByRole("heading", { name: "个人资料" })).toBeVisible();
+    await expect(page.getByText(/Application error: a server-side exception has occurred/i)).toHaveCount(0);
+
     expect(failedResponses).toEqual([]);
     expect(notFoundResponses).toEqual([]);
     expect(browserErrors).toEqual([]);

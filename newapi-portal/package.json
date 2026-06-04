@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "seed:screenshot-user": "node scripts/seed-screenshot-user.mjs",
@@ -13,6 +15,8 @@
     "screenshots:e2e": "playwright test tests/e2e/screenshots.spec.ts",
     "screenshots:all": "node scripts/seed-screenshot-user.mjs && playwright test tests/e2e/screenshots.spec.ts",
     "lint": "eslint .",
+    "security:scan": "semgrep scan --config .semgrep.yml --config p/ci --config p/typescript --config p/javascript --config p/secrets --metrics=off --error",
+    "security:supply-chain": "semgrep scan --supply-chain --metrics=off",
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
@@ -49,10 +53,16 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.0.4",
-    "postcss": "^8.4.49",
+    "postcss": "^8.5.10",
     "prettier": "^3.4.2",
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.16",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.10"
+    }
   }
 }

@@ -1,0 +1,67 @@
+name: Semgrep
+
+on:
+  pull_request:
+    paths:
+      - "newapi-portal/**"
+      - ".github/workflows/semgrep.yml"
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - "newapi-portal/**"
+      - ".github/workflows/semgrep.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  semgrep:
+    name: Semgrep security scan
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    container:
+      image: semgrep/semgrep
+    defaults:
+      run:
+        working-directory: newapi-portal
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run Semgrep
+        id: semgrep
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${SEMGREP_APP_TOKEN:-}" ]; then
+            echo "Using Semgrep App (semgrep ci)"
+            semgrep ci
+          else
+            echo "Using Semgrep CE (registry rulesets)"
+            semgrep scan \
+              --config p/ci \
+              --config p/typescript \
+              --config p/javascript \
+              --config p/secrets \
+              --metrics=off \
+              --sarif \
+              --output semgrep.sarif \
+              --error
+            echo "sarif=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload SARIF to GitHub Security
+        if: steps.semgrep.outputs.sarif == 'true'
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with:
+          sarif_file: newapi-portal/semgrep.sarif
+          category: semgrep
