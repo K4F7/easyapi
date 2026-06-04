@@ -197,6 +197,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy_staging
     if: success()
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: newapi-portal
@@ -222,7 +223,26 @@ jobs:
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run UI and smoke E2E
+      - name: Preflight staging login (E2E account)
+        env:
+          E2E_PORTAL_IDENTIFIER: ${{ secrets.E2E_PORTAL_IDENTIFIER }}
+          E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
+        run: |
+          identifier="${E2E_PORTAL_IDENTIFIER:-scr@easyapi.work}"
+          password="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
+          response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"identifier\":\"${identifier}\",\"password\":\"${password}\"}") || {
+            echo "Staging login preflight failed (curl or HTTP error)"
+            exit 1
+          }
+          echo "$response"
+          echo "$response" | grep -q '"ok"[[:space:]]*:[[:space:]]*true' || {
+            echo "Staging login preflight: account not ready for Playwright"
+            exit 1
+          }
+
+      - name: Run portal E2E (UI, smoke, playground, register/billing)
         env:
           CI: true
           E2E_BASE_URL: https://test.easyapi.work
@@ -231,7 +251,7 @@ jobs:
         run: |
           export E2E_PORTAL_IDENTIFIER="${E2E_PORTAL_IDENTIFIER:-scr@easyapi.work}"
           export E2E_PORTAL_PASSWORD="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
-          pnpm exec playwright test tests/e2e/ui-pages.spec.ts tests/e2e/portal-smoke.spec.ts
+          pnpm run test:e2e:ci
 
       - name: Upload Playwright report on failure
         if: failure()

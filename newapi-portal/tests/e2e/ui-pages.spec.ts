@@ -6,6 +6,7 @@ import {
   PUBLIC_ROUTES,
   routeLocator,
 } from "./routes";
+import { ensureDashboardSession } from "./helpers";
 
 const identifier = process.env.E2E_PORTAL_IDENTIFIER;
 const password = process.env.E2E_PORTAL_PASSWORD;
@@ -76,11 +77,7 @@ test.describe("Portal UI pages", () => {
     const browserErrors: string[] = [];
     attachPageDiagnostics(page, failedResponses, notFoundResponses, browserErrors);
 
-    await page.goto("/login");
-    await page.getByLabel("邮箱或用户名").fill(identifier!);
-    await page.getByRole("textbox", { name: "密码" }).fill(password!);
-    await page.getByRole("button", { name: "登录" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await ensureDashboardSession(page);
 
     for (const route of AUTH_ROUTES) {
       await assertRouteHealthy(page, route.path, route.marker, route.errorTexts);

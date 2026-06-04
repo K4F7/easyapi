@@ -27,11 +27,11 @@
 
 ```
 推送 dev/main（newapi-portal 有变更）→ GHA 构建并推送镜像 → SSH 部署 portal-test → health check
-→ seed 测试用户 + 登录校验 → verify_ui（Playwright 全站 + smoke）
+→ seed 测试用户 + 登录校验 → verify_ui（Playwright：全站路由 + smoke + 操练场 + 注册/财务）
 → （本地可选）pnpm screenshots:e2e 生成截图
 ```
 
-`feat/*` 等功能分支**不会**自动跑 staging E2E；需合并到 `dev` 或 `main` 后，部署到 `test.easyapi.work` 的提交才会被 CI 验证。
+除 `dev` / `main` 外，`feat/ui-future-design` 推送也会触发同一套 staging 构建、部署与 E2E；其他 `feat/*` 分支默认不跑，需合并到上述分支后再由 CI 验证。
 
 `dev` 与 `main` 推送到默认会**自动部署** staging；仅改 `docs/` 等路径不会触发工作流。
 
@@ -53,20 +53,22 @@
 3. 部署新 Portal 镜像（仅 `portal-test`）  
 4. [`scripts/seed-staging-via-api.mjs`](../scripts/seed-staging-via-api.mjs) 注册/验证截图账号 `scr@easyapi.work` / `ScreenshotTest123!`（**dev 与 main 均执行**，幂等：已存在则仅验证登录）  
 5. CI 内 POST login 校验该账号  
-6. **`verify_ui` job**：Playwright 跑 [`ui-pages.spec.ts`](../newapi-portal/tests/e2e/ui-pages.spec.ts) + [`portal-smoke.spec.ts`](../newapi-portal/tests/e2e/portal-smoke.spec.ts)；失败时上传 `playwright-report` artifact  
+6. **`verify_ui` job**：先 curl 校验 E2E 账号可登录，再 `pnpm run test:e2e:ci`（[`ui-pages`](../newapi-portal/tests/e2e/ui-pages.spec.ts)、[`portal-smoke`](../newapi-portal/tests/e2e/portal-smoke.spec.ts)、[`playground`](../newapi-portal/tests/e2e/playground.spec.ts)、[`register-billing`](../newapi-portal/tests/e2e/register-billing.spec.ts)）；失败时上传 `playwright-report` artifact  
 
 恢复库后会在 seed 前执行 [`scripts/configure-staging-registration.sh`](../scripts/configure-staging-registration.sh)（关闭邮箱域名限制等，**仅 dev**）。可选 Secrets：`STAGING_NEWAPI_BASE_URL`、`STAGING_NEWAPI_ADMIN_TOKEN`（注册失败时 admin fallback）。
 
-### 自动 UI 验证覆盖的页面（9 个）
+### 自动 UI 验证覆盖
 
-路由清单见 [`newapi-portal/tests/e2e/routes.ts`](../newapi-portal/tests/e2e/routes.ts)：
+**路由可达性（10 个页面）** — 清单见 [`routes.ts`](../newapi-portal/tests/e2e/routes.ts)：
 
 | 类型 | 路径 |
 |------|------|
 | 公开 | `/`、`/login`、`/register`、`/forgot-password` |
-| 登录后 | `/dashboard`、`/dashboard/tokens`、`/dashboard/billing`、`/dashboard/usage`、`/dashboard/profile` |
+| 登录后 | `/dashboard`、`/dashboard/tokens`、`/dashboard/billing`、`/dashboard/usage`、`/dashboard/playground`、`/dashboard/profile` |
 
 每条路由检查：关键标题/文案可见、无 5xx 响应、无页面级 JS 错误；dashboard 页额外断言无「加载失败」类错误文案。
+
+**专项 E2E（`playground` + `register-billing` spec）** — 操练场 tab/URL/令牌脱敏与 Chat 交互（含 mock 流式）、注册自设密码与校验、财务页 `inviteCode` 邀请链接与奖励说明等；详见各 spec 文件内用例名。
 
 `main` 部署不会清空测试库；若只需更新 Portal 代码用 `main`，需要可重复的生产+测试数据用 `dev`。
 
@@ -300,8 +302,11 @@ pnpm screenshots:e2e
 
 | 脚本 | 作用 |
 |------|------|
-| `test:ui` | 全站界面可用性（9 页，与 CI `verify_ui` 中 ui-pages spec 一致） |
-| `test:e2e` | 全部 Playwright spec（ui + smoke + screenshots） |
+| `test:e2e:ci` | 与 GHA `verify_ui` 相同：ui-pages + smoke + playground + register-billing |
+| `test:ui` | 全站界面可达性（10 页，与 CI `ui-pages` spec 一致） |
+| `test:e2e:playground` | 仅操练场 spec |
+| `test:e2e:register-billing` | 仅注册 + 财务邀请 spec |
+| `test:e2e` | 全部 Playwright spec（含 screenshots，本地/手工用） |
 | `seed:screenshot-user` | 对 `SEED_BASE_URL`（默认 staging）注册/验证 `scr@easyapi.work` |
 | `prepare:test-db` | SSH 远程重建 easyapi-portal 测试库、seed、导出 `test-data/*.sql.gz` |
 | `screenshots:e2e` | 仅运行 Playwright 截图 spec（需已部署新镜像 + 测试用户可登录） |
@@ -312,6 +317,8 @@ pnpm screenshots:e2e
 - 路由清单：[`newapi-portal/tests/e2e/routes.ts`](../newapi-portal/tests/e2e/routes.ts)
 - UI 验证：[`newapi-portal/tests/e2e/ui-pages.spec.ts`](../newapi-portal/tests/e2e/ui-pages.spec.ts)
 - Smoke：[`newapi-portal/tests/e2e/portal-smoke.spec.ts`](../newapi-portal/tests/e2e/portal-smoke.spec.ts)
+- 操练场：[`newapi-portal/tests/e2e/playground.spec.ts`](../newapi-portal/tests/e2e/playground.spec.ts)
+- 注册/财务：[`newapi-portal/tests/e2e/register-billing.spec.ts`](../newapi-portal/tests/e2e/register-billing.spec.ts)
 - Seed：[`newapi-portal/scripts/seed-screenshot-user.mjs`](../newapi-portal/scripts/seed-screenshot-user.mjs)
 - 截图 spec：[`newapi-portal/tests/e2e/screenshots.spec.ts`](../newapi-portal/tests/e2e/screenshots.spec.ts)
 - Playwright 配置：[`newapi-portal/playwright.config.ts`](../newapi-portal/playwright.config.ts)
@@ -324,7 +331,7 @@ pnpm screenshots:e2e
 
 1. 在 Actions 中打开 **Verify portal UI on staging** job，下载 `playwright-report` artifact（含 trace / 截图）。
 2. 确认 **Deploy** job 中 seed 与 login 校验已通过。
-3. 本地用相同凭据执行 `pnpm test:ui` 与 `pnpm test:e2e tests/e2e/portal-smoke.spec.ts` 复现。
+3. 本地用相同凭据执行 `pnpm run test:e2e:ci`（或拆分 `test:ui` / `test:e2e:playground` / `test:e2e:register-billing`）复现。
 4. 若仅 `main` 失败且为登录问题，检查 `STAGING_NEWAPI_*` Secrets 是否可用于 seed admin fallback。
 
 ### CI 部署失败：SSH / pull / health

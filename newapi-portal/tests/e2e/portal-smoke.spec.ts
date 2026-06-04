@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { ensureDashboardSession } from "./helpers";
 import { AUTH_ROUTES, isBenign404, routeLocator } from "./routes";
 
 const identifier = process.env.E2E_PORTAL_IDENTIFIER;
@@ -48,11 +49,12 @@ test.describe("NewAPI Portal smoke", () => {
 
     await expect(page.getByRole("heading", { name: "创建账户" })).toBeVisible();
     await expect(page.getByLabel("邮箱地址")).toBeVisible();
+    await expect(page.getByLabel("登录密码")).toBeVisible();
+    await expect(page.getByLabel("确认密码")).toBeVisible();
     await expect(page.getByLabel("验证码")).toBeVisible();
     await expect(page.getByLabel(/邀请码/)).toBeVisible();
-    await expect(page.getByLabel(/邀请码/)).toHaveValue("");
+    await expect(page.getByText(/服务条款|隐私政策|我同意/)).toHaveCount(0);
     await page.goto("/register?inviteCode=ABC123");
-    await expect(page.getByLabel(/邀请码/)).toHaveValue("");
     await expect(page.getByRole("button", { name: "获取验证码" })).toBeDisabled();
     await page.getByLabel("邮箱地址").fill("user@example.com");
     await expect(page.getByRole("button", { name: "获取验证码" })).toBeEnabled();
@@ -86,17 +88,20 @@ test.describe("NewAPI Portal smoke", () => {
       });
     });
 
+    await page.getByLabel("登录密码").fill("MyPassword8!");
+    await page.getByLabel("确认密码").fill("MyPassword8!");
     await page.getByLabel("验证码").fill("654321");
     await page.getByRole("button", { name: "完成注册" }).click();
     expect(registerRequests).toEqual([
       expect.objectContaining({
         email: "user@example.com",
-        password: expect.any(String),
+        password: "MyPassword8!",
         inviteCode: "ABC123",
         verificationCode: "654321",
       }),
     ]);
     expect(registerRequests[0]).not.toHaveProperty("turnstile");
+    expect(registerRequests[0]).not.toHaveProperty("acceptedTerms");
     await expect(page.getByRole("link", { name: "直接登录" })).toHaveAttribute(
       "href",
       "/login",
@@ -140,12 +145,7 @@ test.describe("NewAPI Portal smoke", () => {
     });
     page.on("pageerror", (error) => browserErrors.push(error.message));
 
-    await page.goto("/login");
-    await page.getByLabel("邮箱或用户名").fill(identifier!);
-    await page.getByRole("textbox", { name: "密码" }).fill(password!);
-    await page.getByRole("button", { name: "登录" }).click();
-
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await ensureDashboardSession(page);
     await expect(page.getByText("客户控制台")).toBeVisible();
     await expect(page.getByRole("heading", { name: "概览" })).toBeVisible();
     await expect(page.getByText("概览加载失败")).toHaveCount(0);
