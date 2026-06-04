@@ -116,6 +116,10 @@ const PAY_METHODS = [
 
 const AMOUNT_PRESETS = [10, 50, 100, 200] as const;
 
+function isPresetAmount(value: number): value is (typeof AMOUNT_PRESETS)[number] {
+  return (AMOUNT_PRESETS as readonly number[]).includes(value);
+}
+
 export default function CombinedBillingReferralPage() {
   const { formatQuota, quotaPerCny, config: quotaConfig, applyConfig, refresh } =
     useQuotaFormat();
@@ -427,7 +431,7 @@ export default function CombinedBillingReferralPage() {
                   <Input 
                     className={cn(
                       "h-9 w-24 rounded-full text-sm font-medium text-center transition-colors focus-visible:ring-[#FF9800] focus-visible:border-[#FF9800] focus-visible:ring-offset-0",
-                      !AMOUNT_PRESETS.includes(amountValue as any) && amountValue !== null
+                      amountValue !== null && !isPresetAmount(amountValue)
                         ? "bg-[#FF9800] text-white border-[#FF9800] placeholder:text-white/70"
                         : "bg-background text-foreground border-border hover:border-border/80"
                     )}

@@ -7,7 +7,6 @@ import {
   CreditCard,
   KeyRound,
   LayoutDashboard,
-  Share2,
   UserRound,
 } from "lucide-react";
 

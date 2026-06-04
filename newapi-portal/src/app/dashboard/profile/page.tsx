@@ -63,7 +63,7 @@ export default function ProfilePage() {
       } else {
         toast.error(data.error?.message || "更新失败");
       }
-    } catch (err) {
+    } catch {
       toast.error("网络错误");
     } finally {
       setEmailLoading(false);
@@ -95,7 +95,7 @@ export default function ProfilePage() {
       } else {
         toast.error(data.error?.message || "更新失败");
       }
-    } catch (err) {
+    } catch {
       toast.error("网络错误");
     } finally {
       setPasswordLoading(false);
