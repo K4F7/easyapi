@@ -40,10 +40,20 @@
 
 | 分支 | 推送的镜像 tag | 部署到 staging |
 |------|----------------|----------------|
-| `dev` | `dev-latest`、`dev-<sha>` | 是（`portal-test`） |
-| `main` | `test-latest`、`test-<sha>` | 是（`portal-test`） |
+| `dev` | `dev-latest`、`dev-<sha>` | 是：先**从生产快照恢复库**，再部署 `portal-test`，再 **seed** `scr@easyapi.work` |
+| `main` | `test-latest`、`test-<sha>` | 是（仅 `portal-test`，**不**重建库、不 seed） |
 
-`workflow_dispatch` 默认只构建；勾选 **Deploy to staging after build** 才会执行部署 job。
+**dev 专用数据步骤**（每次 push `dev` 且触发 workflow 时）：
+
+1. SSH 执行 [`scripts/restore-staging-production-db.sh`](../scripts/restore-staging-production-db.sh)：`down` → 删除 `easyapi-portal_pg_data_test` volume → 用服务器上的 `xbh-new-api-2026-05-23-172431.sql.gz` 重新 `up` 全栈  
+2. 等待 `https://test.easyapi.work/api/health`  
+3. 部署新 Portal 镜像（仅 `portal-test`）  
+4. [`scripts/seed-staging-via-api.mjs`](../scripts/seed-staging-via-api.mjs) 注册/验证截图账号 `scr@easyapi.work` / `ScreenshotTest123!`  
+5. CI 内 POST login 校验该账号  
+
+`main` 部署不会清空测试库；若只需更新 Portal 代码用 `main`，需要可重复的生产+测试数据用 `dev`。
+
+`workflow_dispatch` 默认只构建；勾选 **Deploy to staging after build** 才会执行部署 job（`dev` 分支手动触发时同样会恢复库+seed）。
 
 ### GitHub Secrets（仓库 Settings → Secrets）
 

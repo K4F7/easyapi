@@ -7,6 +7,9 @@ on:
       - dev
     paths:
       - "newapi-portal/**"
+      - "scripts/deploy-portal-staging.sh"
+      - "scripts/restore-staging-production-db.sh"
+      - "scripts/seed-staging-via-api.mjs"
       - ".github/workflows/portal-staging.yml"
   workflow_dispatch:
     inputs:
@@ -86,6 +89,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Restore production DB snapshot (dev only)
+        if: github.ref_name == 'dev'
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          command_timeout: 30m
+          script_path: scripts/restore-staging-production-db.sh
+
+      - name: Wait for stack after DB restore (dev only)
+        if: github.ref_name == 'dev'
+        run: |
+          url="https://test.easyapi.work/api/health"
+          for attempt in $(seq 1 90); do
+            if response=$(curl -fsS "$url" 2>/dev/null) && echo "$response" | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
+              echo "Stack healthy after restore: $url"
+              echo "$response"
+              exit 0
+            fi
+            echo "Waiting for stack after restore ($attempt/90) ..."
+            sleep 5
+          done
+          echo "Timed out waiting for stack after DB restore"
+          exit 1
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.2
         env:
@@ -113,6 +142,23 @@ jobs:
           done
           echo "Timed out waiting for $url"
           exit 1
+
+      - name: Seed screenshot test user (dev only)
+        if: github.ref_name == 'dev'
+        run: node scripts/seed-staging-via-api.mjs
+
+      - name: Verify screenshot login (dev only)
+        if: github.ref_name == 'dev'
+        run: |
+          response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
+            -H "Content-Type: application/json" \
+            -d '{"identifier":"scr@easyapi.work","password":"ScreenshotTest123!"}')
+          echo "$response"
+          echo "$response" | grep -q '"ok"[[:space:]]*:[[:space:]]*true' || {
+            echo "Screenshot test user login verification failed"
+            exit 1
+          }
+          echo "Screenshot test user login OK"
 
       - name: Collect portal logs on failure
         if: failure()
