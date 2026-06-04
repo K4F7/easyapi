@@ -6,13 +6,9 @@ on:
       - main
       - dev
       - feat/ui-future-design
-    paths:
-      - "newapi-portal/**"
-      - "scripts/deploy-portal-staging.sh"
-      - "scripts/restore-staging-production-db.sh"
-      - "scripts/configure-staging-registration.sh"
-      - "scripts/seed-staging-via-api.mjs"
-      - ".github/workflows/portal-staging.yml"
+    # Run for any push except docs-only changes (paths-ignore skips when all touched files match).
+    paths-ignore:
+      - "docs/**"
   workflow_dispatch:
     inputs:
       deploy:
