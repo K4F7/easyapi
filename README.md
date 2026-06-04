@@ -4,7 +4,7 @@ Frontend portal for EasyAPI, targeting the official upstream [NewAPI](https://gi
 
 ## Test environment deployment
 
-Staging runs at **https://test.easyapi.work**. For the full workflow (GitHub Actions build → server deploy → seed test user → Playwright screenshots), see:
+Staging runs at **https://test.easyapi.work**. Pushes to `dev` or `main` that touch `newapi-portal/` trigger [`.github/workflows/portal-staging.yml`](.github/workflows/portal-staging.yml) (build image → deploy `portal-test` → health check). For secrets, manual rollback, seed, and Playwright screenshots, see:
 
 **[docs/test-deploy-easyapi-portal.md](docs/test-deploy-easyapi-portal.md)**
 

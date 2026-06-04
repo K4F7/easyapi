@@ -1,0 +1,126 @@
+name: Portal staging CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - "newapi-portal/**"
+      - ".github/workflows/portal-staging.yml"
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy to staging after build
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build and push portal image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set image tags
+        id: image
+        run: |
+          registry=ghcr.io/k4f7/easyapi/newapi-portal
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            {
+              echo "tags<<EOF"
+              echo "${registry}:dev-latest"
+              echo "${registry}:dev-${GITHUB_SHA}"
+              echo "EOF"
+              echo "image=${registry}:dev-latest"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "tags<<EOF"
+              echo "${registry}:test-latest"
+              echo "${registry}:test-${GITHUB_SHA}"
+              echo "EOF"
+              echo "image=${registry}:test-latest"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push newapi-portal
+        uses: docker/build-push-action@v6
+        with:
+          context: ./newapi-portal
+          file: ./newapi-portal/Dockerfile
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy_staging:
+    name: Deploy portal-test to staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy == true)
+    concurrency:
+      group: portal-staging-deploy-${{ github.ref }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          PORTAL_IMAGE: ${{ needs.build.outputs.image }}
+          GHCR_PULL_USER: ${{ github.repository_owner }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          envs: PORTAL_IMAGE,GHCR_PULL_USER,GHCR_PULL_TOKEN
+          script_path: scripts/deploy-portal-staging.sh
+
+      - name: Wait for public health check
+        run: |
+          url="https://test.easyapi.work/api/health"
+          for attempt in $(seq 1 40); do
+            if response=$(curl -fsS "$url" 2>/dev/null) && echo "$response" | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
+              echo "Health OK: $url"
+              echo "$response"
+              exit 0
+            fi
+            echo "Waiting for $url ($attempt/40) ..."
+            sleep 5
+          done
+          echo "Timed out waiting for $url"
+          exit 1
+
+      - name: Collect portal logs on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          script: |
+            docker logs easyapi-portal-portal-test --tail 80 2>&1 || true
+            docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easyapi-portal-test.yml ps 2>&1 || true

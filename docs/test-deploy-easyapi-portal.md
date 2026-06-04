@@ -18,14 +18,77 @@
 | Compose 项目名 | **`easyapi-portal`**（`-p easyapi-portal`） |
 | Portal 服务名 | `portal-test` |
 | Portal 端口 | `2333`（经反代对外为 443） |
-| 镜像 | `ghcr.io/k4f7/easyapi/newapi-portal:test-latest` |
-| GHA 工作流 | [`.github/workflows/newapi-portal-image.yml`](../.github/workflows/newapi-portal-image.yml) |
+| 镜像（main） | `ghcr.io/k4f7/easyapi/newapi-portal:test-latest` |
+| 镜像（dev） | `ghcr.io/k4f7/easyapi/newapi-portal:dev-latest` |
+| GHA 工作流 | [`.github/workflows/portal-staging.yml`](../.github/workflows/portal-staging.yml) |
+| 部署脚本 | [`scripts/deploy-portal-staging.sh`](../scripts/deploy-portal-staging.sh) |
 
-**标准流程顺序（必须遵守）：**
+**标准流程顺序（CI 自动部署 + 本地验证）：**
 
 ```
-推送 main → GHA 构建镜像 → 服务器拉取并部署 portal-test → health check → seed 测试用户 → Playwright 截图
+推送 dev/main（newapi-portal 有变更）→ GHA 构建并推送镜像 → SSH 仅重建 portal-test → 公网 health check
+→ （本地可选）seed 测试用户 → Playwright 截图
 ```
+
+`dev` 与 `main` 推送到默认会**自动部署** staging；仅改 `docs/` 等路径不会触发工作流。
+
+---
+
+## 1.1 自动部署（CI）
+
+工作流 **Portal staging CI/CD**（[`portal-staging.yml`](../.github/workflows/portal-staging.yml)）在 `push` 到 `dev` / `main` 且变更位于 `newapi-portal/**` 或该 workflow 文件时运行：
+
+| 分支 | 推送的镜像 tag | 部署到 staging |
+|------|----------------|----------------|
+| `dev` | `dev-latest`、`dev-<sha>` | 是（`portal-test`） |
+| `main` | `test-latest`、`test-<sha>` | 是（`portal-test`） |
+
+`workflow_dispatch` 默认只构建；勾选 **Deploy to staging after build** 才会执行部署 job。
+
+### GitHub Secrets（仓库 Settings → Secrets）
+
+| Secret | 说明 |
+|--------|------|
+| `STAGING_SSH_HOST` | `45.142.115.128` |
+| `STAGING_SSH_USER` | `root` |
+| `STAGING_SSH_PRIVATE_KEY` | 部署用 SSH 私钥（对应服务器 `authorized_keys`） |
+| `GHCR_PULL_TOKEN`（可选） | 若服务器未持久 `docker login ghcr.io`，填只读 PAT（`read:packages`）；workflow 会传给部署脚本临时登录 |
+
+查看运行状态：
+
+```bash
+gh run list --repo K4F7/easyapi --workflow "Portal staging CI/CD" --limit 5
+gh run watch <run-id> --repo K4F7/easyapi --exit-status
+```
+
+### 服务器 compose 前置（一次性）
+
+`portal-test` 的 `image` 必须支持环境变量覆盖，否则 dev 部署仍会使用写死的 `test-latest`：
+
+```yaml
+portal-test:
+  image: ${PORTAL_IMAGE:-ghcr.io/k4f7/easyapi/newapi-portal:test-latest}
+```
+
+部署时 CI 与手动脚本都会 `export PORTAL_IMAGE=...` 再执行 `docker compose up`。
+
+### GHCR 拉取（服务器）
+
+任选其一：
+
+- **A（推荐）**：在服务器执行一次 `docker login ghcr.io`（read-only PAT，`read:packages`）。
+- **B**：配置 Secret `GHCR_PULL_TOKEN`；部署脚本在 pull 前临时登录（`GHCR_PULL_USER` 默认为仓库 owner）。
+
+### 手动 / 应急部署
+
+与 CI 相同逻辑，可在本机通过 SSH 调用仓库脚本：
+
+```bash
+export PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:dev-latest   # 或 test-latest
+ssh root@45.142.115.128 'bash -s' < scripts/deploy-portal-staging.sh
+```
+
+staging 仅有一个 `portal-test` 实例：`dev` 与 `main` 若连续部署，**后完成的一次**生效。
 
 Playwright 在**本地**运行，通过公网访问 `test.easyapi.work`；seed 脚本通过 HTTPS 调用 Portal API，无需 SSH 进容器写库。
 
@@ -110,38 +173,35 @@ pnpm prepare:test-db
 
 ## 4. 部署流程（逐步）
 
-### 步骤 1：推送代码，等待 GHA 构建
+### 步骤 1：推送代码（CI 构建 + 自动部署）
 
 ```bash
-git push origin main
+git push origin dev    # 镜像 dev-latest，自动部署 staging
+# 或
+git push origin main   # 镜像 test-latest，自动部署 staging
 ```
 
-GitHub Actions 工作流 **Build newapi-portal image** 会在 push 到 `main` 时触发，构建并推送：
+工作流会构建、推送镜像，SSH 仅重建 `portal-test`，并在 runner 上轮询 `https://test.easyapi.work/api/health`。
 
-```
-ghcr.io/k4f7/easyapi/newapi-portal:test-latest
-```
+若 CI 未跑（例如只改了文档），或需回滚到指定 tag，使用 [§1.1 手动 / 应急部署](#11-自动部署ci) 或下方步骤 2。
 
-查看构建状态：
+查看 CI 状态见 §1.1。
+
+### 步骤 2：手动 SSH 部署（应急，与 CI 等价）
 
 ```bash
-gh run list --repo K4F7/easyapi --workflow "Build newapi-portal image" --limit 3
-gh run watch <run-id> --repo K4F7/easyapi --exit-status
+export PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:test-latest   # main；dev 用 dev-latest
+ssh root@45.142.115.128 'bash -s' < scripts/deploy-portal-staging.sh
 ```
 
-**必须等 GHA 成功后再部署**；否则服务器上的仍是旧镜像。
-
-### 步骤 2：SSH 到服务器，仅更新 portal-test
+或在服务器上（需已将 `scripts/deploy-portal-staging.sh` 同步到该机，或粘贴脚本内容）：
 
 ```bash
 ssh root@45.142.115.128
+export PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:test-latest
 cd /opt/easyapi-portal-test
-
-docker pull ghcr.io/k4f7/easyapi/newapi-portal:test-latest
-
-PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:test-latest \
-  docker compose -p easyapi-portal \
-  -f docker-compose.easyapi-portal-test.yml \
+docker pull "${PORTAL_IMAGE}"
+docker compose -p easyapi-portal -f docker-compose.easyapi-portal-test.yml \
   up -d --no-deps --force-recreate portal-test
 ```
 
@@ -162,7 +222,7 @@ curl -s https://test.easyapi.work/api/health
 {"ok":true}
 ```
 
-### 步骤 4：Seed 截图测试用户
+### 步骤 4：Seed 截图测试用户（本地，CI 不包含）
 
 在本地 **`newapi-portal`** 目录（部署完成且 health 正常后）：
 
@@ -209,6 +269,13 @@ pnpm screenshots:e2e
 ---
 
 ## 6. 故障排查
+
+### CI 部署失败：SSH / pull / health
+
+1. 在 GitHub Actions 查看 **Deploy portal-test to staging** job；失败时 **Collect portal logs** 步骤会拉取 `easyapi-portal-portal-test` 最近日志。
+2. 确认仓库 Secrets：`STAGING_SSH_HOST`、`STAGING_SSH_USER`、`STAGING_SSH_PRIVATE_KEY`。
+3. 确认服务器能 `docker pull`（`docker login ghcr.io` 或配置 `GHCR_PULL_TOKEN`）。
+4. 确认 `portal-test` 使用 `${PORTAL_IMAGE:-...}`（见 §1.1）。
 
 ### GHA 构建失败：`ERR_PNPM_OUTDATED_LOCKFILE`
 
@@ -283,8 +350,8 @@ docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easy
 
 ## 快速检查清单
 
-- [ ] `main` 已 push，GHA **Build newapi-portal image** 为绿色
-- [ ] 服务器已 `docker pull` 且 **仅** `portal-test` 已 recreate
+- [ ] `dev` 或 `main` 已 push（`newapi-portal/` 有变更），GHA **Portal staging CI/CD** 构建与 deploy 均为绿色
+- [ ] 服务器 **仅** `portal-test` 已 recreate，镜像 tag 与分支一致（`dev-latest` / `test-latest`）
 - [ ] `curl https://test.easyapi.work/api/health` → `ok: true`
 - [ ] `pnpm seed:screenshot-user` 成功
 - [ ] `pnpm screenshots:e2e` 生成 9 张截图
@@ -295,8 +362,8 @@ Duck/brand images (e.g. `duck.webp`, `duck-icon.png`) live under `newapi-portal/
 
 Verify after deploy:
 
-`ash
+```bash
 curl -I https://test.easyapi.work/duck.webp
-`
+```
 
 Expect `HTTP/2 200` and `content-type: image/webp`.
