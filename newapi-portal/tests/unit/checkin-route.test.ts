@@ -48,6 +48,11 @@ vi.mock("@/lib/checkin/quota", () => ({
     metadata !== null &&
     !Array.isArray(metadata) &&
     (metadata as { quotaApplied?: boolean }).quotaApplied === true,
+  describeCheckinQuotaError: (error: unknown) => ({
+    status: (error as { status?: number })?.status,
+    code: (error as { code?: string | number | boolean })?.code,
+    message: error instanceof Error ? error.message : String(error),
+  }),
   applyCheckinQuota: (...args: unknown[]) => mockApplyCheckinQuota(...args),
 }));
 

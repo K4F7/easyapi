@@ -14,6 +14,8 @@ import {
 
   applyCheckinQuota,
 
+  describeCheckinQuotaError,
+
   isCheckinQuotaApplied,
 
 } from "@/lib/checkin/quota";
@@ -76,7 +78,7 @@ export async function POST() {
 
         checkedInKey,
 
-        newApiUserId: authResult.auth.userId,
+        newApiUserId: String(authResult.auth.userId),
 
         quotaAmount: env.CHECKIN_QUOTA,
 
@@ -180,7 +182,7 @@ export async function POST() {
 
             checkedInKey,
 
-            newApiUserId: authResult.auth.userId,
+            newApiUserId: String(authResult.auth.userId),
 
             quotaAmount: env.CHECKIN_QUOTA,
 
@@ -222,7 +224,7 @@ export async function POST() {
 
         await applyCheckinQuota({
 
-          newApiUserId: authResult.auth.userId,
+          newApiUserId: String(authResult.auth.userId),
 
           quotaAmount: env.CHECKIN_QUOTA,
 
@@ -256,7 +258,23 @@ export async function POST() {
 
     } catch (error) {
 
-      console.error("checkin: adminAddQuota failed", error);
+      const upstream = describeCheckinQuotaError(error);
+
+      console.error("checkin: adminAddQuota failed", {
+
+        ledgerId: created.ledgerId,
+
+        checkedInOn: checkedInKey,
+
+        newApiUserId: authResult.auth.userId,
+
+        upstreamStatus: upstream.status,
+
+        upstreamCode: upstream.code,
+
+        upstreamMessage: upstream.message,
+
+      });
 
 
 
@@ -275,6 +293,10 @@ export async function POST() {
             checkedInOn: checkedInKey,
 
             ledgerId: created.ledgerId,
+
+            upstreamStatus: upstream.status,
+
+            upstreamCode: upstream.code,
 
           },
 
@@ -352,7 +374,23 @@ async function respondForExistingCheckin(input: {
 
     } catch (error) {
 
-      console.error("checkin: retry adminAddQuota failed", error);
+      const upstream = describeCheckinQuotaError(error);
+
+      console.error("checkin: retry adminAddQuota failed", {
+
+        ledgerId: existing.ledgerId,
+
+        checkedInOn: checkedInKey,
+
+        newApiUserId,
+
+        upstreamStatus: upstream.status,
+
+        upstreamCode: upstream.code,
+
+        upstreamMessage: upstream.message,
+
+      });
 
 
 
@@ -369,6 +407,10 @@ async function respondForExistingCheckin(input: {
             checkedInOn: checkedInKey,
 
             ledgerId: existing.ledgerId,
+
+            upstreamStatus: upstream.status,
+
+            upstreamCode: upstream.code,
 
           },
 
