@@ -170,7 +170,7 @@ cache-control: no-store
 referrer-policy: no-referrer
 ```
 
-说明：`frame-ancestors` 限制「谁可以 iframe 嵌入」，**不能**阻止用户在地址栏直接打开 `https://image.easyapi.work/`。
+说明：`frame-ancestors` 限制「谁可以 iframe 嵌入」，**不能**阻止用户在地址栏直接打开 `https://image.easyapi.work/`。详见 [`image-playground-security.md`](image-playground-security.md)。
 
 ### 生图 Playground 认证与代理边界
 
