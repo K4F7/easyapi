@@ -143,10 +143,8 @@ export default function CombinedBillingReferralPage() {
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
   const [referralLoading, setReferralLoading] = useState(true);
   const [origin, setOrigin] = useState("");
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     if (typeof window !== "undefined") {
       setOrigin(window.location.origin);
     }
@@ -272,22 +270,6 @@ export default function CombinedBillingReferralPage() {
   const rewardTotal = referralData?.rewards.reduce((sum, reward) => sum + reward.amount, 0) || 0;
   const pendingInvites = referralData?.invitedCount.pending || 0;
   const rewardedInvites = referralData?.invitedCount.rewarded || 0;
-
-  if (!mounted) {
-    return (
-      <div className="mx-auto w-full max-w-6xl space-y-6">
-        <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="mt-3 h-4 w-64" />
-        </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Skeleton className="h-80 rounded-2xl" />
-          <Skeleton className="h-80 rounded-2xl" />
-        </div>
-        <Skeleton className="h-72 rounded-2xl" />
-      </div>
-    );
-  }
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
