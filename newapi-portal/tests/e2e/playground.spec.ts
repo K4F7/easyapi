@@ -12,28 +12,17 @@ import {
 const identifier = E2E_IDENTIFIER;
 const password = E2E_PASSWORD;
 
-const MASKED_TOKENS = {
-  items: [
-    { id: 101, name: "E2E Token A", key: "sk-e2e…mask" },
-    { id: 202, name: "E2E Token B", key: "sk-other…xyz" },
-  ],
-  total: 2,
-};
-
 const MODELS_A = {
   models: [{ id: "gpt-test-model" }, { id: "claude-test-model" }],
   fallback: false,
 };
 
-const MODELS_B = {
-  models: [{ id: "only-on-b" }],
-  fallback: true,
-};
+const PLAYGROUND_TOKEN_ID = 101;
 
 const imagePlaygroundReadySignal = (page: Page) =>
   page
     .getByText("生图 Playground 未配置")
-    .or(page.getByText("请选择试玩令牌"))
+    .or(page.getByText("生图 Playground 加载中"))
     .or(page.locator('iframe[title="生图 Playground"]'));
 
 const shouldExpectImagePlayground = () =>
@@ -41,27 +30,33 @@ const shouldExpectImagePlayground = () =>
   Boolean(process.env.NEXT_PUBLIC_IMAGE_PLAYGROUND_URL?.trim()) ||
   Boolean(process.env.STAGING_IMAGE_PLAYGROUND_URL?.trim());
 
-async function mockTokens(
+async function mockPlaygroundToken(
   page: Page,
-  payload: typeof MASKED_TOKENS | { items: []; total: 0 },
+  tokenId = PLAYGROUND_TOKEN_ID,
+  options?: { status?: number },
 ) {
-  await page.route("**/api/tokens?*", async (route) => {
+  await page.route("**/api/playground/token**", async (route) => {
+    const status = options?.status ?? 200;
     await route.fulfill({
-      status: 200,
+      status,
       contentType: "application/json",
-      body: JSON.stringify({ ok: true, data: payload }),
+      body:
+        status === 200
+          ? JSON.stringify({ ok: true, data: { tokenId } })
+          : JSON.stringify({
+              ok: false,
+              error: { message: "操练场初始化失败" },
+            }),
     });
   });
 }
 
 async function mockModels(page: Page) {
   await page.route("**/api/playground/models?*", async (route) => {
-    const tokenId = new URL(route.request().url()).searchParams.get("tokenId");
-    const data = tokenId === "202" ? MODELS_B : MODELS_A;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ ok: true, data }),
+      body: JSON.stringify({ ok: true, data: MODELS_A }),
     });
   });
 }
@@ -72,7 +67,7 @@ async function mockImageSession(page: Page) {
       string,
       unknown
     >;
-    expect(body).toEqual({ tokenId: 101 });
+    expect(body).toEqual({ tokenId: PLAYGROUND_TOKEN_ID });
 
     await route.fulfill({
       status: 200,
@@ -117,7 +112,7 @@ async function mockChatStream(page: Page, options?: { totalTokens?: number }) {
 }
 
 async function openPlaygroundChat(page: Page) {
-  await mockTokens(page, MASKED_TOKENS);
+  await mockPlaygroundToken(page);
   await mockModels(page);
   await page.goto("/dashboard/playground?tab=chat");
   await expect(
@@ -156,7 +151,7 @@ test.describe("Playground", () => {
   test("defaults to chat tab; tab switches update URL without full reload", async ({
     page,
   }) => {
-    await mockTokens(page, MASKED_TOKENS);
+    await mockPlaygroundToken(page);
     await mockModels(page);
     await mockImageSession(page);
 
@@ -186,7 +181,7 @@ test.describe("Playground", () => {
   test("image tab passes only token identifiers to the iframe", async ({
     page,
   }) => {
-    await mockTokens(page, MASKED_TOKENS);
+    await mockPlaygroundToken(page);
     await mockImageSession(page);
     await page.goto("/dashboard/playground?tab=image");
     await expect(imagePlaygroundReadySignal(page)).toBeVisible();
@@ -217,8 +212,12 @@ test.describe("Playground", () => {
     expect(iframeUrl.searchParams.get("imageApiUrl")).toBe(
       `${new URL(page.url()).origin}/api/playground/images/generations`,
     );
-    expect(iframeUrl.searchParams.get("tokenId")).toBe("101");
-    expect(iframeUrl.searchParams.get("portalTokenId")).toBe("101");
+    expect(iframeUrl.searchParams.get("tokenId")).toBe(
+      String(PLAYGROUND_TOKEN_ID),
+    );
+    expect(iframeUrl.searchParams.get("portalTokenId")).toBe(
+      String(PLAYGROUND_TOKEN_ID),
+    );
     expect(iframeUrl.searchParams.get("apiKey")).toMatch(
       /^portal-image-session-v1\./,
     );
@@ -228,23 +227,15 @@ test.describe("Playground", () => {
     expect(src).not.toMatch(/sk-[a-zA-Z0-9]{8,}|portal-token-101/);
   });
 
-  test("empty token list prompts creating a token", async ({ page }) => {
-    await mockTokens(page, { items: [], total: 0 });
+  test("playground token provisioning failure shows error", async ({
+    page,
+  }) => {
+    await mockPlaygroundToken(page, PLAYGROUND_TOKEN_ID, { status: 500 });
     await page.goto("/dashboard/playground");
-    await expect(
-      page.getByRole("link", { name: /去「令牌」页创建/ }),
-    ).toHaveAttribute("href", "/dashboard/tokens");
-  });
-
-  test("token selector shows name and masked key only", async ({ page }) => {
-    await mockTokens(page, MASKED_TOKENS);
-    await page.goto("/dashboard/playground");
-    await expect(
-      page.getByRole("button", { name: /E2E Token A/ }),
-    ).toBeVisible();
-    await expect(page.getByText("sk-e2e…mask")).toBeVisible();
-    const bodyText = await page.locator("body").innerText();
-    expect(bodyText).not.toMatch(/sk-[a-zA-Z0-9]{20,}/);
+    await expect(page.getByText("操练场初始化失败")).toBeVisible();
+    await expect(page.getByRole("button", { name: /E2E Token/ })).toHaveCount(
+      0,
+    );
   });
 
   test("chat: suggestions, pills, multiline input, stream and usage", async ({
@@ -318,20 +309,6 @@ test.describe("Playground", () => {
     await expect(page.getByText("开始一段对话")).toBeVisible();
   });
 
-  test("chat: switching token resets unavailable model", async ({ page }) => {
-    await openPlaygroundChat(page);
-    await expect(
-      page.getByRole("button", { name: /gpt-test-model/ }),
-    ).toBeVisible();
-
-    await page.getByRole("button", { name: /E2E Token A/ }).click();
-    await page.getByRole("menuitem", { name: /E2E Token B/ }).click();
-    await expect(page.getByRole("button", { name: /only-on-b/ })).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /gpt-test-model/ }),
-    ).toHaveCount(0);
-  });
-
   test("chat: upstream errors are sanitized", async ({ page }) => {
     await openPlaygroundChat(page);
     await page.route("**/api/playground/chat", async (route) => {
@@ -377,7 +354,7 @@ test.describe("Playground", () => {
     await mockImageSession(page);
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: "操练场", level: 1 }),
+      page.getByRole("tab", { name: "对话", selected: true }),
     ).toBeVisible();
     await page.goto("/dashboard/usage");
     await page.goto("/dashboard/playground?tab=image");
