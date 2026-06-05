@@ -1,4 +1,4 @@
-name: Portal staging CI/CD
+name: Portal staging CD
 
 on:
   push:
@@ -6,7 +6,6 @@ on:
       - main
       - dev
       - feat/ui-future-design
-    # Run for any push except docs-only changes (paths-ignore skips when all touched files match).
     paths-ignore:
       - "docs/**"
   workflow_dispatch:
