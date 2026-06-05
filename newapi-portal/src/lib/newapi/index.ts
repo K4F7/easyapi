@@ -11,12 +11,6 @@ export {
   normalizeNewApiBaseUrl,
 } from "./client";
 export { redeemTopup, topupWithRedemptionCode } from "./billing";
-export {
-  fetchNewApiStatus,
-  fetchNewApiStatusSafe,
-  getNewApiStatusUrl,
-  type NewApiStatus,
-} from "./status";
 export { getLogStats, getLogs, getUsageData } from "./logs";
 export {
   createToken,

@@ -1,4 +1,0 @@
-# Custom Semgrep rules for newapi-portal.
-# CI and `pnpm security:scan` also use OSS registry rulesets:
-# p/ci, p/typescript, p/javascript, p/secrets
-rules: []

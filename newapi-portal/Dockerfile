@@ -4,10 +4,9 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl
 
-ENV NPM_CONFIG_REGISTRY=https://repo.huaweicloud.com/repository/npm/
-RUN npm install -g pnpm@10.11.0
+RUN corepack enable
 
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma
 RUN pnpm install --frozen-lockfile
 
@@ -15,30 +14,23 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-ARG NEXT_PUBLIC_IMAGE_PLAYGROUND_URL=""
-ARG NEXT_PUBLIC_NEWAPI_BASE_URL=""
-
-ENV NEXT_PUBLIC_IMAGE_PLAYGROUND_URL=${NEXT_PUBLIC_IMAGE_PLAYGROUND_URL}
-ENV NEXT_PUBLIC_NEWAPI_BASE_URL=${NEXT_PUBLIC_NEWAPI_BASE_URL}
-
 RUN apk add --no-cache openssl
-
-ENV NPM_CONFIG_REGISTRY=https://repo.huaweicloud.com/repository/npm/
-RUN npm install -g pnpm@10.11.0
+RUN corepack enable
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN DATABASE_URL="postgresql://postgres:postgres@localhost:5432/newapi_portal?schema=newapi_portal" \
-    AUTH_SECRET="build-only-placeholder-secret-32-chars" \
-    APP_URL="http://localhost:3000" \
-    NEWAPI_BASE_URL="http://localhost:3001" \
-    NEWAPI_ADMIN_TOKEN="build-only-placeholder" \
-    NEWAPI_ADMIN_USER_ID="1" \
-    REGISTER_QUOTA="100000" \
-    CHECKIN_QUOTA="1000" \
-    INVITE_REWARD_QUOTA="5000" \
-    pnpm build
+ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/newapi_portal?schema=newapi_portal"
+ENV AUTH_SECRET="build-only-placeholder-secret-32-chars"
+ENV APP_URL="http://localhost:3000"
+ENV NEWAPI_BASE_URL="http://localhost:3001"
+ENV NEWAPI_ADMIN_TOKEN="build-only-placeholder"
+ENV NEWAPI_ADMIN_USER_ID="1"
+ENV REGISTER_QUOTA="100000"
+ENV CHECKIN_QUOTA="1000"
+ENV INVITE_REWARD_QUOTA="5000"
+
+RUN pnpm build
 
 FROM node:22-alpine AS runner
 
@@ -48,8 +40,6 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV IMAGE_PLAYGROUND_ALLOWED_ORIGIN=""
-ENV IMAGE_PLAYGROUND_URL=""
 
 RUN apk add --no-cache openssl \
   && addgroup -S nodejs \

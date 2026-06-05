@@ -17,32 +17,20 @@
     --secondary: 47 100% 94%; /* #FFF8E1 */
     --secondary-foreground: 215 28% 17%;
     --muted: 214 32% 91%;
-    --muted-foreground: 215 19% 41%; /* ~#52617A, >=4.5:1 on bg */
-    --subtle-foreground: 215 16% 40%; /* ~#566173, >=4.5:1 on bg */
+    --muted-foreground: 215 16% 47%;
+    --subtle-foreground: 215 16% 65%;
     --accent: 47 100% 94%;
     --accent-foreground: 215 28% 17%;
-    --destructive: 0 72% 47%; /* Unified with error */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 216 12% 80%; /* ~#D0D5DD equivalent for contrast */
-    --input: 216 12% 80%; /* ~#D0D5DD input outline */
+    --border: 214 32% 91%; /* #F1F5F9 */
+    --input: 214 32% 91%;
     --ring: 35 100% 50%;
-    --divider: 216 12% 80%; /* ~#D0D5DD */
-    /* Semantic status colors — each has a base (icon/border tone) + foreground (AA text on soft) + soft (chip bg). */
-    --success: 142 64% 32%; /* #1E7E45 base */
-    --success-foreground: 142 72% 24%; /* AA text on success-soft */
-    --success-soft: 142 52% 94%; /* chip background */
-    --warning: 35 92% 38%; /* #BC7505 base (amber, AA on white) */
-    --warning-foreground: 30 90% 30%; /* AA text on warning-soft */
-    --warning-soft: 42 96% 92%; /* chip background */
-    --error: 0 72% 47%; /* #CE2424 base */
-    --error-foreground: 0 70% 40%; /* AA text on error-soft */
-    --error-soft: 0 86% 96%; /* chip background */
-    --neutral: 215 19% 41%; /* disabled/neutral base */
-    --neutral-foreground: 215 22% 32%; /* AA text on neutral-soft */
-    --neutral-soft: 214 28% 94%; /* chip background */
-    --info: 199 84% 38%; /* #0E84B3 base, AA on white */
-    --info-foreground: 199 84% 31%; /* AA text on info-soft */
-    --info-soft: 200 78% 94%; /* chip background */
+    --divider: 214 32% 91%;
+    --success: 142 71% 45%;
+    --warning: 35 100% 50%;
+    --error: 0 84% 60%;
+    --info: 180 100% 50%;
     --radius: 1rem;
   }
 

@@ -1,19 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Wallet,
-  Gift,
-  Copy,
-  ArrowRightLeft,
-  CreditCard,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-} from "lucide-react";
+import { CreditCard, Gift, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
-import { EmptyState } from "@/components/page-state";
+import { EmptyState, ErrorState } from "@/components/page-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +16,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -35,11 +25,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiFetch, apiPost } from "@/lib/client/api";
-import { formatCurrencyCny, formatDateTime, statusText } from "@/lib/client/format";
-import { useQuotaFormat } from "@/hooks/use-quota-format";
-import type { QuotaDisplayConfig } from "@/lib/quota/display-config.shared";
+import {
+  formatCurrencyCny,
+  formatDateTime,
+  formatQuota,
+  statusText,
+} from "@/lib/client/format";
 
 type Order = {
   id: string;
@@ -54,555 +46,255 @@ type Order = {
   createdAt: string;
 };
 
-type OrdersResponse = { orders: Order[] };
+type OrdersResponse = {
+  orders: Order[];
+};
 
 type CreatePaymentResponse = {
   order: Order;
-  payment: { method: "GET"; url: string };
+  payment: {
+    method: "GET";
+    url: string;
+  };
 };
 
 type RedeemResponse = {
   redeemed: boolean;
   duplicate: boolean;
   quotaAmount?: number;
-  ledger?: { amount: number; createdAt: string };
-};
-
-type BalanceSummary = {
-  quotaConfig?: QuotaDisplayConfig;
-  newApi: {
-    binding: "ready" | "pending";
-    status: string;
-    message?: string;
-    self: { quota?: number; used_quota?: number } | null;
+  ledger?: {
+    amount: number;
+    createdAt: string;
   };
 };
 
-type RewardMetadata = {
-  quotaApplied?: boolean;
-  quotaAmount?: number;
-  referredUserId?: string;
-} | null;
-
-type Reward = {
-  id: string;
-  amount: number;
-  reason: string;
-  referralId: string | null;
-  metadata: RewardMetadata;
-  createdAt: string;
-};
-
-type ReferralData = {
-  inviteCode: string;
-  inviteLink: string;
-  invitedCount: { total: number; pending: number; rewarded: number; canceled: number };
-  rewards: Reward[];
-  settlement: { attempted: boolean; reason?: string; settled: number; failed: number };
-};
-
-const PAY_METHODS = [
-  { value: "alipay", label: "支付宝" },
-  { value: "wechat", label: "微信" },
-] as const;
-
-const AMOUNT_PRESETS = [10, 50, 100, 200] as const;
-
-function isPresetAmount(value: number): value is (typeof AMOUNT_PRESETS)[number] {
-  return (AMOUNT_PRESETS as readonly number[]).includes(value);
-}
-
-function StatItem({
-  label,
-  value,
-  loading,
-}: {
-  label: string;
-  value: React.ReactNode;
-  loading?: boolean;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 truncate text-lg font-semibold tabular-nums">
-        {loading ? <Skeleton className="h-7 w-20" /> : value}
-      </p>
-    </div>
-  );
-}
-
-export default function CombinedBillingReferralPage() {
-  const { formatQuota, quotaPerCny, config: quotaConfig, applyConfig, refresh } =
-    useQuotaFormat();
-
+export default function BillingPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
-  const [balance, setBalance] = useState<BalanceSummary["newApi"] | null>(null);
-  const [balanceLoading, setBalanceLoading] = useState(true);
-  const [amount, setAmount] = useState("50");
-  const [payType, setPayType] = useState<string>(PAY_METHODS[0].value);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [amount, setAmount] = useState("10");
+  const [payType, setPayType] = useState("alipay");
   const [creating, setCreating] = useState(false);
   const [redeemCode, setRedeemCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
-  const [referralData, setReferralData] = useState<ReferralData | null>(null);
-  const [referralLoading, setReferralLoading] = useState(true);
-  const [origin, setOrigin] = useState("");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
-    }
-  }, []);
+  const totalRecorded = useMemo(
+    () => orders.reduce((sum, order) => sum + order.amountCents, 0),
+    [orders],
+  );
 
-  const amountValue = useMemo(() => {
-    const normalized = amount.trim();
-    if (!/^\d+$/.test(normalized)) return null;
-    const parsed = Number(normalized);
-    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-  }, [amount]);
-
-  const derivedRate = useMemo(() => {
-    for (const order of orders) {
-      if (
-        order.status.toUpperCase() === "PAID" &&
-        typeof order.quotaAmount === "number" &&
-        order.quotaAmount > 0 &&
-        order.amountCents > 0
-      ) {
-        return { rate: order.quotaAmount / (order.amountCents / 100), real: true };
-      }
-    }
-    return { rate: quotaPerCny, real: quotaConfig.source === "newapi" };
-  }, [orders, quotaPerCny, quotaConfig.source]);
-
-  const quota = balance?.self?.quota;
-  const usedQuota = balance?.self?.used_quota;
-  const remaining =
-    typeof quota === "number" && typeof usedQuota === "number"
-      ? Math.max(quota - usedQuota, 0)
-      : quota;
-
-  const quotaPreview = amountValue !== null ? Math.round(amountValue * derivedRate.rate) : null;
-
-  async function loadData() {
+  async function loadOrders() {
+    setOrdersError(null);
     setOrdersLoading(true);
-    setBalanceLoading(true);
-    setReferralLoading(true);
 
-    Promise.allSettled([
-      apiFetch<OrdersResponse>("/api/billing/orders").then((d) => setOrders(d.orders)).catch(() => {}),
-      apiFetch<BalanceSummary>("/api/dashboard/summary")
-        .then((d) => {
-          setBalance(d.newApi);
-          if (d.quotaConfig) applyConfig(d.quotaConfig);
-        })
-        .catch(() => {}),
-      apiFetch<ReferralData>("/api/referral").then((d) => setReferralData(d)).catch(() => {}),
-      refresh(),
-    ]).finally(() => {
+    try {
+      const data = await apiFetch<OrdersResponse>("/api/billing/orders");
+      setOrders(data.orders);
+    } catch (loadError) {
+      setOrdersError(
+        loadError instanceof Error ? loadError.message : "订单加载失败",
+      );
+    } finally {
       setOrdersLoading(false);
-      setBalanceLoading(false);
-      setReferralLoading(false);
-    });
+    }
   }
 
-  useEffect(() => {
-    loadData();
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("payment") === "return") {
-        toast.info("正在刷新余额与充值记录…");
-        loadData();
-        params.delete("payment");
-        const next = window.location.pathname + (params.toString() ? `?${params.toString()}` : "");
-        window.history.replaceState(null, "", next);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function submitOrder() {
-    if (amountValue === null) {
-      toast.error("请输入有效的充值金额（正整数）");
-      return;
-    }
+  async function handleCreateOrder(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setCreating(true);
+
     try {
-      const data = await apiPost<CreatePaymentResponse>("/api/billing/epay/create", {
-        amount: String(amountValue),
-        payType,
-        productCode: "quota",
-        name: "EZAPI 余额充值",
-        idempotencyKey: crypto.randomUUID(),
-      });
+      const data = await apiPost<CreatePaymentResponse>(
+        "/api/billing/epay/create",
+        {
+          amount,
+          payType,
+          productCode: "quota",
+          name: "EZAPI 额度充值",
+          idempotencyKey: crypto.randomUUID(),
+        },
+      );
       toast.success("订单已创建，正在前往支付");
       window.location.href = data.payment.url;
     } catch (createError) {
-      toast.error(createError instanceof Error ? createError.message : "创建订单失败");
+      toast.error(
+        createError instanceof Error ? createError.message : "创建订单失败",
+      );
     } finally {
       setCreating(false);
     }
   }
 
-  async function handleRedeem() {
-    if (!redeemCode.trim()) return;
+  async function handleRedeem(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setRedeeming(true);
+
     try {
       const result = await apiPost<RedeemResponse>("/api/billing/redeem", {
         code: redeemCode.trim(),
       });
       const amountText = formatQuota(result.quotaAmount ?? result.ledger?.amount);
-      toast.success(result.duplicate ? "兑换码已处理过" : `兑换成功：+${amountText}`);
+      toast.success(result.duplicate ? "兑换码已处理过" : `兑换成功：${amountText}`);
       setRedeemCode("");
-      loadData();
+      await loadOrders();
     } catch (redeemError) {
-      toast.error(redeemError instanceof Error ? redeemError.message : "兑换失败");
+      toast.error(
+        redeemError instanceof Error ? redeemError.message : "兑换失败",
+      );
     } finally {
       setRedeeming(false);
     }
   }
 
-  const copyToClipboard = (text: string, message: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(message);
-  };
-
-  const inviteUrl =
-    origin && referralData
-      ? `${origin}/register?inviteCode=${referralData.inviteCode}`
-      : referralData?.inviteLink || "";
-  const rewardTotal = referralData?.rewards.reduce((sum, reward) => sum + reward.amount, 0) || 0;
-  const pendingInvites = referralData?.invitedCount.pending || 0;
-  const rewardedInvites = referralData?.invitedCount.rewarded || 0;
+  useEffect(() => {
+    void loadOrders();
+  }, []);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-normal">财务与奖励</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          管理账户余额、充值记录与邀请收益。
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-normal">充值</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            用支付宝给账户充值，支付完成后额度自动到账。
+          </p>
+        </div>
+        <Badge variant="outline">本地发起记录 {formatCurrencyCny(totalRecorded)}</Badge>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>额度充值</CardTitle>
-            <CardDescription>查看可用额度并完成充值。</CardDescription>
+          <CardHeader>
+            <CardTitle>易支付充值</CardTitle>
+            <CardDescription>创建订单后会跳转到支付网关。</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-3 rounded-lg border border-border/60 p-3">
-              <StatItem
-                label="可用额度"
-                value={formatQuota(remaining)}
-                loading={balanceLoading}
-              />
-              <StatItem
-                label="历史消耗"
-                value={formatQuota(usedQuota)}
-                loading={balanceLoading}
-              />
-              <StatItem
-                label="充值次数"
-                value={orders.length}
-                loading={ordersLoading}
-              />
-            </div>
-
-            <Separator />
-
-            <div className="space-y-3">
-              <Label>充值金额（CNY）</Label>
-              <div className="flex flex-wrap gap-2">
-                {AMOUNT_PRESETS.map((val) => (
-                  <Button
-                    key={val}
-                    type="button"
-                    size="sm"
-                    variant={amountValue === val ? "default" : "outline"}
-                    onClick={() => setAmount(String(val))}
-                  >
-                    ¥{val}
-                  </Button>
-                ))}
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleCreateOrder}>
+              <div className="space-y-2">
+                <Label htmlFor="amount">充值金额（CNY）</Label>
                 <Input
-                  className="h-8 w-24"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  type="number"
+                  id="amount"
+                  inputMode="decimal"
                   min="1"
-                  placeholder="自定义"
+                  placeholder="10.00"
+                  required
+                  type="number"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                ¥{amountValue || 0} → 约 {formatQuota(quotaPreview || 0)} 额度（预估，以实际到账为准）
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>支付方式</Label>
-              <div className="flex flex-wrap gap-2">
-                {PAY_METHODS.map((method) => (
-                  <Button
-                    key={method.value}
-                    type="button"
-                    size="sm"
-                    variant={payType === method.value ? "default" : "outline"}
-                    onClick={() => setPayType(method.value)}
-                  >
-                    <Wallet className="mr-1.5 h-3.5 w-3.5" />
-                    {method.label}
-                  </Button>
-                ))}
+              <div className="space-y-2">
+                <Label htmlFor="payType">支付方式</Label>
+                <Input
+                  id="payType"
+                  placeholder="alipay"
+                  value={payType}
+                  onChange={(event) => setPayType(event.target.value)}
+                />
               </div>
-            </div>
-
-            <Button
-              className="w-full"
-              disabled={creating || !amountValue}
-              onClick={submitOrder}
-            >
-              <CreditCard className="mr-2 h-4 w-4" />
-              {creating ? "创建订单中…" : `去支付 ¥${amountValue || 0}`}
-            </Button>
+              <Button className="w-full" disabled={creating} type="submit">
+                <CreditCard className="h-4 w-4" />
+                {creating ? "创建中..." : "创建订单"}
+              </Button>
+            </form>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <CardTitle>邀请与兑换</CardTitle>
-                <CardDescription>分享邀请链接或输入兑换码获取额度。</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" className="shrink-0">
-                <ArrowRightLeft className="mr-1.5 h-3.5 w-3.5" />
-                划转收益
-              </Button>
-            </div>
+          <CardHeader>
+            <CardTitle>兑换码</CardTitle>
+            <CardDescription>兑换会由服务端调用 NewAPI 并记录到账本。</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-3 rounded-lg border border-border/60 p-3">
-              <StatItem
-                label="累计奖励"
-                value={formatQuota(rewardTotal)}
-                loading={referralLoading}
-              />
-              <StatItem
-                label="成功邀请"
-                value={
-                  <>
-                    {rewardedInvites}
-                    <span className="ml-1 text-sm font-normal text-muted-foreground">人</span>
-                  </>
-                }
-                loading={referralLoading}
-              />
-              <StatItem
-                label="待确认"
-                value={
-                  <>
-                    {pendingInvites}
-                    <span className="ml-1 text-sm font-normal text-muted-foreground">人</span>
-                  </>
-                }
-                loading={referralLoading}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Input
-                readOnly
-                className="font-mono text-sm"
-                value={referralLoading ? "加载中…" : inviteUrl}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                className="shrink-0"
-                onClick={() => copyToClipboard(inviteUrl, "邀请链接已复制")}
-              >
-                <Copy className="mr-1.5 h-3.5 w-3.5" />
-                复制
-              </Button>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <Label htmlFor="redeemCode">兑换码</Label>
-              <div className="flex gap-2">
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleRedeem}>
+              <div className="space-y-2">
+                <Label htmlFor="redeemCode">兑换码</Label>
                 <Input
                   id="redeemCode"
-                  className="font-mono"
+                  maxLength={128}
                   placeholder="请输入兑换码"
+                  required
                   value={redeemCode}
-                  onChange={(e) => setRedeemCode(e.target.value)}
+                  onChange={(event) => setRedeemCode(event.target.value)}
                 />
-                <Button
-                  className="shrink-0"
-                  disabled={redeeming || !redeemCode}
-                  onClick={handleRedeem}
-                >
-                  <Gift className="mr-1.5 h-3.5 w-3.5" />
-                  兑换
-                </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                兑换成功后额度会即时加入可用额度。
-              </p>
-            </div>
+              <Button
+                className="w-full"
+                disabled={redeeming || redeemCode.trim().length === 0}
+                type="submit"
+                variant="outline"
+              >
+                <Gift className="h-4 w-4" />
+                {redeeming ? "兑换中..." : "兑换"}
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <Tabs defaultValue="billing" className="w-full">
-          <CardHeader className="pb-0">
-            <TabsList>
-              <TabsTrigger value="billing">充值记录</TabsTrigger>
-              <TabsTrigger value="referral">奖励记录</TabsTrigger>
-            </TabsList>
-          </CardHeader>
-          <CardContent className="p-0 pt-4">
-            <TabsContent value="billing" className="m-0">
-              {ordersLoading ? (
-                <div className="space-y-3 px-6 pb-6">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : orders.length === 0 ? (
-                <div className="px-6 pb-6">
-                  <EmptyState
-                    title="暂无充值记录"
-                    description="发起充值后，订单会出现在这里。"
-                  />
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>时间</TableHead>
-                        <TableHead>金额</TableHead>
-                        <TableHead>支付方式</TableHead>
-                        <TableHead>状态</TableHead>
-                        <TableHead className="text-right">额度变化</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {orders.map((order) => (
-                        <TableRow key={order.id}>
-                          <TableCell className="whitespace-nowrap font-mono text-sm text-muted-foreground">
-                            {formatDateTime(order.createdAt)}
-                          </TableCell>
-                          <TableCell className="font-mono tabular-nums">
-                            {formatCurrencyCny(order.amountCents)}
-                          </TableCell>
-                          <TableCell>
-                            {order.provider?.includes("alipay") ||
-                            order.provider?.includes("epay") ? (
-                              "支付宝"
-                            ) : order.provider?.includes("wechat") ? (
-                              "微信"
-                            ) : (
-                              order.provider || "—"
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <OrderStatusBadge status={order.status} />
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-success tabular-nums">
-                            {order.quotaAmount !== null
-                              ? `+${formatQuota(order.quotaAmount)}`
-                              : "—"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="referral" className="m-0">
-              {referralLoading ? (
-                <div className="space-y-3 px-6 pb-6">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : !referralData?.rewards.length ? (
-                <div className="px-6 pb-6">
-                  <EmptyState
-                    title="暂无奖励"
-                    description="好友注册成功后，你的奖励记录会显示在这里。"
-                  />
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>时间</TableHead>
-                        <TableHead>来源</TableHead>
-                        <TableHead>状态</TableHead>
-                        <TableHead className="text-right">奖励金额</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {referralData.rewards.map((reward) => (
-                        <TableRow key={reward.id}>
-                          <TableCell className="whitespace-nowrap font-mono text-sm text-muted-foreground">
-                            {formatDateTime(reward.createdAt)}
-                          </TableCell>
-                          <TableCell>
-                            {reward.metadata?.referredUserId
-                              ? `好友 #${(reward.metadata.referredUserId || reward.referralId || "").slice(-6)}`
-                              : reward.reason === "referral_reward"
-                                ? "邀请好友"
-                                : reward.reason}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                reward.metadata?.quotaApplied !== false ? "success" : "warning"
-                              }
-                            >
-                              {reward.metadata?.quotaApplied !== false ? "已发放" : "待结算"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-primary tabular-nums">
-                            +{formatQuota(reward.amount)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </TabsContent>
-          </CardContent>
-        </Tabs>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>充值记录</CardTitle>
+            <CardDescription>这里记录你最近发起的 50 次充值，不包括历史总流水。</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={loadOrders}>
+            <RefreshCw className="h-4 w-4" />
+            刷新
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {ordersLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : ordersError ? (
+            <ErrorState
+              title="订单加载失败"
+              description={ordersError}
+              actionLabel="重新加载"
+              onAction={loadOrders}
+            />
+          ) : orders.length === 0 ? (
+            <EmptyState title="暂无记录" description="发起充值后，记录会出现在这里。" />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>订单号</TableHead>
+                  <TableHead>金额</TableHead>
+                  <TableHead>到账依据</TableHead>
+                  <TableHead>本地状态</TableHead>
+                  <TableHead>时间</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orders.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="max-w-[180px] truncate font-medium">
+                      {order.id}
+                    </TableCell>
+                    <TableCell>{formatCurrencyCny(order.amountCents)}</TableCell>
+                    <TableCell>{order.quotaAmount === null ? "NewAPI" : formatQuota(order.quotaAmount)}</TableCell>
+                    <TableCell>
+                      <Badge variant={order.status === "PAID" ? "secondary" : "outline"}>
+                        {localStatusText(order.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatDateTime(order.createdAt)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
       </Card>
     </div>
   );
 }
 
-function OrderStatusBadge({ status }: { status: string }) {
-  const normalized = status.toUpperCase();
-  const variant =
-    normalized === "PAID" ? "success" : normalized === "PENDING" ? "warning" : "error";
-
-  return (
-    <Badge variant={variant} className="gap-1">
-      {normalized === "PAID" ? (
-        <CheckCircle2 className="h-3 w-3" />
-      ) : normalized === "PENDING" ? (
-        <Clock className="h-3 w-3" />
-      ) : (
-        <AlertCircle className="h-3 w-3" />
-      )}
-      {statusText(status)}
-    </Badge>
-  );
+function localStatusText(status: string) {
+  const text = statusText(status);
+  return text === status ? `本地 ${status}` : `本地${text}`;
 }

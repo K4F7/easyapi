@@ -11,9 +11,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  // 共享 E2E 账号并行登录会互相挤掉会话，本地/CI 有凭据时固定单 worker。
-  workers:
-    process.env.CI || process.env.E2E_PORTAL_IDENTIFIER ? 1 : undefined,
+  workers: process.env.CI ? 1 : undefined,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,
