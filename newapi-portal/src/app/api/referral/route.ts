@@ -3,12 +3,17 @@ import { Prisma } from "@prisma/client";
 import { jsonOk, requireUser } from "@/lib/auth";
 import { getRequestBaseUrl, getPortalUserForApi, handleApiError } from "@/lib/api/bff";
 import { db } from "@/lib/db";
+import { isDevMockEnabled, mockReferralResponse } from "@/lib/dev-mock";
 import { getServerEnv } from "@/lib/env";
 import { adminAddQuota } from "@/lib/newapi";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockReferralResponse(request);
+  }
+
   try {
     const publicUser = await requireUser();
     const user = await getPortalUserForApi(publicUser.id);

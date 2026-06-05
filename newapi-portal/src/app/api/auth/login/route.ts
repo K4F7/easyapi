@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth";
 import { upsertPortalUserFromNewApiIdentity } from "@/lib/auth/newapi-user";
 import { db } from "@/lib/db";
+import { isDevMockEnabled, mockLoginResponse } from "@/lib/dev-mock";
 import {
   loginNewApiWithPassword,
   NewApiPasswordLoginError,
@@ -37,6 +38,10 @@ const loginSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockLoginResponse(request);
+  }
+
   try {
     const input = await readJson(request, loginSchema);
     const identifier = input.identifier || input.email;

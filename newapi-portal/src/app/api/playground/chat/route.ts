@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { jsonError, readJson, requireUser } from "@/lib/auth";
 import { getUserNewApiAuth, handleApiError } from "@/lib/api/bff";
+import { isDevMockEnabled, mockPlaygroundChatResponse } from "@/lib/dev-mock";
 import { getNewApiConfig } from "@/lib/newapi";
 import {
   PlaygroundError,
@@ -26,6 +27,10 @@ const chatSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockPlaygroundChatResponse();
+  }
+
   try {
     const user = await requireUser();
     const authResult = await getUserNewApiAuth(user);

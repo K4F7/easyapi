@@ -1,10 +1,15 @@
 import { jsonError, jsonOk, requireUser } from "@/lib/auth";
 import { getUserNewApiAuth, handleApiError } from "@/lib/api/bff";
+import { isDevMockEnabled, mockPlaygroundTokenResponse } from "@/lib/dev-mock";
 import { ensurePlaygroundTokenId } from "@/lib/playground/ensure-token";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  if (isDevMockEnabled()) {
+    return mockPlaygroundTokenResponse();
+  }
+
   try {
     const user = await requireUser();
     const authResult = await getUserNewApiAuth(user);

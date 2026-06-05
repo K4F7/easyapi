@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth";
 import { upsertPortalUserFromNewApiIdentity } from "@/lib/auth/newapi-user";
 import { db } from "@/lib/db";
+import { isDevMockEnabled, mockRegisterResponse } from "@/lib/dev-mock";
 import { getServerEnv } from "@/lib/env";
 import { adminAddQuota } from "@/lib/newapi";
 import {
@@ -44,6 +45,10 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockRegisterResponse(request);
+  }
+
   try {
     const input = await readJson(request, registerSchema);
     const existingPortalUser = await db.user.findUnique({

@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, requireUser } from "@/lib/auth";
 import { getUserNewApiAuth, handleApiError } from "@/lib/api/bff";
+import { isDevMockEnabled, mockPlaygroundModelsResponse } from "@/lib/dev-mock";
 import { getNewApiConfig } from "@/lib/newapi";
 import {
   PlaygroundError,
@@ -23,6 +24,10 @@ const FALLBACK_MODELS: { id: string }[] = [
 ];
 
 export async function GET(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockPlaygroundModelsResponse();
+  }
+
   try {
     const user = await requireUser();
     const authResult = await getUserNewApiAuth(user);

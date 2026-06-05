@@ -9,6 +9,11 @@ import {
   handleApiError,
   publicUserFromPortalUser,
 } from "@/lib/api/bff";
+import {
+  isDevMockEnabled,
+  mockImageGenerationOptions,
+  mockImageGenerationResponse,
+} from "@/lib/dev-mock";
 import { getNewApiConfig, NewApiError, type NewApiAuth } from "@/lib/newapi";
 import {
   createImageGeneration,
@@ -40,6 +45,10 @@ const imageGenerationSchema = z
   .passthrough();
 
 export async function handleImageGeneration(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockImageGenerationResponse(request);
+  }
+
   try {
     const parsedBody = await readJson(request, imageGenerationSchema);
     const context = await resolveImageRequestContext(request, parsedBody);
@@ -127,6 +136,10 @@ export async function handleImageGeneration(request: Request) {
 }
 
 export function handleImageGenerationOptions(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockImageGenerationOptions(request);
+  }
+
   return new Response(null, {
     status: 204,
     headers: corsHeaders(request),

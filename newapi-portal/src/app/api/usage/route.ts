@@ -1,4 +1,5 @@
 import { jsonError, jsonOk, requireUser } from "@/lib/auth";
+import { isDevMockEnabled, mockUsageRouteResponse } from "@/lib/dev-mock";
 import {
   getUserNewApiAuth,
   handleApiError,
@@ -14,6 +15,10 @@ import {
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockUsageRouteResponse();
+  }
+
   try {
     const user = await requireUser();
     const authResult = await getUserNewApiAuth(user);

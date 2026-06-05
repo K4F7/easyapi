@@ -5,10 +5,11 @@ import { randomBytes, createHmac, createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import type { User } from "@prisma/client";
+import type { PrismaClient, User } from "@prisma/client";
 import { z } from "zod";
 
-import { db } from "@/lib/db";
+import { getMockSessionToken, getMockUser } from "@/lib/dev-mock/store";
+import { isDevMockEnabled } from "@/lib/dev-mock/guard";
 import { getAuthSecret } from "@/lib/env";
 
 export { encryptSecret, decryptSecret } from "./crypto";
@@ -23,6 +24,8 @@ export const sessionCookieName = "portal_session";
 export const sessionMaxAgeSeconds = 60 * 60 * 24 * 30;
 
 const passwordHashRounds = 12;
+
+type DbClient = PrismaClient;
 
 export type PublicUser = {
   id: string;
@@ -118,8 +121,21 @@ export async function createSession(
   userId: string,
   request?: Request,
 ): Promise<{ expiresAt: Date }> {
+  if (isDevMockEnabled()) {
+    const expiresAt = new Date(Date.now() + sessionMaxAgeSeconds * 1000);
+    const cookieStore = await cookies();
+    cookieStore.set(
+      sessionCookieName,
+      getMockSessionToken(),
+      sessionCookieOptions(expiresAt, request),
+    );
+
+    return { expiresAt };
+  }
+
   const token = generateSessionToken();
   const AUTH_SECRET = getAuthSecret();
+  const db = await getDb();
   const tokenHash = hashSessionTokenWithSecret(token, AUTH_SECRET);
   const expiresAt = new Date(Date.now() + sessionMaxAgeSeconds * 1000);
 
@@ -143,10 +159,17 @@ export async function createSession(
 
 export async function destroySession(): Promise<void> {
   const cookieStore = await cookies();
+
+  if (isDevMockEnabled()) {
+    cookieStore.delete(sessionCookieName);
+    return;
+  }
+
   const token = cookieStore.get(sessionCookieName)?.value;
 
   if (token) {
     const AUTH_SECRET = getAuthSecret();
+    const db = await getDb();
     await db.session.updateMany({
       where: {
         tokenHash: {
@@ -171,7 +194,12 @@ export async function getCurrentUser(): Promise<PublicUser | null> {
     return null;
   }
 
+  if (isDevMockEnabled()) {
+    return token === getMockSessionToken() ? getMockUser() : null;
+  }
+
   const AUTH_SECRET = getAuthSecret();
+  const db = await getDb();
 
   const session = await db.session.findFirst({
     where: {
@@ -259,4 +287,8 @@ export function zodErrorResponse(error: z.ZodError): NextResponse<{ ok: false; e
     },
     400,
   );
+}
+
+async function getDb(): Promise<DbClient> {
+  return (await import("@/lib/db")).db;
 }
