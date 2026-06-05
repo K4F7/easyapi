@@ -102,8 +102,8 @@
 |----------|------|------|
 | `STAGING_IMAGE_PLAYGROUND_INTERNAL_URL` | **Scheme 4**：生图 Playground 容器内网上游；Portal 在 `/playground/embed/` 同源反代 | `http://image-playground:8080` |
 | `STAGING_PUBLIC_NEWAPI_BASE_URL` | 前端可见的 NewAPI 公网地址；Docker build 时写入 `NEXT_PUBLIC_NEWAPI_BASE_URL` | `https://api.easyapi.work` |
-| `STAGING_IMAGE_PLAYGROUND_ALLOWED_ORIGIN`（可选） | 遗留跨域 Playground 调用图像 API 的 CORS allowlist；Scheme 4 同源嵌入通常可留空 | （留空） |
-| `STAGING_IMAGE_PLAYGROUND_URL`（可选） | 上述 CORS 的 runtime fallback | （留空） |
+| `STAGING_IMAGE_PLAYGROUND_ALLOWED_ORIGIN`（可选） | 跨域 Playground 调用图像 API 的 CORS allowlist；Scheme 4 同源嵌入通常可留空 | `https://image.easyapi.work` |
+| `STAGING_IMAGE_PLAYGROUND_URL`（可选） | 跨域 iframe 回退；build 时写入 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL` | `https://image.easyapi.work` |
 
 **Scheme 4（同源嵌入）要点：**
 
@@ -136,6 +136,46 @@ portal-test:
 ```
 
 部署时 CI 与手动脚本都会 `export PORTAL_IMAGE=...` 再执行 `docker compose up`。`IMAGE_PLAYGROUND_INTERNAL_URL` 须为 `portal-test` 容器在同 compose 网络内可访问的地址；Playground 服务无需再暴露公网反代。
+
+### image.easyapi.work 反代与安全头（1Panel openresty）
+
+staging 上生图 Playground 容器为 `easyapi-portal-image-playground-test`（`127.0.0.1:2334` → 公网 `https://image.easyapi.work`）。openresty 由 **1Panel** 管理，站点配置在宿主机：
+
+| 路径 | 说明 |
+|------|------|
+| `/opt/1panel/www/sites/image.easyapi.work/proxy/root.conf` | 反代到 `127.0.0.1:2334` 的 `location` |
+| openresty 容器 | `1Panel-openresty-1TFn` |
+
+**必须**在 `root.conf` 的 `location` 内加入 embed 安全头，仅允许 Portal 域 iframe 嵌入，并避免缓存带 token 的 URL：
+
+```nginx
+proxy_hide_header Referrer-Policy;
+add_header Content-Security-Policy "frame-ancestors https://test.easyapi.work https://easyapi.work" always;
+add_header Cache-Control "no-store" always;
+add_header Referrer-Policy "no-referrer" always;
+```
+
+一键应用（在 staging 主机或本机 SSH 管道执行）：
+
+```bash
+ssh root@45.142.115.128 'bash -s' < scripts/configure-image-playground-openresty.sh
+```
+
+验证：
+
+```bash
+curl -sI https://image.easyapi.work/ | grep -iE 'content-security-policy|cache-control|referrer-policy'
+```
+
+期望包含：
+
+```text
+content-security-policy: frame-ancestors https://test.easyapi.work https://easyapi.work
+cache-control: no-store
+referrer-policy: no-referrer
+```
+
+说明：`frame-ancestors` 限制「谁可以 iframe 嵌入」，**不能**阻止用户在地址栏直接打开 `https://image.easyapi.work/`。详见 [`image-playground-security.md`](image-playground-security.md)。
 
 ### 生图 Playground 认证与代理边界
 
@@ -170,6 +210,9 @@ Portal 提供两个兼容代理入口：
 ```bash
 export PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:dev-latest   # 或 test-latest
 export IMAGE_PLAYGROUND_INTERNAL_URL=http://image-playground:8080
+# 跨域 iframe 回退（可选，与 openresty frame-ancestors 配合）：
+# export IMAGE_PLAYGROUND_ALLOWED_ORIGIN=https://image.easyapi.work
+# export IMAGE_PLAYGROUND_URL=https://image.easyapi.work
 ssh root@45.142.115.128 'bash -s' < scripts/deploy-portal-staging.sh
 ```
 
@@ -361,7 +404,16 @@ curl -I "https://test.easyapi.work/playground/embed/"
 
 未配置 `IMAGE_PLAYGROUND_INTERNAL_URL` 时期望 `503`；配置正确且上游健康时期望 `200`（或上游状态码）。
 
-Scheme 4 下图像 API 为同源调用，通常无需跨域 CORS preflight。
+Scheme 4 下图像 API 为同源调用，通常无需跨域 CORS preflight。若使用跨域 iframe 回退（`NEXT_PUBLIC_IMAGE_PLAYGROUND_URL=https://image.easyapi.work`），可额外检查：
+
+```bash
+curl -i -X OPTIONS "https://test.easyapi.work/v1/images/generations" \
+  -H "Origin: https://image.easyapi.work" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: authorization,content-type"
+```
+
+期望响应包含 `access-control-allow-origin: https://image.easyapi.work`。若无此头，检查 compose 是否注入 `IMAGE_PLAYGROUND_ALLOWED_ORIGIN`。
 
 ---
 
@@ -486,6 +538,7 @@ docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easy
 - [ ] `dev` 或 `main` 已 push（`newapi-portal/` 有变更），GHA **Portal staging CD** 构建与 deploy 均为绿色
 - [ ] GitHub Variables 已配置：`STAGING_IMAGE_PLAYGROUND_INTERNAL_URL`、`STAGING_PUBLIC_NEWAPI_BASE_URL`
 - [ ] 服务器 `portal-test.environment` 已注入：`IMAGE_PLAYGROUND_INTERNAL_URL`
+- [ ] 若仍暴露公网 `image.easyapi.work`：openresty 已配置 `frame-ancestors` / `no-store` / `no-referrer`（见 **image.easyapi.work 反代与安全头**）
 - [ ] 服务器 **仅** `portal-test` 已 recreate，镜像 tag 与分支一致（`dev-latest` / `test-latest`）
 - [ ] `curl https://test.easyapi.work/api/health` → `ok: true`
 - [ ] `pnpm seed:screenshot-user` 成功
