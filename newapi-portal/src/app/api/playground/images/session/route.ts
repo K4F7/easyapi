@@ -4,6 +4,11 @@ import { getUserNewApiAuth, handleApiError } from "@/lib/api/bff";
 import { jsonError, jsonOk, readJson, requireUser } from "@/lib/auth";
 import { NewApiError } from "@/lib/newapi";
 import {
+  resolveImageEmbedTarget,
+  resolveSessionOrigins,
+  type ImageEmbedTarget,
+} from "@/lib/playground/image-playground-origins";
+import {
   imageSessionTokenTtlSeconds,
   signPlaygroundImageSessionToken,
 } from "@/lib/playground/image-session-token";
@@ -20,6 +25,7 @@ const imageSessionSchema = z.object({
       (value) => (typeof value === "string" ? Number(value) : value),
       z.number().int().positive(),
     ),
+  embedTarget: z.enum(["proxy", "external"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -39,9 +45,32 @@ export async function POST(request: Request) {
 
     const body = await readJson(request, imageSessionSchema);
     await assertPlaygroundTokenAccess(authResult.auth, body.tokenId);
+    const embedTarget: ImageEmbedTarget = resolveImageEmbedTarget(
+      body.embedTarget,
+    );
+    let portalOrigin: string;
+    let playgroundOrigin: string;
+
+    try {
+      ({ portalOrigin, playgroundOrigin } = resolveSessionOrigins(
+        request,
+        embedTarget,
+      ));
+    } catch {
+      return jsonError(
+        {
+          code: "IMAGE_PLAYGROUND_NOT_CONFIGURED",
+          message: "生图 Playground 未配置，无法签发会话",
+        },
+        503,
+      );
+    }
+
     const token = signPlaygroundImageSessionToken({
       userId: user.id,
       tokenId: body.tokenId,
+      portalOrigin,
+      playgroundOrigin,
     });
 
     return jsonOk({

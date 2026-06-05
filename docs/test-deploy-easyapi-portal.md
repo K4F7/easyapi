@@ -100,14 +100,18 @@
 
 | Variable | 用途 | 示例 |
 |----------|------|------|
-| `STAGING_IMAGE_PLAYGROUND_URL` | 独立部署的生图 Playground iframe 地址；Docker build 时写入 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`，部署时也作为 Portal runtime CORS allowlist 来源 | `https://image-playground.example.com` |
+| `STAGING_IMAGE_PLAYGROUND_INTERNAL_URL` | **Scheme 4**：生图 Playground 容器内网上游；Portal 在 `/playground/embed/` 同源反代 | `http://image-playground:8080` |
 | `STAGING_PUBLIC_NEWAPI_BASE_URL` | 前端可见的 NewAPI 公网地址；Docker build 时写入 `NEXT_PUBLIC_NEWAPI_BASE_URL` | `https://api.easyapi.work` |
+| `STAGING_IMAGE_PLAYGROUND_ALLOWED_ORIGIN`（可选） | 遗留跨域 Playground 调用图像 API 的 CORS allowlist；Scheme 4 同源嵌入通常可留空 | （留空） |
+| `STAGING_IMAGE_PLAYGROUND_URL`（可选） | 上述 CORS 的 runtime fallback | （留空） |
 
-**build-time 与 runtime 区别：**
+**Scheme 4（同源嵌入）要点：**
 
-- `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`、`NEXT_PUBLIC_NEWAPI_BASE_URL` 会在 `pnpm build` 时被 Next.js 内联进前端 bundle；修改后必须重新构建镜像。
-- `IMAGE_PLAYGROUND_ALLOWED_ORIGIN` / `IMAGE_PLAYGROUND_URL` 是 Portal 服务端运行时变量，用于 `/v1/images/generations` 与 `/api/playground/images/generations` 的 CORS 判断；修改后只需 recreate `portal-test`。
-- GHA 的 Docker build 已通过 `build-args` 传入 `STAGING_IMAGE_PLAYGROUND_URL`、`STAGING_PUBLIC_NEWAPI_BASE_URL`；Deploy job 会把 `IMAGE_PLAYGROUND_ALLOWED_ORIGIN`、`IMAGE_PLAYGROUND_URL` 传给 SSH 部署脚本。服务器 compose 仍必须显式把这些变量写入 `portal-test.environment`，否则容器拿不到运行时变量。
+- iframe 优先使用 Portal 本域 `/playground/embed/?...`，由 `IMAGE_PLAYGROUND_INTERNAL_URL` 反代到内网 Playground 容器；**无需**公网 `https://image.easyapi.work/`。
+- `IMAGE_PLAYGROUND_INTERNAL_URL` 是 Portal **运行时**变量；修改后只需 recreate `portal-test`，无需重建镜像。
+- `NEXT_PUBLIC_NEWAPI_BASE_URL` 仍在 build 时内联；修改后须重建镜像。
+- 未配置 `IMAGE_PLAYGROUND_INTERNAL_URL` 时，若仍设置了 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`，Portal 可回退到跨域 iframe（迁移期兼容）。
+- GHA Deploy 会把 `IMAGE_PLAYGROUND_INTERNAL_URL` 传给部署脚本；compose 须写入 `portal-test.environment`。
 
 查看运行状态：
 
@@ -126,11 +130,12 @@ portal-test:
   image: ${PORTAL_IMAGE:-ghcr.io/k4f7/easyapi/newapi-portal:test-latest}
   environment:
     # 其他 DATABASE_URL / AUTH_SECRET / NEWAPI_* 等既有变量保持不变。
+    IMAGE_PLAYGROUND_INTERNAL_URL: ${IMAGE_PLAYGROUND_INTERNAL_URL:-http://image-playground:8080}
     IMAGE_PLAYGROUND_ALLOWED_ORIGIN: ${IMAGE_PLAYGROUND_ALLOWED_ORIGIN:-}
     IMAGE_PLAYGROUND_URL: ${IMAGE_PLAYGROUND_URL:-}
 ```
 
-部署时 CI 与手动脚本都会 `export PORTAL_IMAGE=...` 再执行 `docker compose up`。生图 iframe 若跨域部署，`IMAGE_PLAYGROUND_ALLOWED_ORIGIN` 必须等于 iframe 页面发起请求时的 `Origin`（通常就是 `STAGING_IMAGE_PLAYGROUND_URL` 的 origin）；可用逗号分隔多个 origin。
+部署时 CI 与手动脚本都会 `export PORTAL_IMAGE=...` 再执行 `docker compose up`。`IMAGE_PLAYGROUND_INTERNAL_URL` 须为 `portal-test` 容器在同 compose 网络内可访问的地址；Playground 服务无需再暴露公网反代。
 
 ### 生图 Playground 认证与代理边界
 
@@ -164,8 +169,7 @@ Portal 提供两个兼容代理入口：
 
 ```bash
 export PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:dev-latest   # 或 test-latest
-export IMAGE_PLAYGROUND_ALLOWED_ORIGIN=https://image-playground.example.com
-export IMAGE_PLAYGROUND_URL=https://image-playground.example.com
+export IMAGE_PLAYGROUND_INTERNAL_URL=http://image-playground:8080
 ssh root@45.142.115.128 'bash -s' < scripts/deploy-portal-staging.sh
 ```
 
@@ -342,31 +346,22 @@ pnpm screenshots:e2e
 
 ### 步骤 6：生图 Playground 上线验证
 
-当 `STAGING_IMAGE_PLAYGROUND_URL` 已配置时，`verify_ui` 中的 [`playground.spec.ts`](../newapi-portal/tests/e2e/playground.spec.ts) 会断言：
+当 `STAGING_IMAGE_PLAYGROUND_INTERNAL_URL` 已配置时，`verify_ui` 中的 [`playground.spec.ts`](../newapi-portal/tests/e2e/playground.spec.ts) 会断言：
 
 - `/dashboard/playground?tab=image` 必须出现 `iframe[title="生图 Playground"]`，不能退化为「未配置」提示。
-- iframe URL 必须包含 `apiUrl` / `baseUrl` / `imageApiUrl` 指向 Portal 本域代理。
-- iframe URL 的 `apiKey` / `playgroundSessionToken` 必须是 `portal-image-session-v1.*` 签名 token，不能出现真实 `sk-*`，也不能再使用 `portal-token-<id>` 这类裸 tokenId marker。
+- iframe `pathname` 为 `/playground/embed/`，`origin` 与 Portal 相同（Scheme 4）。
+- iframe URL 包含 `apiUrl` / `baseUrl` / `imageApiUrl` 指向 Portal 本域代理；**同源模式不在 URL 中携带** `playgroundSessionToken`。
+- 不得出现真实 `sk-*` 或 `portal-token-<id>`。
 
-手动检查 CORS preflight（把 origin 替换成真实 `STAGING_IMAGE_PLAYGROUND_URL` 的 origin）：
+手动检查 embed 反代（需登录 session 或有效 embed 查询参数）：
 
 ```bash
-curl -i -X OPTIONS "https://test.easyapi.work/v1/images/generations" \
-  -H "Origin: https://image-playground.example.com" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: authorization,content-type"
+curl -I "https://test.easyapi.work/playground/embed/"
 ```
 
-期望响应包含：
+未配置 `IMAGE_PLAYGROUND_INTERNAL_URL` 时期望 `503`；配置正确且上游健康时期望 `200`（或上游状态码）。
 
-```text
-HTTP/2 204
-access-control-allow-origin: https://image-playground.example.com
-access-control-allow-headers: Content-Type, Authorization
-access-control-allow-credentials: true
-```
-
-如果没有 `access-control-allow-origin`，优先检查服务器 compose 是否已把 `IMAGE_PLAYGROUND_ALLOWED_ORIGIN` 注入 `portal-test` 容器，而不是只配置了 build-time 的 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`。
+Scheme 4 下图像 API 为同源调用，通常无需跨域 CORS preflight。
 
 ---
 
@@ -489,13 +484,13 @@ docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easy
 ## 快速检查清单
 
 - [ ] `dev` 或 `main` 已 push（`newapi-portal/` 有变更），GHA **Portal staging CD** 构建与 deploy 均为绿色
-- [ ] GitHub Variables 已配置：`STAGING_IMAGE_PLAYGROUND_URL`、`STAGING_PUBLIC_NEWAPI_BASE_URL`
-- [ ] 服务器 `portal-test.environment` 已注入：`IMAGE_PLAYGROUND_ALLOWED_ORIGIN`、`IMAGE_PLAYGROUND_URL`
+- [ ] GitHub Variables 已配置：`STAGING_IMAGE_PLAYGROUND_INTERNAL_URL`、`STAGING_PUBLIC_NEWAPI_BASE_URL`
+- [ ] 服务器 `portal-test.environment` 已注入：`IMAGE_PLAYGROUND_INTERNAL_URL`
 - [ ] 服务器 **仅** `portal-test` 已 recreate，镜像 tag 与分支一致（`dev-latest` / `test-latest`）
 - [ ] `curl https://test.easyapi.work/api/health` → `ok: true`
 - [ ] `pnpm seed:screenshot-user` 成功
-- [ ] `https://test.easyapi.work/dashboard/playground?tab=image` 在配置 `STAGING_IMAGE_PLAYGROUND_URL` 时出现生图 iframe，iframe URL 不含 `sk-*` 或 `portal-token-<id>`
-- [ ] `/v1/images/generations` CORS preflight 对 `STAGING_IMAGE_PLAYGROUND_URL` 的 origin 返回 `access-control-allow-origin`
+- [ ] `https://test.easyapi.work/dashboard/playground?tab=image` 在配置 `STAGING_IMAGE_PLAYGROUND_INTERNAL_URL` 时出现生图 iframe，`src` 为同源 `/playground/embed/`
+- [ ] 公网 `image.easyapi.work`（若曾部署）已下线或仅内网可达
 - [ ] `pnpm screenshots:e2e` 生成 9 张截图
 
 ### Portal static assets (public/)

@@ -15,6 +15,8 @@ const imageSessionPayloadSchema = z.object({
   aud: z.literal(imageSessionAudience),
   userId: z.string().min(1),
   tokenId: z.number().int().positive(),
+  portalOrigin: z.string().min(1),
+  playgroundOrigin: z.string().min(1),
   iat: z.number().int().nonnegative(),
   exp: z.number().int().positive(),
 });
@@ -37,13 +39,18 @@ export class PlaygroundImageSessionTokenError extends Error {
 }
 
 export function signPlaygroundImageSessionToken(
-  input: Pick<PlaygroundImageSessionPayload, "userId" | "tokenId">,
+  input: Pick<
+    PlaygroundImageSessionPayload,
+    "userId" | "tokenId" | "portalOrigin" | "playgroundOrigin"
+  >,
   nowSeconds = currentUnixSeconds(),
 ): string {
   const payload: PlaygroundImageSessionPayload = {
     aud: imageSessionAudience,
     userId: input.userId,
     tokenId: input.tokenId,
+    portalOrigin: input.portalOrigin,
+    playgroundOrigin: input.playgroundOrigin,
     iat: nowSeconds,
     exp: nowSeconds + imageSessionTokenTtlSeconds,
   };
@@ -94,6 +101,32 @@ export function verifyPlaygroundImageSessionToken(
   }
 
   return payload;
+}
+
+export function assertImageSessionTokenOrigins(
+  payload: PlaygroundImageSessionPayload,
+  request: Request,
+): void {
+  const portalOrigin = new URL(request.url).origin;
+
+  if (payload.portalOrigin !== portalOrigin) {
+    throw new PlaygroundImageSessionTokenError(
+      "INVALID_IMAGE_SESSION_TOKEN",
+      "Image session token was not issued for this portal",
+    );
+  }
+
+  const requestOrigin = request.headers.get("origin");
+  if (
+    requestOrigin &&
+    requestOrigin !== payload.playgroundOrigin &&
+    requestOrigin !== portalOrigin
+  ) {
+    throw new PlaygroundImageSessionTokenError(
+      "INVALID_IMAGE_SESSION_TOKEN",
+      "Image session token was not issued for this playground origin",
+    );
+  }
 }
 
 function parsePayload(encodedPayload: string): PlaygroundImageSessionPayload {

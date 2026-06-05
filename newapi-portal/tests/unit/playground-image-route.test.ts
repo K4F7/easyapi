@@ -139,6 +139,9 @@ describe("POST playground image session", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.AUTH_SECRET = "unit-test-auth-secret-at-least-32-chars";
+    process.env.IMAGE_PLAYGROUND_INTERNAL_URL = "http://image-playground:8080";
+    process.env.IMAGE_PLAYGROUND_ALLOWED_ORIGIN =
+      "https://playground.example.test";
     mockRequireUser.mockResolvedValue({
       id: "portal-user-1",
       email: "user@example.com",
@@ -244,6 +247,7 @@ describe("POST playground image generations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.AUTH_SECRET = "unit-test-auth-secret-at-least-32-chars";
+    delete process.env.IMAGE_PLAYGROUND_INTERNAL_URL;
     delete process.env.IMAGE_PLAYGROUND_ALLOWED_ORIGIN;
     delete process.env.IMAGE_PLAYGROUND_URL;
     delete process.env.NEXT_PUBLIC_IMAGE_PLAYGROUND_URL;
@@ -278,6 +282,8 @@ describe("POST playground image generations", () => {
     const sessionToken = signPlaygroundImageSessionToken({
       userId: "portal-user-1",
       tokenId: 303,
+      portalOrigin: "https://portal.example.test",
+      playgroundOrigin: "https://playground.example.test",
     });
 
     const response = await handleImageGeneration(
@@ -317,6 +323,8 @@ describe("POST playground image generations", () => {
     const sessionToken = signPlaygroundImageSessionToken({
       userId: "portal-user-1",
       tokenId: 101,
+      portalOrigin: "https://portal.example.test",
+      playgroundOrigin: "https://runtime-playground.example.test",
     });
 
     const response = await handleImageGeneration(
@@ -434,11 +442,40 @@ describe("POST playground image generations", () => {
     );
   });
 
+  it("rejects a signed image session token bound to a different playground origin", async () => {
+    process.env.IMAGE_PLAYGROUND_ALLOWED_ORIGIN =
+      "https://playground.example.test";
+    const sessionToken = signPlaygroundImageSessionToken({
+      userId: "portal-user-1",
+      tokenId: 303,
+      portalOrigin: "https://portal.example.test",
+      playgroundOrigin: "https://other-playground.example.test",
+    });
+
+    const response = await handleImageGeneration(
+      jsonRequest(
+        "https://portal.example.test/v1/images/generations",
+        {
+          prompt: "draw with mismatched origin",
+          playgroundSessionToken: sessionToken,
+        },
+        { Origin: "https://playground.example.test" },
+      ),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(401);
+    expect(body.error?.code).toBe("INVALID_IMAGE_SESSION_TOKEN");
+    expect(mockResolvePlaygroundKey).not.toHaveBeenCalled();
+  });
+
   it("rejects an expired signed image session token", async () => {
     const expiredToken = signPlaygroundImageSessionToken(
       {
         userId: "portal-user-1",
         tokenId: 303,
+        portalOrigin: "https://portal.example.test",
+        playgroundOrigin: "https://playground.example.test",
       },
       100,
     );

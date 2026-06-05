@@ -60,7 +60,6 @@ jobs:
           REGISTER_QUOTA: "100000"
           CHECKIN_QUOTA: "1000"
           INVITE_REWARD_QUOTA: "5000"
-          NEXT_PUBLIC_IMAGE_PLAYGROUND_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
           NEXT_PUBLIC_NEWAPI_BASE_URL: ${{ vars.STAGING_PUBLIC_NEWAPI_BASE_URL }}
         run: pnpm build
 
@@ -74,7 +73,6 @@ jobs:
           file: ./newapi-portal/Dockerfile
           push: false
           build-args: |
-            NEXT_PUBLIC_IMAGE_PLAYGROUND_URL=${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
             NEXT_PUBLIC_NEWAPI_BASE_URL=${{ vars.STAGING_PUBLIC_NEWAPI_BASE_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

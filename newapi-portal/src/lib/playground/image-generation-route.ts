@@ -15,7 +15,9 @@ import {
   PlaygroundError,
   resolvePlaygroundKey,
 } from "@/lib/newapi/playground";
+import { isConfiguredPlaygroundOriginAllowed } from "@/lib/playground/image-playground-origins";
 import {
+  assertImageSessionTokenOrigins,
   imageSessionTokenPrefix,
   PlaygroundImageSessionTokenError,
   verifyPlaygroundImageSessionToken,
@@ -152,6 +154,7 @@ async function resolveImageRequestContext(
 
   if (signedToken) {
     const payload = verifyPlaygroundImageSessionToken(signedToken);
+    assertImageSessionTokenOrigins(payload, request);
     const portalUser = await getPortalUserForApi(payload.userId);
     const authResult = await getUserNewApiAuth(
       publicUserFromPortalUser(portalUser),
@@ -349,42 +352,3 @@ function resolveAllowedOrigin(request: Request): string | null {
     : null;
 }
 
-function isConfiguredPlaygroundOriginAllowed(
-  origin: string,
-  requestOrigin: string,
-): boolean {
-  for (const envKey of [
-    "IMAGE_PLAYGROUND_ALLOWED_ORIGIN",
-    "IMAGE_PLAYGROUND_URL",
-    "NEXT_PUBLIC_IMAGE_PLAYGROUND_URL",
-  ] as const) {
-    const origins = parseConfiguredOrigins(process.env[envKey], requestOrigin);
-    if (origins.length > 0) {
-      return origins.includes(origin);
-    }
-  }
-
-  return false;
-}
-
-function parseConfiguredOrigins(
-  value: string | undefined,
-  requestOrigin: string,
-): string[] {
-  if (!value) {
-    return [];
-  }
-
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((item) => {
-      try {
-        return new URL(item, requestOrigin).origin;
-      } catch {
-        return null;
-      }
-    })
-    .filter((origin): origin is string => origin !== null);
-}
