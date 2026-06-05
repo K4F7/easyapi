@@ -121,7 +121,14 @@ function StatItem({
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
       <div className="mt-0.5 truncate text-lg font-semibold tabular-nums">
-        {loading ? <Skeleton className="h-7 w-20" /> : value}
+        {loading ? (
+          <span
+            aria-hidden="true"
+            className="inline-block h-7 w-20 animate-pulse rounded-md bg-muted align-middle"
+          />
+        ) : (
+          value
+        )}
       </div>
     </div>
   );
