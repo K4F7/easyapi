@@ -20,21 +20,6 @@ const staticAssetExtensions = [
   "otf",
 ];
 
-function buildFrameSrcDirective(): string {
-  const sources = new Set(["'self'"]);
-  const playgroundUrl = process.env.NEXT_PUBLIC_IMAGE_PLAYGROUND_URL?.trim();
-
-  if (playgroundUrl) {
-    try {
-      sources.add(new URL(playgroundUrl).origin);
-    } catch {
-      // Ignore invalid build-time playground URL.
-    }
-  }
-
-  return [...sources].join(" ");
-}
-
 const securityHeaders = [
   {
     key: "X-Frame-Options",
@@ -50,7 +35,7 @@ const securityHeaders = [
   },
   {
     key: "Content-Security-Policy",
-    value: `frame-ancestors 'self'; frame-src ${buildFrameSrcDirective()}`,
+    value: "frame-ancestors 'self'; frame-src 'self'",
   },
 ];
 

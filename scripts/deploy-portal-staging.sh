@@ -5,7 +5,7 @@
 #
 # Optional: REMOTE_DIR, COMPOSE_PROJECT, COMPOSE_FILE, SERVICE_NAME
 # Optional runtime env for portal-test compose interpolation:
-#   IMAGE_PLAYGROUND_INTERNAL_URL, IMAGE_PLAYGROUND_ALLOWED_ORIGIN, IMAGE_PLAYGROUND_URL
+#   IMAGE_PLAYGROUND_INTERNAL_URL
 # Optional GHCR login: GHCR_PULL_USER + GHCR_PULL_TOKEN (read:packages PAT)
 #
 # FORBIDDEN (do not add to this script):
@@ -48,8 +48,6 @@ fi
 echo "Recreating ${SERVICE_NAME} only (project=${COMPOSE_PROJECT}) ..."
 export PORTAL_IMAGE
 export IMAGE_PLAYGROUND_INTERNAL_URL="${IMAGE_PLAYGROUND_INTERNAL_URL:-}"
-export IMAGE_PLAYGROUND_ALLOWED_ORIGIN="${IMAGE_PLAYGROUND_ALLOWED_ORIGIN:-}"
-export IMAGE_PLAYGROUND_URL="${IMAGE_PLAYGROUND_URL:-}"
 docker compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" \
   up -d --no-deps --force-recreate "${SERVICE_NAME}"
 

@@ -26,7 +26,7 @@ const imageSessionSchema = z.object({
       (value) => (typeof value === "string" ? Number(value) : value),
       z.number().int().positive(),
     ),
-  embedTarget: z.enum(["proxy", "external"]).optional(),
+  embedTarget: z.literal("proxy").optional(),
 });
 
 export async function POST(request: Request) {
