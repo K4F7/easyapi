@@ -68,7 +68,7 @@ export default function HomePage() {
       {/* Soft background blobs */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[500px] bg-primary opacity-5 rounded-full blur-3xl -z-10 pointer-events-none" />
       
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-6 relative z-10">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 sm:px-6 relative z-10">
         <motion.header 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -94,7 +94,7 @@ export default function HomePage() {
           </div>
         </motion.header>
 
-        <section className="flex-1 py-16 md:py-24 flex items-center">
+        <section className="flex-1 py-14 sm:py-16 md:py-24 flex items-center">
           <div className="grid gap-16 lg:grid-cols-[1.1fr_1fr] items-center w-full">
             
             <motion.div 
@@ -111,10 +111,11 @@ export default function HomePage() {
               
               <motion.h1 
                 variants={itemVariants}
-                className="text-4xl sm:text-5xl lg:text-6xl xl:text-[4rem] font-extrabold tracking-normal text-slate-900 leading-[1.2] sm:leading-[1.15]"
+                className="text-balance text-[2.2rem] sm:text-5xl lg:text-6xl xl:text-[4rem] font-extrabold tracking-normal text-slate-900 leading-[1.18] sm:leading-[1.15]"
               >
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-blue-600 inline-block">
-                  管令牌、看用量、随时充值
+                  <span className="block sm:inline">管令牌、看用量、</span>
+                  <span className="block sm:inline">随时充值</span>
                 </span>
               </motion.h1>
               
