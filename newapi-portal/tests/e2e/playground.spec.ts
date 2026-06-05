@@ -67,7 +67,7 @@ async function mockModels(page: Page) {
 }
 
 async function mockImageSession(page: Page) {
-  await page.route("**/api/playground/images/session", async (route) => {
+  await page.route("**/api/playground/images/session**", async (route) => {
     const body = JSON.parse(route.request().postData() ?? "{}") as Record<
       string,
       unknown
@@ -156,6 +156,10 @@ test.describe("Playground", () => {
   test("defaults to chat tab; tab switches update URL without full reload", async ({
     page,
   }) => {
+    await mockTokens(page, MASKED_TOKENS);
+    await mockModels(page);
+    await mockImageSession(page);
+
     const loadEvents: number[] = [];
     page.on("load", () => loadEvents.push(1));
 
@@ -171,6 +175,7 @@ test.describe("Playground", () => {
     await page.getByRole("tab", { name: "生图" }).click();
     await expect(page).toHaveURL(/tab=image/);
     await expect(imagePlaygroundReadySignal(page)).toBeVisible();
+    await expectImageIframeDoesNotExposeRealKey(page);
     expect(loadEvents.length).toBe(loadsBeforeTab);
 
     await page.getByRole("tab", { name: "对话" }).click();
@@ -369,6 +374,7 @@ test.describe("Playground", () => {
     );
 
     await openPlaygroundChat(page);
+    await mockImageSession(page);
     await page.reload();
     await expect(
       page.getByRole("heading", { name: "操练场", level: 1 }),
@@ -377,6 +383,24 @@ test.describe("Playground", () => {
     await page.goto("/dashboard/playground?tab=image");
     await page.goto("/dashboard/playground?tab=chat");
 
-    assertNoClientErrors(failedResponses, notFoundResponses, browserErrors);
+    await assertNoClientErrors(
+      failedResponses,
+      notFoundResponses,
+      browserErrors,
+    );
   });
 });
+
+async function expectImageIframeDoesNotExposeRealKey(page: Page) {
+  const iframe = page.locator('iframe[title="生图 Playground"]');
+  if ((await iframe.count()) === 0) {
+    return;
+  }
+
+  const src = await iframe.first().getAttribute("src");
+  expect(src).toBeTruthy();
+  expect(src).toMatch(/portal-image-session-v1\./);
+  expect(src).not.toMatch(
+    /sk-[a-zA-Z0-9]{8,}|portal-token-\d+|api[_-]?key=sk-/i,
+  );
+}

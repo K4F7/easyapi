@@ -1,13 +1,19 @@
 import { expect, test } from "@playwright/test";
 
-import { ensureDashboardSession } from "./helpers";
-import { AUTH_ROUTES, isBenign404, routeLocator } from "./routes";
+import {
+  attachPageDiagnostics,
+  assertNoClientErrors,
+  ensureDashboardSession,
+} from "./helpers";
+import { AUTH_ROUTES, routeLocator } from "./routes";
 
 const identifier = process.env.E2E_PORTAL_IDENTIFIER;
 const password = process.env.E2E_PORTAL_PASSWORD;
 
 test.describe("NewAPI Portal smoke", () => {
-  test("health endpoint reports the portal service as OK", async ({ request }) => {
+  test("health endpoint reports the portal service as OK", async ({
+    request,
+  }) => {
     const response = await request.get("/api/health");
     const payload = await response.json();
 
@@ -29,10 +35,9 @@ test.describe("NewAPI Portal smoke", () => {
     await expect(page.getByLabel("邮箱或用户名")).toBeVisible();
     await expect(page.getByRole("textbox", { name: "密码" })).toBeVisible();
     await expect(page.getByRole("button", { name: "登录" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "免费创建账户" })).toHaveAttribute(
-      "href",
-      "/register",
-    );
+    await expect(
+      page.getByRole("link", { name: "免费创建账户" }),
+    ).toHaveAttribute("href", "/register");
 
     await expect(
       page.getByRole("button", { name: /github|oauth|google/i }),
@@ -55,9 +60,13 @@ test.describe("NewAPI Portal smoke", () => {
     await expect(page.getByLabel(/邀请码/)).toBeVisible();
     await expect(page.getByText(/服务条款|隐私政策|我同意/)).toHaveCount(0);
     await page.goto("/register?inviteCode=ABC123");
-    await expect(page.getByRole("button", { name: "获取验证码" })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "获取验证码" }),
+    ).toBeDisabled();
     await page.getByLabel("邮箱地址").fill("user@example.com");
-    await expect(page.getByRole("button", { name: "获取验证码" })).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "获取验证码" }),
+    ).toBeEnabled();
     await expect(page.getByLabel(/turnstile/i)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "完成注册" })).toBeEnabled();
 
@@ -134,16 +143,12 @@ test.describe("NewAPI Portal smoke", () => {
     const notFoundResponses: string[] = [];
     const browserErrors: string[] = [];
 
-    page.on("response", (response) => {
-      const status = response.status();
-      const url = response.url();
-      if (status >= 500) {
-        failedResponses.push(`${status} ${url}`);
-      } else if (status === 404 && !isBenign404(url)) {
-        notFoundResponses.push(url);
-      }
-    });
-    page.on("pageerror", (error) => browserErrors.push(error.message));
+    attachPageDiagnostics(
+      page,
+      failedResponses,
+      notFoundResponses,
+      browserErrors,
+    );
 
     await ensureDashboardSession(page);
     await expect(page.getByText("客户控制台")).toBeVisible();
@@ -195,8 +200,10 @@ test.describe("NewAPI Portal smoke", () => {
       }
     }
 
-    expect(failedResponses).toEqual([]);
-    expect(notFoundResponses).toEqual([]);
-    expect(browserErrors).toEqual([]);
+    await assertNoClientErrors(
+      failedResponses,
+      notFoundResponses,
+      browserErrors,
+    );
   });
 });

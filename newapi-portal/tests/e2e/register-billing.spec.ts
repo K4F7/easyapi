@@ -72,7 +72,9 @@ test.describe("Register page", () => {
     expect(registerRequests[0]).not.toHaveProperty("acceptedTerms");
   });
 
-  test("legacy aff query is not used for invite link format", async ({ page }) => {
+  test("legacy aff query is not used for invite link format", async ({
+    page,
+  }) => {
     await page.goto("/register?aff=OLDSTYLE");
     const registerRequests: Array<Record<string, unknown>> = [];
     await page.route("**/api/auth/register", async (route) => {
@@ -96,12 +98,14 @@ test.describe("Register page", () => {
   test("register page does not link to terms or privacy flows", async ({
     page,
   }) => {
-    await expect(page.getByRole("link", { name: /服务条款|隐私政策|terms|privacy/i })).toHaveCount(
-      0,
-    );
-    const hrefs = await page.getByRole("link").evaluateAll((links) =>
-      links.map((link) => link.getAttribute("href") ?? ""),
-    );
+    await expect(
+      page.getByRole("link", { name: /服务条款|隐私政策|terms|privacy/i }),
+    ).toHaveCount(0);
+    const hrefs = await page
+      .getByRole("link")
+      .evaluateAll((links) =>
+        links.map((link) => link.getAttribute("href") ?? ""),
+      );
     expect(hrefs.some((href) => /\/terms|\/privacy/.test(href))).toBe(false);
   });
 });
@@ -125,7 +129,12 @@ test.describe("Billing referral", () => {
     const failedResponses: string[] = [];
     const notFoundResponses: string[] = [];
     const browserErrors: string[] = [];
-    attachPageDiagnostics(page, failedResponses, notFoundResponses, browserErrors);
+    attachPageDiagnostics(
+      page,
+      failedResponses,
+      notFoundResponses,
+      browserErrors,
+    );
 
     await page.goto("/dashboard/billing");
     await expect(page.getByText("充值金额")).toBeVisible({ timeout: 30_000 });
@@ -166,7 +175,9 @@ test.describe("Billing referral", () => {
       ? inviteUrl
       : new URL(inviteUrl, "https://test.easyapi.work").toString();
     await registerPage.goto(registerTarget);
-    await expect(registerPage.getByRole("heading", { name: "创建账户" })).toBeVisible();
+    await expect(
+      registerPage.getByRole("heading", { name: "创建账户" }),
+    ).toBeVisible();
 
     const code = new URL(inviteUrl).searchParams.get("inviteCode");
     expect(code).toBeTruthy();
@@ -190,10 +201,14 @@ test.describe("Billing referral", () => {
     await guestContext.close();
 
     await page.getByRole("tab", { name: "奖励记录" }).click();
-    await expect(
-      page.getByText(/奖励|暂无奖励|流水/).first(),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/奖励|暂无奖励|流水/).first()).toBeVisible({
+      timeout: 15_000,
+    });
 
-    assertNoClientErrors(failedResponses, notFoundResponses, browserErrors);
+    await assertNoClientErrors(
+      failedResponses,
+      notFoundResponses,
+      browserErrors,
+    );
   });
 });
