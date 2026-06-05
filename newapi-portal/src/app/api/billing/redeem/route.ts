@@ -6,6 +6,7 @@ import { z } from "zod";
 import { AuthError, jsonError, jsonOk, readJson, requireUser, zodErrorResponse } from "@/lib/auth";
 import { resolveAccessToken } from "@/lib/api/bff";
 import { db } from "@/lib/db";
+import { isDevMockEnabled, mockBillingRedeemResponse } from "@/lib/dev-mock";
 import { redeemTopup } from "@/lib/newapi";
 import { NewApiError } from "@/lib/newapi/client";
 
@@ -16,6 +17,10 @@ const redeemSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockBillingRedeemResponse(request);
+  }
+
   try {
     const publicUser = await requireUser();
     const input = await readJson(request, redeemSchema);

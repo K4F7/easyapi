@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { getUserNewApiAuth, handleApiError } from "@/lib/api/bff";
 import { jsonError, jsonOk, readJson, requireUser } from "@/lib/auth";
+import { isDevMockEnabled, mockPlaygroundImageSessionResponse } from "@/lib/dev-mock";
 import { NewApiError } from "@/lib/newapi";
 import {
   resolveImageEmbedTarget,
@@ -29,6 +30,10 @@ const imageSessionSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockPlaygroundImageSessionResponse();
+  }
+
   try {
     const user = await requireUser();
     const authResult = await getUserNewApiAuth(user);

@@ -5,12 +5,17 @@ import {
   parseOptionalInt,
   parsePositiveInt,
 } from "@/lib/api/bff";
+import { isDevMockEnabled, mockLogsRouteResponse } from "@/lib/dev-mock";
 import { getLogs, type NewApiLog } from "@/lib/newapi";
 import { normalizePage, summarizeLogs } from "@/lib/quota/usage";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockLogsRouteResponse(request);
+  }
+
   try {
     const user = await requireUser();
     const authResult = await getUserNewApiAuth(user);
@@ -27,11 +32,7 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url);
     const page = parsePositiveInt(url.searchParams.get("p"), 1, 10_000);
-    const pageSize = parsePositiveInt(
-      url.searchParams.get("page_size") ?? url.searchParams.get("size"),
-      20,
-      100,
-    );
+    const pageSize = parsePositiveInt(url.searchParams.get("page_size"), 20, 100);
     const logsPage = normalizePage<NewApiLog>(
       await getLogs(authResult.auth, {
         p: page,

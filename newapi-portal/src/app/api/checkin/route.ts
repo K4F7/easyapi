@@ -8,6 +8,7 @@ import {
   isCheckinQuotaApplied,
 } from "@/lib/checkin/quota";
 import { db } from "@/lib/db";
+import { isDevMockEnabled, mockCheckinResponse } from "@/lib/dev-mock";
 import { getServerEnv } from "@/lib/env";
 import { dateKey, todayDateOnly } from "@/lib/quota/usage";
 
@@ -16,6 +17,10 @@ export const runtime = "nodejs";
 const CHECKIN_QUOTA_NEWAPI_PATH = "/api/user/manage";
 
 export async function POST(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockCheckinResponse();
+  }
+
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
 
   try {

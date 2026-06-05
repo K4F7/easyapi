@@ -1,3 +1,7 @@
+import {
+  isDevMockEnabled,
+  mockImagePlaygroundEmbedResponse,
+} from "@/lib/dev-mock";
 import { proxyImagePlaygroundRequest } from "@/lib/playground/image-playground-proxy";
 
 export const runtime = "nodejs";
@@ -7,6 +11,10 @@ type RouteContext = {
 };
 
 async function handle(request: Request, context: RouteContext) {
+  if (isDevMockEnabled()) {
+    return mockImagePlaygroundEmbedResponse(request);
+  }
+
   const { path } = await context.params;
   return proxyImagePlaygroundRequest(request, path);
 }

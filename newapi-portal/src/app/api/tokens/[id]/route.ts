@@ -1,4 +1,5 @@
 import { jsonError, jsonOk, requireUser } from "@/lib/auth";
+import { isDevMockEnabled, mockTokenDeleteResponse } from "@/lib/dev-mock";
 import { getUserNewApiAuth, handleApiError } from "@/lib/api/bff";
 import { deleteToken } from "@/lib/newapi";
 
@@ -11,6 +12,10 @@ type RouteContext = {
 };
 
 export async function DELETE(_request: Request, context: RouteContext) {
+  if (isDevMockEnabled()) {
+    return mockTokenDeleteResponse((await context.params).id);
+  }
+
   try {
     const user = await requireUser();
     const authResult = await getUserNewApiAuth(user);
