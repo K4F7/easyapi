@@ -1,26 +1,27 @@
 #!/usr/bin/env bash
-# Verify image.easyapi.work (or IMAGE_PLAYGROUND_URL) returns embed security headers.
+# Verify the Portal same-origin image Playground embed endpoint returns safe headers.
+#
+# Usage:
+#   TARGET_URL=https://test.easyapi.work/playground/embed ./scripts/verify-image-playground-headers.sh
 set -euo pipefail
 
-BASE_URL="${IMAGE_PLAYGROUND_URL:-https://image.easyapi.work}"
-BASE_URL="${BASE_URL%/}"
+TARGET_URL="${TARGET_URL:-https://test.easyapi.work/playground/embed}"
 
-echo "Checking ${BASE_URL}/ ..."
+echo "Checking ${TARGET_URL} ..."
 
-headers="$(curl -fsSI "${BASE_URL}/")"
+headers="$(curl -fsSIL "${TARGET_URL}")"
 
-echo "${headers}" | grep -i "^content-security-policy:" | grep -qi "frame-ancestors https://test.easyapi.work" \
-  || { echo "Missing frame-ancestors for test.easyapi.work" >&2; exit 1; }
+echo "${headers}" | grep -i "^content-security-policy:" | grep -qi "frame-src 'self'" \
+  || { echo "Missing same-origin frame-src policy" >&2; exit 1; }
 
-echo "${headers}" | grep -i "^content-security-policy:" | grep -qi "https://easyapi.work" \
-  || { echo "Missing frame-ancestors for easyapi.work" >&2; exit 1; }
-
-echo "${headers}" | grep -i "^cache-control:" | grep -qi "no-store" \
-  || { echo "Missing Cache-Control: no-store" >&2; exit 1; }
-
-if echo "${headers}" | grep -i "^referrer-policy:" | grep -qi "unsafe-url"; then
-  echo "Referrer-Policy is still unsafe-url — update openresty snippet" >&2
+if echo "${headers}" | grep -i "^content-security-policy:" | grep -qi "image.easyapi.work"; then
+  echo "CSP still references external image playground origin" >&2
   exit 1
 fi
 
-echo "OK: embed security headers present on ${BASE_URL}"
+if echo "${headers}" | grep -i "^referrer-policy:" | grep -qi "unsafe-url"; then
+  echo "Referrer-Policy is still unsafe-url" >&2
+  exit 1
+fi
+
+echo "OK: same-origin embed headers present on ${TARGET_URL}"

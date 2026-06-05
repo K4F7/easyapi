@@ -28,9 +28,7 @@ const imagePlaygroundReadySignal = (page: Page) =>
 const shouldExpectImagePlayground = () =>
   process.env.EXPECT_IMAGE_PLAYGROUND === "true" ||
   Boolean(process.env.IMAGE_PLAYGROUND_INTERNAL_URL?.trim()) ||
-  Boolean(process.env.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL?.trim()) ||
-  Boolean(process.env.NEXT_PUBLIC_IMAGE_PLAYGROUND_URL?.trim()) ||
-  Boolean(process.env.STAGING_IMAGE_PLAYGROUND_URL?.trim());
+  Boolean(process.env.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL?.trim());
 
 async function mockPlaygroundToken(
   page: Page,
@@ -226,10 +224,8 @@ test.describe("Playground", () => {
     expect(src).toBeTruthy();
 
     const iframeUrl = new URL(src!);
-    if (shouldExpectImagePlayground()) {
-      expect(iframeUrl.pathname).toMatch(/\/playground\/embed\/?$/);
-      expect(iframeUrl.origin).toBe(new URL(page.url()).origin);
-    }
+    expect(iframeUrl.pathname).toMatch(/\/playground\/embed\/?$/);
+    expect(iframeUrl.origin).toBe(new URL(page.url()).origin);
     expect(iframeUrl.searchParams.get("apiUrl")).toBe(
       new URL(page.url()).origin,
     );
@@ -245,17 +241,8 @@ test.describe("Playground", () => {
     expect(iframeUrl.searchParams.get("portalTokenId")).toBe(
       String(PLAYGROUND_TOKEN_ID),
     );
-    if (shouldExpectImagePlayground()) {
-      expect(iframeUrl.searchParams.get("apiKey")).toBeNull();
-      expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBeNull();
-    } else {
-      expect(iframeUrl.searchParams.get("apiKey")).toMatch(
-        /^portal-image-session-v1\./,
-      );
-      expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBe(
-        iframeUrl.searchParams.get("apiKey"),
-      );
-    }
+    expect(iframeUrl.searchParams.get("apiKey")).toBeNull();
+    expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBeNull();
     expect(src).not.toMatch(/sk-[a-zA-Z0-9]{8,}|portal-token-101/);
   });
 
@@ -409,11 +396,8 @@ async function expectImageIframeDoesNotExposeRealKey(page: Page) {
 
   const src = await iframe.first().getAttribute("src");
   expect(src).toBeTruthy();
-  if (src!.includes("/playground/embed")) {
-    expect(src).not.toMatch(/portal-image-session-v1\./);
-  } else {
-    expect(src).toMatch(/portal-image-session-v1\./);
-  }
+  expect(src).toContain("/playground/embed");
+  expect(src).not.toMatch(/portal-image-session-v1\./);
   expect(src).not.toMatch(
     /sk-[a-zA-Z0-9]{8,}|portal-token-\d+|api[_-]?key=sk-/i,
   );

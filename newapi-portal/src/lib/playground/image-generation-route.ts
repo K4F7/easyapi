@@ -20,7 +20,6 @@ import {
   PlaygroundError,
   resolvePlaygroundKey,
 } from "@/lib/newapi/playground";
-import { isConfiguredPlaygroundOriginAllowed } from "@/lib/playground/image-playground-origins";
 import {
   assertImageSessionTokenOrigins,
   imageSessionTokenPrefix,
@@ -360,8 +359,6 @@ function resolveAllowedOrigin(request: Request): string | null {
     return origin;
   }
 
-  return isConfiguredPlaygroundOriginAllowed(origin, requestOrigin)
-    ? origin
-    : null;
+  return null;
 }
 
