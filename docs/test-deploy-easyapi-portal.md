@@ -146,15 +146,15 @@ Portal 提供两个兼容代理入口：
 
 `/v1/images/generations` 是为 iframe 中 OpenAI-compatible 客户端保留的兼容代理，**不是公开 OpenAI API**。它只接受 Portal 签发的短期 image session token，或同源已有登录 session + body `tokenId` 的兼容请求。
 
-上线后的 iframe 认证流程：
+上线后的 iframe 认证流程（Scheme 4 同源优先）：
 
-1. 登录用户进入 `/dashboard/playground?tab=image`，前端用当前同源 session 调用 `/api/playground/images/session`。
-2. Portal 服务端用 `AUTH_SECRET` 签发短期 `portal-image-session-v1.*` token；payload 只绑定 Portal `userId`、选中的 `tokenId`、`iat`、`exp`、`aud`，不包含真实 NewAPI key。
-3. 前端把该签名 token 作为 iframe URL 参数 `apiKey` / `playgroundSessionToken` 传入独立 Playground。
-4. iframe 调用 Portal 的 image generation 代理时，可用 `Authorization: Bearer <portal-image-session-v1.*>`、body `playgroundSessionToken` 或 query `playgroundSessionToken` 携带该 token。
-5. Portal 验签、校验过期时间，再按绑定用户与 selected token id 在服务端解析真实 NewAPI key 并转发到 NewAPI；真实 key 不进入 iframe URL、浏览器日志或响应体。
+1. 登录用户进入 `/dashboard/playground?tab=image`；前端查询 `/api/playground/images/embed-config`。
+2. 若 `IMAGE_PLAYGROUND_INTERNAL_URL` 已配置，iframe `src` 为同源 `/playground/embed/?tokenId=...&apiUrl=<portal>`（**不**在 URL 中携带签名 token）；依赖 Portal session cookie + 同源 API 调用。
+3. 若仅配置 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`（迁移回退），前端签发 `portal-image-session-v1.*` 并写入 iframe 查询参数。
+4. iframe 调用 Portal 图像代理（`/v1/images/generations` 或 `/api/playground/images/generations`）时，同源模式可用 session + `tokenId`；跨域模式须携带签名 token。
+5. Portal 验签/校验后按绑定用户与 token id 在服务端注入真实 NewAPI key；真实 key 不进入浏览器。
 
-同源兼容路径仍保留：Portal 自己的测试或同源客户端可以在已有登录 session 下传 body `tokenId`，但跨站 iframe 上线不要依赖第三方 cookie。
+`/playground/embed` 受 middleware 保护：需登录 session 或 URL 中的 `portal-image-session-v1.*`；禁止无 referer 的顶层文档导航。
 
 ### GHCR 拉取（服务器）
 
