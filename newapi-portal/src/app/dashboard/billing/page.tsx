@@ -14,7 +14,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 
 import { EmptyState } from "@/components/page-state";
 import { Badge } from "@/components/ui/badge";
@@ -100,7 +100,7 @@ const AMOUNT_PRESETS = [10, 50, 100, 200, 500] as const;
 const ACCENT = "#FF9500";
 
 // Animation Variants
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
@@ -108,7 +108,7 @@ const containerVariants = {
   }
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };
