@@ -63,8 +63,14 @@ async function main() {
   await waitForHealth();
   await runNode(seedScript, {
     SEED_BASE_URL: baseUrl,
-    SEED_EMAIL: process.env.SEED_EMAIL ?? "scr@easyapi.work",
-    SEED_PASSWORD: process.env.SEED_PASSWORD ?? "ScreenshotTest123!",
+    SEED_EMAIL:
+      process.env.SEED_EMAIL ??
+      process.env.E2E_PORTAL_IDENTIFIER ??
+      "scr@easyapi.work",
+    SEED_PASSWORD:
+      process.env.SEED_PASSWORD ??
+      process.env.E2E_PORTAL_PASSWORD ??
+      "ScreenshotTest123!",
     NEWAPI_BASE_URL: process.env.NEWAPI_BASE_URL,
     NEWAPI_ADMIN_TOKEN: process.env.NEWAPI_ADMIN_TOKEN,
     NEWAPI_ADMIN_USER_ID: process.env.NEWAPI_ADMIN_USER_ID,
