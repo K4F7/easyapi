@@ -271,7 +271,7 @@ describe("dev mock API routes", () => {
   });
 
   it("serves a minimal same-origin image playground embed stub", async () => {
-    const { GET } = await import("@/app/playground/embed/[[...path]]/route");
+    const { GET } = await import("@/app/playground/embed/[...path]/route");
 
     const response = await GET(
       new Request("http://localhost/playground/embed/"),
