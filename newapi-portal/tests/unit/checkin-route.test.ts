@@ -58,11 +58,22 @@ vi.mock("@/lib/checkin/quota", () => ({
 
 import { POST } from "@/app/api/checkin/route";
 
+function checkinRequest(headers?: HeadersInit) {
+  return new Request("http://localhost/api/checkin", {
+    method: "POST",
+    headers,
+  });
+}
+
 async function parseResponse(response: Response) {
   return response.json() as Promise<{
     ok: boolean;
     data?: Record<string, unknown>;
-    error?: { code: string; message: string };
+    error?: {
+      code: string;
+      message: string;
+      details?: Record<string, unknown>;
+    };
   }>;
 }
 
@@ -104,7 +115,7 @@ describe("POST /api/checkin", () => {
       message: "binding pending",
     });
 
-    const response = await POST();
+    const response = await POST(checkinRequest());
     const body = await parseResponse(response);
 
     expect(response.status).toBe(409);
@@ -114,7 +125,7 @@ describe("POST /api/checkin", () => {
   });
 
   it("creates check-in and applies quota on first success", async () => {
-    const response = await POST();
+    const response = await POST(checkinRequest());
     const body = await parseResponse(response);
 
     expect(response.status).toBe(200);
@@ -137,15 +148,60 @@ describe("POST /api/checkin", () => {
 
   it("returns 502 when quota apply fails after check-in is recorded", async () => {
     mockApplyCheckinQuota.mockRejectedValue(new Error("upstream down"));
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
 
-    const response = await POST();
-    const body = await parseResponse(response);
+    try {
+      const response = await POST(
+        checkinRequest({ "x-request-id": "unit-request-id" }),
+      );
+      const body = await parseResponse(response);
 
-    expect(response.status).toBe(502);
-    expect(body.ok).toBe(false);
-    expect(body.error?.code).toBe("CHECKIN_QUOTA_APPLY_FAILED");
-    expect(body.error?.message).toContain("请再次点击签到重试");
-    expect(mockTransaction).toHaveBeenCalledTimes(1);
+      expect(response.status).toBe(502);
+      expect(body.ok).toBe(false);
+      expect(body.error?.code).toBe("CHECKIN_QUOTA_APPLY_FAILED");
+      expect(body.error?.message).toContain("请再次点击签到重试");
+      expect(body.error?.details?.requestId).toBe("unit-request-id");
+      expect(mockTransaction).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "checkin: adminAddQuota failed",
+        expect.objectContaining({
+          requestId: "unit-request-id",
+          userId: "portal-user-1",
+          ledgerId: "ledger-1",
+          checkedInOn: expect.any(String),
+          newApiUserId: "99",
+          newApiPath: "/api/user/manage",
+          quotaAmount: 1000,
+          elapsedMs: expect.any(Number),
+          upstreamStatus: undefined,
+          upstreamCode: undefined,
+          upstreamMessage: "upstream down",
+        }),
+      );
+
+      const logDetails = consoleErrorSpy.mock.calls[0]?.[1];
+
+      expect(isRecord(logDetails)).toBe(true);
+      expect(Object.keys(logDetails as Record<string, unknown>)).toEqual(
+        expect.arrayContaining([
+          "requestId",
+          "userId",
+          "ledgerId",
+          "checkedInOn",
+          "newApiUserId",
+          "newApiPath",
+          "quotaAmount",
+          "elapsedMs",
+          "upstreamStatus",
+          "upstreamCode",
+          "upstreamMessage",
+        ]),
+      );
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 
   it("retries quota for an existing check-in with pending ledger metadata", async () => {
@@ -159,7 +215,7 @@ describe("POST /api/checkin", () => {
       ],
     });
 
-    const response = await POST();
+    const response = await POST(checkinRequest());
     const body = await parseResponse(response);
 
     expect(response.status).toBe(200);
@@ -192,7 +248,7 @@ describe("POST /api/checkin", () => {
       ],
     });
 
-    const response = await POST();
+    const response = await POST(checkinRequest());
     const body = await parseResponse(response);
 
     expect(response.status).toBe(200);
@@ -206,3 +262,7 @@ describe("POST /api/checkin", () => {
     expect(mockTransaction).not.toHaveBeenCalled();
   });
 });
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
