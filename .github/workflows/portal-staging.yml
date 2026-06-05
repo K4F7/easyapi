@@ -5,13 +5,10 @@ on:
     branches:
       - main
       - dev
-    paths:
-      - "newapi-portal/**"
-      - "scripts/deploy-portal-staging.sh"
-      - "scripts/restore-staging-production-db.sh"
-      - "scripts/configure-staging-registration.sh"
-      - "scripts/seed-staging-via-api.mjs"
-      - ".github/workflows/portal-staging.yml"
+      - feat/ui-future-design
+    # Run for any push except docs-only changes (paths-ignore skips when all touched files match).
+    paths-ignore:
+      - "docs/**"
   workflow_dispatch:
     inputs:
       deploy:
@@ -74,6 +71,9 @@ jobs:
           file: ./newapi-portal/Dockerfile
           push: true
           tags: ${{ steps.image.outputs.tags }}
+          build-args: |
+            NEXT_PUBLIC_IMAGE_PLAYGROUND_URL=${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
+            NEXT_PUBLIC_NEWAPI_BASE_URL=${{ vars.STAGING_PUBLIC_NEWAPI_BASE_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -122,11 +122,13 @@ jobs:
           PORTAL_IMAGE: ${{ needs.build.outputs.image }}
           GHCR_PULL_USER: ${{ github.repository_owner }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          IMAGE_PLAYGROUND_ALLOWED_ORIGIN: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
+          IMAGE_PLAYGROUND_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
         with:
           host: ${{ secrets.STAGING_SSH_HOST }}
           username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
-          envs: PORTAL_IMAGE,GHCR_PULL_USER,GHCR_PULL_TOKEN
+          envs: PORTAL_IMAGE,GHCR_PULL_USER,GHCR_PULL_TOKEN,IMAGE_PLAYGROUND_ALLOWED_ORIGIN,IMAGE_PLAYGROUND_URL
           script_path: scripts/deploy-portal-staging.sh
 
       - name: Wait for public health check
@@ -157,19 +159,22 @@ jobs:
         if: github.ref_name == 'dev'
         run: sleep 20
 
-      - name: Seed screenshot test user (dev only)
-        if: github.ref_name == 'dev'
+      - name: Seed screenshot test user
         env:
           NEWAPI_BASE_URL: ${{ secrets.STAGING_NEWAPI_BASE_URL }}
           NEWAPI_ADMIN_TOKEN: ${{ secrets.STAGING_NEWAPI_ADMIN_TOKEN }}
         run: node scripts/seed-staging-via-api.mjs
 
-      - name: Verify screenshot login (dev only)
-        if: github.ref_name == 'dev'
+      - name: Verify screenshot login
+        env:
+          E2E_PORTAL_IDENTIFIER: ${{ secrets.E2E_PORTAL_IDENTIFIER }}
+          E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
         run: |
+          identifier="${E2E_PORTAL_IDENTIFIER:-scr@easyapi.work}"
+          password="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
           response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
             -H "Content-Type: application/json" \
-            -d '{"identifier":"scr@easyapi.work","password":"ScreenshotTest123!"}')
+            -d "{\"identifier\":\"${identifier}\",\"password\":\"${password}\"}")
           echo "$response"
           echo "$response" | grep -q '"ok"[[:space:]]*:[[:space:]]*true' || {
             echo "Screenshot test user login verification failed"
@@ -187,3 +192,75 @@ jobs:
           script: |
             docker logs easyapi-portal-portal-test --tail 80 2>&1 || true
             docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easyapi-portal-test.yml ps 2>&1 || true
+
+  verify_ui:
+    name: Verify portal UI on staging
+    runs-on: ubuntu-latest
+    needs: deploy_staging
+    if: success()
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: newapi-portal
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: newapi-portal/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Preflight staging login (E2E account)
+        env:
+          E2E_PORTAL_IDENTIFIER: ${{ secrets.E2E_PORTAL_IDENTIFIER }}
+          E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
+        run: |
+          identifier="${E2E_PORTAL_IDENTIFIER:-scr@easyapi.work}"
+          password="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
+          response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"identifier\":\"${identifier}\",\"password\":\"${password}\"}") || {
+            echo "Staging login preflight failed (curl or HTTP error)"
+            exit 1
+          }
+          echo "$response"
+          echo "$response" | grep -q '"ok"[[:space:]]*:[[:space:]]*true' || {
+            echo "Staging login preflight: account not ready for Playwright"
+            exit 1
+          }
+
+      - name: Run portal E2E (UI, smoke, playground, register/billing)
+        env:
+          CI: true
+          E2E_BASE_URL: https://test.easyapi.work
+          E2E_PORTAL_IDENTIFIER: ${{ secrets.E2E_PORTAL_IDENTIFIER }}
+          E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
+          EXPECT_IMAGE_PLAYGROUND: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL != '' && 'true' || 'false' }}
+          NEXT_PUBLIC_IMAGE_PLAYGROUND_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
+          STAGING_IMAGE_PLAYGROUND_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
+        run: |
+          export E2E_PORTAL_IDENTIFIER="${E2E_PORTAL_IDENTIFIER:-scr@easyapi.work}"
+          export E2E_PORTAL_PASSWORD="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
+          pnpm run test:e2e:ci
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: newapi-portal/playwright-report/
+          retention-days: 7

@@ -101,7 +101,7 @@ export async function resolveAccessToken(ciphertext: string): Promise<string> {
   return decryptSecret(ciphertext, getAuthSecret());
 }
 
-export function publicUserFromPortalUser(user: PortalUserForApi) {
+export function publicUserFromPortalUser(user: PortalUserForApi): PublicUser {
   return {
     id: user.id,
     email: user.email,

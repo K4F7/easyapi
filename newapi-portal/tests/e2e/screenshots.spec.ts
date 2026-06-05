@@ -2,6 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 
+import { AUTH_ROUTES, PUBLIC_ROUTES, routeLocator, type RouteMarker } from "./routes";
+
 const identifier = process.env.E2E_PORTAL_IDENTIFIER ?? "scr@easyapi.work";
 const password = process.env.E2E_PORTAL_PASSWORD ?? "ScreenshotTest123!";
 
@@ -14,31 +16,8 @@ const screenshotDir = path.join(
   screenshotRunId ? `${screenshotDate}-${screenshotRunId}` : screenshotDate,
 );
 
-const PUBLIC_ROUTES = [
-  { slug: "home", path: "/", heading: "管令牌、看用量、随时充值", level: 1 as const },
-  { slug: "login", path: "/login", heading: "欢迎回来" },
-  { slug: "register", path: "/register", heading: "创建账户" },
-] as const;
-
-const AUTH_ROUTES = [
-  { slug: "dashboard", path: "/dashboard", heading: "概览", level: 1 as const },
-  { slug: "dashboard-tokens", path: "/dashboard/tokens", heading: "令牌", level: 1 as const },
-  { slug: "dashboard-billing", path: "/dashboard/billing", text: "充值金额" },
-  { slug: "dashboard-usage", path: "/dashboard/usage", heading: "用量", level: 1 as const },
-] as const;
-
-type RouteMarker =
-  | { heading: string; level?: 1; text?: never }
-  | { text: string; heading?: never; level?: never };
-
-function pageReady(page: Page, route: RouteMarker) {
-  if ("text" in route && route.text) {
-    return page.getByText(route.text).first();
-  }
-  const heading = route.heading!;
-  return route.level
-    ? page.getByRole("heading", { level: route.level, name: heading })
-    : page.getByRole("heading", { name: heading });
+function pageReady(page: Page, marker: RouteMarker) {
+  return routeLocator(page, marker);
 }
 
 test.describe.configure({ mode: "serial" });
@@ -52,7 +31,7 @@ test.describe("Full-site screenshots", () => {
   for (const route of PUBLIC_ROUTES) {
     test(`screenshot ${route.path}`, async ({ page }) => {
       await page.goto(route.path);
-      await expect(pageReady(page, route)).toBeVisible({ timeout: 30_000 });
+      await expect(pageReady(page, route.marker)).toBeVisible({ timeout: 30_000 });
       await page.waitForLoadState("load");
       await page.screenshot({
         path: path.join(screenshotDir, `${route.slug}.png`),
@@ -76,7 +55,7 @@ test.describe("Full-site screenshots", () => {
 
     for (const route of AUTH_ROUTES) {
       await page.goto(route.path);
-      await expect(pageReady(page, route)).toBeVisible({ timeout: 30_000 });
+      await expect(pageReady(page, route.marker)).toBeVisible({ timeout: 30_000 });
       await page.waitForLoadState("load");
       await page.screenshot({
         path: path.join(screenshotDir, `${route.slug}.png`),
