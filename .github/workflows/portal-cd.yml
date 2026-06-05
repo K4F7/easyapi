@@ -172,6 +172,7 @@ jobs:
           E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
         run: |
           identifier="${E2E_PORTAL_IDENTIFIER:-scr@easyapi.work}"
+          identifier="${identifier%@*}"
           password="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
           response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
             -H "Content-Type: application/json" \
@@ -231,6 +232,7 @@ jobs:
           E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
         run: |
           identifier="${E2E_PORTAL_IDENTIFIER:-scr@easyapi.work}"
+          identifier="${identifier%@*}"
           password="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
           response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
             -H "Content-Type: application/json" \
@@ -255,6 +257,7 @@ jobs:
           STAGING_IMAGE_PLAYGROUND_INTERNAL_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL }}
         run: |
           export E2E_PORTAL_IDENTIFIER="${E2E_PORTAL_IDENTIFIER:-scr@easyapi.work}"
+          export E2E_PORTAL_IDENTIFIER="${E2E_PORTAL_IDENTIFIER%@*}"
           export E2E_PORTAL_PASSWORD="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
           pnpm run test:e2e:ci
 
