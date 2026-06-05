@@ -7,8 +7,6 @@ import {
   parsePositiveInt,
 } from "@/lib/api/bff";
 import { createTokenAndRevealKey, listTokens, type NewApiToken } from "@/lib/newapi";
-import { cnyToQuota } from "@/lib/quota/display-config.shared";
-import { getQuotaDisplayConfig } from "@/lib/quota/get-display-config";
 import { maskToken, normalizePage } from "@/lib/quota/usage";
 
 export const runtime = "nodejs";
@@ -16,8 +14,7 @@ export const runtime = "nodejs";
 const createTokenSchema = z.object({
   name: z.string().trim().min(1).max(64),
   expired_time: z.number().int().nonnegative().optional(),
-  /** 人民币余额上限（与门户展示一致，由服务端按 NewAPI 汇率换算为上游额度） */
-  remain_quota_cny: z.number().positive().optional(),
+  remain_quota: z.number().int().nonnegative().optional(),
   unlimited_quota: z.boolean().optional(),
   model_limits_enabled: z.boolean().optional(),
   model_limits: z.string().max(4000).optional(),
@@ -75,15 +72,7 @@ export async function POST(request: Request) {
     }
 
     const input = await readJson(request, createTokenSchema);
-    const { remain_quota_cny, ...rest } = input;
-    const quotaConfig = await getQuotaDisplayConfig();
-    const created = await createTokenAndRevealKey(authResult.auth, {
-      ...rest,
-      remain_quota:
-        remain_quota_cny !== undefined
-          ? cnyToQuota(remain_quota_cny, quotaConfig)
-          : undefined,
-    });
+    const created = await createTokenAndRevealKey(authResult.auth, input);
 
     return jsonOk(
       {

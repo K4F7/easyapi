@@ -4,15 +4,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
-  Activity,
   BadgeCheck,
   CircleAlert,
   Coins,
   Gift,
   KeyRound,
-  Plus,
   RefreshCw,
-  Wallet,
+  UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,17 +24,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CopyButton } from "@/components/ui/copy-button";
-import { Sparkline } from "@/components/ui/mini-chart";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import { apiFetch, apiPost } from "@/lib/client/api";
-import { formatCount, statusText } from "@/lib/client/format";
-import { useQuotaFormat } from "@/hooks/use-quota-format";
-import type { QuotaDisplayConfig } from "@/lib/quota/display-config.shared";
+import { formatQuota, statusText } from "@/lib/client/format";
 
 type DashboardSummary = {
-  quotaConfig?: QuotaDisplayConfig;
   user: {
     email: string;
     inviteCode: string;
@@ -72,17 +64,10 @@ type DashboardSummary = {
       };
     };
   };
-  logStats: {
-    rpm: number | null;
-    tpm: number | null;
-    status: string;
-  };
   checkin: {
     checkedInToday: boolean;
     checkedInOn: string;
     status: string;
-    quotaApplied?: boolean | null;
-    quotaPending?: boolean;
   };
   referral: {
     inviteCode: string;
@@ -98,21 +83,7 @@ type DashboardSummary = {
   };
 };
 
-/** 余额告警阈值（人民币）。 */
-const BALANCE_LOW_CNY = 1;
-const BALANCE_CRITICAL_CNY = 0.2;
-
-/**
- * 对外 API 地址。优先读公开环境变量（构建期注入），否则回退到默认网关域名。
- * 注：summary 接口当前未返回该地址，已在交接报告中标注建议由接口下发。
- */
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_NEWAPI_BASE_URL ?? "https://api.easyapi.work"
-).replace(/\/+$/, "");
-const API_ENDPOINT = `${API_BASE_URL}/v1`;
-
 export default function DashboardPage() {
-  const { formatQuota, quotaToCny, applyConfig, refresh } = useQuotaFormat();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
@@ -123,13 +94,7 @@ export default function DashboardPage() {
     setLoading(true);
 
     try {
-      const data = await apiFetch<DashboardSummary>("/api/dashboard/summary");
-      setSummary(data);
-      if (data.quotaConfig) {
-        applyConfig(data.quotaConfig);
-      } else {
-        await refresh();
-      }
+      setSummary(await apiFetch<DashboardSummary>("/api/dashboard/summary"));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "概览加载失败");
     } finally {
@@ -143,13 +108,13 @@ export default function DashboardPage() {
     try {
       await apiPost("/api/checkin");
       toast.success("签到完成");
+      await loadSummary();
     } catch (checkinError) {
       toast.error(
         checkinError instanceof Error ? checkinError.message : "签到失败",
       );
     } finally {
       setCheckingIn(false);
-      await loadSummary();
     }
   }
 
@@ -182,32 +147,6 @@ export default function DashboardPage() {
       ? Math.max(quota - usedQuota, 0)
       : quota;
 
-  const remainingCny =
-    typeof remaining === "number" ? quotaToCny(remaining) : null;
-  const hasBalance = remainingCny !== null;
-  const balanceLevel: "ok" | "low" | "critical" = !hasBalance
-    ? "ok"
-    : remainingCny! <= BALANCE_CRITICAL_CNY
-      ? "critical"
-      : remainingCny! <= BALANCE_LOW_CNY
-        ? "low"
-        : "ok";
-
-  const totalRequestCount =
-    summary.newApi.self?.request_count ?? summary.usage.week.totals.count;
-  const totalTokenUsed = summary.usage.week.totals.tokenUsed;
-  const todayTokenUsed = summary.usage.today.totals.tokenUsed;
-  const todayRequestCount = summary.usage.today.totals.count;
-  const rpm = summary.logStats.rpm;
-  const tpm = summary.logStats.tpm;
-
-  // 今日 vs 本周日均的迷你趋势（接口暂无逐日序列，用现有汇总字段构造 2 点对比）
-  const todayQuota = summary.usage.today.totals.quota;
-  const weekQuota = summary.usage.week.totals.quota;
-  const weekDailyAvg = weekQuota > 0 ? Math.round(weekQuota / 7) : 0;
-  const trendData = [weekDailyAvg, todayQuota];
-  const hasUsageTrend = ready && (todayQuota > 0 || weekQuota > 0);
-
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -217,21 +156,21 @@ export default function DashboardPage() {
             一眼看清你的账户：余额还剩多少、今天用了多少、令牌有几个。
           </p>
         </div>
-        <Badge variant={ready ? "success" : "warning"}>
-          {ready ? "服务已就绪" : "服务绑定处理中"}
+        <Badge variant={ready ? "secondary" : "outline"}>
+          {ready ? "NewAPI 已绑定" : "NewAPI 绑定处理中"}
         </Badge>
       </div>
 
       {!ready ? (
-        <Card className="border-warning/40 bg-warning-soft/40">
+        <Card className="border-warning/40 bg-primary-soft/40">
           <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-3">
-              <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning-foreground" />
+              <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
               <div>
                 <div className="text-sm font-medium">上游账户尚未就绪</div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {summary.newApi.message ??
-                    "令牌、充值兑换和用量日志会在账户服务绑定完成后可用。"}
+                    "令牌、充值兑换和用量日志会在 NewAPI 绑定完成后可用。"}
                 </p>
               </div>
             </div>
@@ -243,134 +182,32 @@ export default function DashboardPage() {
         </Card>
       ) : null}
 
-      {/* 余额 + 主操作（最强 CTA 留给日用动作：充值 / 新建令牌） */}
-      <Card
-        className={cn(
-          balanceLevel === "critical" && "border-error/40 bg-error-soft/30",
-          balanceLevel === "low" && "border-warning/40 bg-warning-soft/30",
-        )}
-      >
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Wallet
-                className={cn(
-                  "h-4 w-4",
-                  balanceLevel === "critical"
-                    ? "text-error-foreground"
-                    : balanceLevel === "low"
-                      ? "text-warning-foreground"
-                      : "text-success",
-                )}
-              />
-              <CardDescription>可用余额</CardDescription>
-              {balanceLevel === "ok" && hasBalance ? (
-                <Badge variant="success">充足</Badge>
-              ) : null}
-              {balanceLevel === "low" ? (
-                <Badge variant="warning">余额偏低</Badge>
-              ) : null}
-              {balanceLevel === "critical" ? (
-                <Badge variant="error">余额不足</Badge>
-              ) : null}
-            </div>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="truncate text-3xl font-semibold tabular-nums">
-                {formatQuota(remaining)}
-              </span>
-            </div>
-            <p
-              className={cn(
-                "mt-1 text-xs",
-                balanceLevel === "critical"
-                  ? "text-error-foreground"
-                  : balanceLevel === "low"
-                    ? "text-warning-foreground"
-                    : "text-muted-foreground",
-              )}
-            >
-              {balanceLevel === "critical"
-                ? "余额即将耗尽，请尽快充值以免请求中断。"
-                : balanceLevel === "low"
-                  ? "余额偏低，建议提前充值。"
-                  : `账户总额 ${formatQuota(quota)}`}
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Button asChild>
-              <Link href="/dashboard/billing">
-                <Coins className="h-4 w-4" />
-                去充值
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/dashboard/tokens">
-                <Plus className="h-4 w-4" />
-                新建令牌
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* API 接入信息：地址可复制，密钥引导去令牌页（概览不下发完整密钥） */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">接入信息</CardTitle>
-          <CardDescription>复制 API 地址，到令牌页取你的密钥。</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="text-xs text-muted-foreground">API 地址</div>
-            <div className="mt-1 flex items-center gap-2">
-              <code className="truncate rounded-md bg-muted px-2 py-1 font-mono text-sm">
-                {API_ENDPOINT}
-              </code>
-              <CopyButton value={API_ENDPOINT} label="一键复制" />
-            </div>
-          </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/dashboard/tokens">
-              <KeyRound className="h-4 w-4" />
-              去令牌页取密钥
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          href="/dashboard/usage"
-          title="总请求数"
-          value={formatCount(totalRequestCount)}
-          hint={`今日 ${formatCount(todayRequestCount)} 次`}
+          title="可用余额"
+          value={formatQuota(remaining)}
+          hint={`累计额度 ${formatQuota(quota)}`}
+          icon={Coins}
+        />
+        <MetricCard
+          title="今日用量"
+          value={formatQuota(summary.usage.today.totals.quota)}
+          hint={`${formatQuota(summary.usage.today.totals.count)} 次请求`}
           icon={BadgeCheck}
         />
         <MetricCard
-          href="/dashboard/usage"
-          title="近 7 日用量"
-          value={formatQuota(weekQuota)}
-          hint={`日均约 ${formatQuota(weekDailyAvg)}`}
-          icon={BadgeCheck}
-          trend={hasUsageTrend ? trendData : undefined}
-        />
-        <MetricCard
-          href="/dashboard/usage"
-          title="总token消耗"
-          value={formatCount(totalTokenUsed)}
-          hint={`今日 ${formatCount(todayTokenUsed)}`}
+          title="令牌数"
+          value={
+            summary.tokens.count === null ? "-" : formatQuota(summary.tokens.count)
+          }
+          hint={statusText(summary.tokens.status)}
           icon={KeyRound}
         />
         <MetricCard
-          href="/dashboard/usage"
-          title="TPM/RPM"
-          value={
-            rpm === null && tpm === null
-              ? "-"
-              : `${formatCount(tpm ?? 0)} / ${formatCount(rpm ?? 0)}`
-          }
-          hint="今日 token / 请求速率"
-          icon={Activity}
+          title="邀请人数"
+          value={formatQuota(summary.referral.invitedCount.total)}
+          hint={`奖励 ${formatQuota(summary.referral.rewardQuota)}`}
+          icon={UsersRound}
         />
       </div>
 
@@ -394,74 +231,45 @@ export default function DashboardPage() {
             <QuickLink
               href="/dashboard/usage"
               title="用量日志"
-              description="看看最近用了多少，哪些请求最费钱。"
+              description="看看最近用了多少，哪些请求最费额度。"
             />
             <QuickLink
-              href="/dashboard/billing"
+              href="/dashboard/referral"
               title="邀请奖励"
-              description="在充值页查看邀请链接、奖励记录与提现额度。"
+              description="分享你的专属链接，好友注册你来拿钱。"
             />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle>每日签到</CardTitle>
-              <Badge
-                variant={
-                  summary.checkin.quotaPending
-                    ? "warning"
-                    : summary.checkin.checkedInToday
-                      ? "success"
-                      : "neutral"
-                }
-              >
-                {summary.checkin.quotaPending
-                  ? "额度待发放"
-                  : summary.checkin.checkedInToday
-                    ? "今日已签到"
-                    : "今日可签到"}
-              </Badge>
-            </div>
+            <CardTitle>每日签到</CardTitle>
             <CardDescription>
               {summary.checkin.checkedInOn} · {statusText(summary.checkin.status)}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3 rounded-md border border-divider bg-muted/50 p-3">
-              <Gift className="h-5 w-5 text-muted-foreground" />
+              <Gift className="h-5 w-5 text-foreground" />
               <div className="min-w-0">
                 <div className="text-sm font-medium">
-                  {summary.checkin.quotaPending
-                    ? "签到成功，额度发放中"
-                    : summary.checkin.checkedInToday
-                      ? "今日已签到"
-                      : "今日可签到"}
+                  {summary.checkin.checkedInToday ? "今日已签到" : "今日可签到"}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
-                  每天签到领余额，奖励直接加到你的账户里。
+                  每天签到领额度，奖励直接加到你的账户余额里。
                 </p>
               </div>
             </div>
             <Button
               className="w-full"
-              variant="outline"
-              disabled={
-                (summary.checkin.checkedInToday &&
-                  !summary.checkin.quotaPending) ||
-                !ready ||
-                checkingIn
-              }
+              disabled={summary.checkin.checkedInToday || !ready || checkingIn}
               onClick={handleCheckin}
             >
               {checkingIn
                 ? "签到中..."
-                : summary.checkin.quotaPending
-                  ? "重试发放"
-                  : summary.checkin.checkedInToday
-                    ? "已完成"
-                    : "签到领取"}
+                : summary.checkin.checkedInToday
+                  ? "已完成"
+                  : "签到领取"}
             </Button>
           </CardContent>
         </Card>
@@ -471,94 +279,27 @@ export default function DashboardPage() {
 }
 
 function MetricCard({
-  href,
   title,
   value,
-  unit,
   hint,
   icon: Icon,
-  trend,
 }: {
-  href: string;
   title: string;
   value: string;
-  unit?: string;
   hint: string;
   icon: typeof Coins;
-  trend?: number[];
 }) {
   return (
-    <Link
-      href={href}
-      className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-    >
-      <Card className="h-full transition-colors group-hover:bg-muted/50">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardDescription>{title}</CardDescription>
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-end justify-between gap-2">
-            <div className="min-w-0">
-              <div className="flex items-baseline gap-1">
-                <span className="truncate text-2xl font-semibold tabular-nums">
-                  {value}
-                </span>
-                {unit ? (
-                  <span className="text-xs text-muted-foreground">{unit}</span>
-                ) : null}
-              </div>
-              <div className="mt-1 truncate text-xs text-muted-foreground">
-                {hint}
-              </div>
-            </div>
-            {trend ? (
-              <Sparkline
-                data={trend}
-                width={64}
-                height={28}
-                className="shrink-0 text-primary"
-              />
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
-function EmptyMetricCard({
-  href,
-  title,
-  cta,
-  icon: Icon,
-}: {
-  href: string;
-  title: string;
-  cta: string;
-  icon: typeof Coins;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-    >
-      <Card className="h-full border-dashed transition-colors group-hover:bg-muted/50">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardDescription>{title}</CardDescription>
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-semibold tabular-nums text-muted-foreground">
-            0
-          </div>
-          <div className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
-            {cta}
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardDescription>{title}</CardDescription>
+        <Icon className="h-4 w-4 text-muted-subtle" />
+      </CardHeader>
+      <CardContent>
+        <div className="truncate text-2xl font-semibold">{value}</div>
+        <div className="mt-1 truncate text-xs text-muted-subtle">{hint}</div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -578,7 +319,7 @@ function QuickLink({
     >
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-medium">{title}</div>
-        <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        <ArrowRight className="h-4 w-4 text-muted-subtle transition-transform group-hover:translate-x-0.5" />
       </div>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
         {description}
@@ -594,13 +335,6 @@ function DashboardSkeleton() {
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-4 w-72" />
       </div>
-      <Card>
-        <CardContent className="space-y-3 p-5">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-9 w-40" />
-          <Skeleton className="h-3 w-32" />
-        </CardContent>
-      </Card>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {["a", "b", "c", "d"].map((key) => (
           <Card key={key}>

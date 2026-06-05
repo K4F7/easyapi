@@ -7,9 +7,7 @@ import { DuckLogo } from "@/components/duck-logo";
 import { UserMenu } from "@/components/user-menu";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
-import { QuotaConfigProvider } from "@/components/quota-config-provider";
 import { getCurrentUser } from "@/lib/auth";
-import { getQuotaDisplayConfig } from "@/lib/quota/get-display-config";
 
 export default async function DashboardLayout({
   children,
@@ -21,8 +19,6 @@ export default async function DashboardLayout({
   if (!user) {
     redirect("/login");
   }
-
-  const quotaConfig = await getQuotaDisplayConfig();
 
   return (
     <>
@@ -61,11 +57,7 @@ export default async function DashboardLayout({
               <DashboardNav />
             </div>
           </div>
-          <main className="px-4 py-6 md:px-6">
-            <QuotaConfigProvider initialConfig={quotaConfig}>
-              {children}
-            </QuotaConfigProvider>
-          </main>
+          <main className="px-4 py-6 md:px-6">{children}</main>
         </div>
       </div>
       <Toaster position="top-center" richColors closeButton />

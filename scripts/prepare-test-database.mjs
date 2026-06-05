@@ -48,7 +48,7 @@ function run(command, args, options = {}) {
     const child = spawn(command, args, {
       cwd: repoRoot,
       stdio: "inherit",
-      shell: false,
+      shell: process.platform === "win32",
       ...options,
     });
 

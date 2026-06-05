@@ -18,166 +18,16 @@
 | Compose 项目名 | **`easyapi-portal`**（`-p easyapi-portal`） |
 | Portal 服务名 | `portal-test` |
 | Portal 端口 | `2333`（经反代对外为 443） |
-| 镜像（main） | `ghcr.io/k4f7/easyapi/newapi-portal:test-latest` |
-| 镜像（dev） | `ghcr.io/k4f7/easyapi/newapi-portal:dev-latest` |
-| GHA 工作流 | [`.github/workflows/portal-staging.yml`](../.github/workflows/portal-staging.yml) |
-| 部署脚本 | [`scripts/deploy-portal-staging.sh`](../scripts/deploy-portal-staging.sh) |
+| 镜像 | `ghcr.io/k4f7/easyapi/newapi-portal:test-latest` |
+| GHA 工作流 | [`.github/workflows/newapi-portal-image.yml`](../.github/workflows/newapi-portal-image.yml) |
 
-**标准流程顺序（CI 自动部署 + 自动界面验证）：**
+**标准流程顺序（必须遵守）：**
 
 ```
-推送 dev/main（newapi-portal 有变更）→ GHA 构建并推送镜像 → SSH 部署 portal-test → health check
-→ seed 测试用户 + 登录校验 → verify_ui（Playwright：全站路由 + smoke + 操练场 + 注册/财务）
-→ （本地可选）pnpm screenshots:e2e 生成截图
+推送 main → GHA 构建镜像 → 服务器拉取并部署 portal-test → health check → seed 测试用户 → Playwright 截图
 ```
 
-除 `dev` / `main` 外，`feat/ui-future-design` 推送也会触发同一套 staging 构建、部署与 E2E；其他 `feat/*` 分支默认不跑，需合并到上述分支后再由 CI 验证。
-
-`dev` 与 `main` 推送到默认会**自动部署** staging；仅改 `docs/` 等路径不会触发工作流。
-
----
-
-## 1.1 自动部署（CI）
-
-工作流 **Portal staging CI/CD**（[`portal-staging.yml`](../.github/workflows/portal-staging.yml)）在 `push` 到 `dev` / `main` 且变更位于 `newapi-portal/**` 或该 workflow 文件时运行：
-
-| 分支 | 推送的镜像 tag | 部署到 staging |
-|------|----------------|----------------|
-| `dev` | `dev-latest`、`dev-<sha>` | 是：先**从生产快照恢复库**，再部署 `portal-test`，再 **seed** + **Playwright UI 验证** |
-| `main` | `test-latest`、`test-<sha>` | 是：仅 `portal-test`（**不**重建库），同样 **seed** + **Playwright UI 验证** |
-
-**dev 专用数据步骤**（每次 push `dev` 且触发 workflow 时）：
-
-1. SSH 执行 [`scripts/restore-staging-production-db.sh`](../scripts/restore-staging-production-db.sh)：`down` → 删除 `easyapi-portal_pg_data_test` volume → 用服务器上的 `xbh-new-api-2026-05-23-172431.sql.gz` 重新 `up` 全栈  
-2. 等待 `https://test.easyapi.work/api/health`  
-3. 部署新 Portal 镜像（仅 `portal-test`）  
-4. [`scripts/seed-staging-via-api.mjs`](../scripts/seed-staging-via-api.mjs) 注册/验证截图账号 `scr@easyapi.work` / `ScreenshotTest123!`（**dev 与 main 均执行**，幂等：已存在则仅验证登录）  
-5. CI 内 POST login 校验该账号  
-6. **`verify_ui` job**：先 curl 校验 E2E 账号可登录，再 `pnpm run test:e2e:ci`（[`ui-pages`](../newapi-portal/tests/e2e/ui-pages.spec.ts)、[`portal-smoke`](../newapi-portal/tests/e2e/portal-smoke.spec.ts)、[`playground`](../newapi-portal/tests/e2e/playground.spec.ts)、[`register-billing`](../newapi-portal/tests/e2e/register-billing.spec.ts)）；失败时上传 `playwright-report` artifact  
-
-恢复库后会在 seed 前执行 [`scripts/configure-staging-registration.sh`](../scripts/configure-staging-registration.sh)（关闭邮箱域名限制等，**仅 dev**）。可选 Secrets：`STAGING_NEWAPI_BASE_URL`、`STAGING_NEWAPI_ADMIN_TOKEN`（注册失败时 admin fallback）。
-
-### 自动 UI 验证覆盖
-
-**路由可达性（10 个页面）** — 清单见 [`routes.ts`](../newapi-portal/tests/e2e/routes.ts)：
-
-| 类型 | 路径 |
-|------|------|
-| 公开 | `/`、`/login`、`/register`、`/forgot-password` |
-| 登录后 | `/dashboard`、`/dashboard/tokens`、`/dashboard/billing`、`/dashboard/usage`、`/dashboard/playground`、`/dashboard/profile` |
-
-每条路由检查：关键标题/文案可见、无 5xx 响应、无页面级 JS 错误；dashboard 页额外断言无「加载失败」类错误文案。
-
-**专项 E2E（`playground` + `register-billing` spec）** — 操练场 tab/URL/令牌脱敏与 Chat 交互（含 mock 流式）、注册自设密码与校验、财务页 `inviteCode` 邀请链接与奖励说明等；详见各 spec 文件内用例名。
-
-`main` 部署不会清空测试库；若只需更新 Portal 代码用 `main`，需要可重复的生产+测试数据用 `dev`。
-
-**注意**：每次 `dev` 部署会**清空并重建** staging Postgres（生产快照非实时同步）；`dev` 上在测试期间手工改库的数据会在下次 `dev` push 后丢失。
-
-`workflow_dispatch` 默认只构建；勾选 **Deploy to staging after build** 才会执行部署 job（`dev` 分支手动触发时同样会恢复库+seed）。
-
-### GitHub Secrets（仓库 Settings → Secrets）
-
-| Secret | 说明 |
-|--------|------|
-| `STAGING_SSH_HOST` | `45.142.115.128` |
-| `STAGING_SSH_USER` | `root` |
-| `STAGING_SSH_PRIVATE_KEY` | 部署用 SSH 私钥（对应服务器 `authorized_keys`） |
-| `GHCR_PULL_TOKEN`（可选） | 若服务器未持久 `docker login ghcr.io`，填只读 PAT（`read:packages`）；workflow 会传给部署脚本临时登录 |
-| `E2E_PORTAL_IDENTIFIER`（推荐） | `scr@easyapi.work`；未配置时 CI 使用文档默认账号 |
-| `E2E_PORTAL_PASSWORD`（推荐） | `ScreenshotTest123!`；未配置时 CI 使用文档默认密码 |
-| `STAGING_NEWAPI_BASE_URL`（可选） | seed admin fallback 用 NewAPI 地址 |
-| `STAGING_NEWAPI_ADMIN_TOKEN`（可选） | seed admin fallback 用管理 token |
-
-### GitHub Variables（仓库 Settings → Variables）
-
-这些值是公开配置，供前端 build-time 与容器 runtime 使用，**不要放到 Secrets**：
-
-| Variable | 用途 | 示例 |
-|----------|------|------|
-| `STAGING_IMAGE_PLAYGROUND_URL` | 独立部署的生图 Playground iframe 地址；Docker build 时写入 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`，部署时也作为 Portal runtime CORS allowlist 来源 | `https://image-playground.example.com` |
-| `STAGING_PUBLIC_NEWAPI_BASE_URL` | 前端可见的 NewAPI 公网地址；Docker build 时写入 `NEXT_PUBLIC_NEWAPI_BASE_URL` | `https://api.easyapi.work` |
-
-**build-time 与 runtime 区别：**
-
-- `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`、`NEXT_PUBLIC_NEWAPI_BASE_URL` 会在 `pnpm build` 时被 Next.js 内联进前端 bundle；修改后必须重新构建镜像。
-- `IMAGE_PLAYGROUND_ALLOWED_ORIGIN` / `IMAGE_PLAYGROUND_URL` 是 Portal 服务端运行时变量，用于 `/v1/images/generations` 与 `/api/playground/images/generations` 的 CORS 判断；修改后只需 recreate `portal-test`。
-- GHA 的 Docker build 已通过 `build-args` 传入 `STAGING_IMAGE_PLAYGROUND_URL`、`STAGING_PUBLIC_NEWAPI_BASE_URL`；Deploy job 会把 `IMAGE_PLAYGROUND_ALLOWED_ORIGIN`、`IMAGE_PLAYGROUND_URL` 传给 SSH 部署脚本。服务器 compose 仍必须显式把这些变量写入 `portal-test.environment`，否则容器拿不到运行时变量。
-
-查看运行状态：
-
-```bash
-gh run list --repo K4F7/easyapi --workflow "Portal staging CI/CD" --limit 5
-gh run watch <run-id> --repo K4F7/easyapi --exit-status
-```
-
-### 服务器 compose 前置（一次性）
-
-`portal-test` 的 `image` 必须支持环境变量覆盖，否则 dev 部署仍会使用写死的 `test-latest`：
-
-```yaml
-portal-test:
-  image: ${PORTAL_IMAGE:-ghcr.io/k4f7/easyapi/newapi-portal:test-latest}
-  environment:
-    # 其他 DATABASE_URL / AUTH_SECRET / NEWAPI_* 等既有变量保持不变。
-    IMAGE_PLAYGROUND_ALLOWED_ORIGIN: ${IMAGE_PLAYGROUND_ALLOWED_ORIGIN:-}
-    IMAGE_PLAYGROUND_URL: ${IMAGE_PLAYGROUND_URL:-}
-```
-
-部署时 CI 与手动脚本都会 `export PORTAL_IMAGE=...` 再执行 `docker compose up`。生图 iframe 若跨域部署，`IMAGE_PLAYGROUND_ALLOWED_ORIGIN` 必须等于 iframe 页面发起请求时的 `Origin`（通常就是 `STAGING_IMAGE_PLAYGROUND_URL` 的 origin）；可用逗号分隔多个 origin。
-
-### 生图 Playground 认证与代理边界
-
-Portal 提供两个兼容代理入口：
-
-- `/api/playground/images/generations`
-- `/v1/images/generations`
-
-`/v1/images/generations` 是为 iframe 中 OpenAI-compatible 客户端保留的兼容代理，**不是公开 OpenAI API**。它只接受 Portal 签发的短期 image session token，或同源已有登录 session + body `tokenId` 的兼容请求。
-
-上线后的 iframe 认证流程：
-
-1. 登录用户进入 `/dashboard/playground?tab=image`，前端用当前同源 session 调用 `/api/playground/images/session`。
-2. Portal 服务端用 `AUTH_SECRET` 签发短期 `portal-image-session-v1.*` token；payload 只绑定 Portal `userId`、选中的 `tokenId`、`iat`、`exp`、`aud`，不包含真实 NewAPI key。
-3. 前端把该签名 token 作为 iframe URL 参数 `apiKey` / `playgroundSessionToken` 传入独立 Playground。
-4. iframe 调用 Portal 的 image generation 代理时，可用 `Authorization: Bearer <portal-image-session-v1.*>`、body `playgroundSessionToken` 或 query `playgroundSessionToken` 携带该 token。
-5. Portal 验签、校验过期时间，再按绑定用户与 selected token id 在服务端解析真实 NewAPI key 并转发到 NewAPI；真实 key 不进入 iframe URL、浏览器日志或响应体。
-
-同源兼容路径仍保留：Portal 自己的测试或同源客户端可以在已有登录 session 下传 body `tokenId`，但跨站 iframe 上线不要依赖第三方 cookie。
-
-### GHCR 拉取（服务器）
-
-任选其一：
-
-- **A（推荐）**：在服务器执行一次 `docker login ghcr.io`（read-only PAT，`read:packages`）。
-- **B**：配置 Secret `GHCR_PULL_TOKEN`；部署脚本在 pull 前临时登录（`GHCR_PULL_USER` 默认为仓库 owner）。
-
-### 手动 / 应急部署
-
-与 CI 相同逻辑，可在本机通过 SSH 调用仓库脚本：
-
-```bash
-export PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:dev-latest   # 或 test-latest
-export IMAGE_PLAYGROUND_ALLOWED_ORIGIN=https://image-playground.example.com
-export IMAGE_PLAYGROUND_URL=https://image-playground.example.com
-ssh root@45.142.115.128 'bash -s' < scripts/deploy-portal-staging.sh
-```
-
-staging 仅有一个 `portal-test` 实例：`dev` 与 `main` 若连续部署，**后完成的一次**生效。
-
-部署成功后，GHA **`verify_ui`** 与本地 Playwright 均通过公网访问 `test.easyapi.work`；seed 脚本通过 HTTPS 调用 Portal API，无需 SSH 进容器写库。
-
-本地快速复现 CI 界面检查：
-
-```bash
-cd newapi-portal
-export E2E_BASE_URL="https://test.easyapi.work"
-export E2E_PORTAL_IDENTIFIER="scr@easyapi.work"
-export E2E_PORTAL_PASSWORD="ScreenshotTest123!"
-pnpm install
-npx playwright install chromium
-pnpm test:ui
-```
+Playwright 在**本地**运行，通过公网访问 `test.easyapi.work`；seed 脚本通过 HTTPS 调用 Portal API，无需 SSH 进容器写库。
 
 ---
 
@@ -260,35 +110,38 @@ pnpm prepare:test-db
 
 ## 4. 部署流程（逐步）
 
-### 步骤 1：推送代码（CI 构建 + 自动部署）
+### 步骤 1：推送代码，等待 GHA 构建
 
 ```bash
-git push origin dev    # 镜像 dev-latest，自动部署 staging
-# 或
-git push origin main   # 镜像 test-latest，自动部署 staging
+git push origin main
 ```
 
-工作流会构建、推送镜像，SSH 仅重建 `portal-test`，并在 runner 上轮询 `https://test.easyapi.work/api/health`。
+GitHub Actions 工作流 **Build newapi-portal image** 会在 push 到 `main` 时触发，构建并推送：
 
-若 CI 未跑（例如只改了文档），或需回滚到指定 tag，使用 [§1.1 手动 / 应急部署](#11-自动部署ci) 或下方步骤 2。
+```
+ghcr.io/k4f7/easyapi/newapi-portal:test-latest
+```
 
-查看 CI 状态见 §1.1。
-
-### 步骤 2：手动 SSH 部署（应急，与 CI 等价）
+查看构建状态：
 
 ```bash
-export PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:test-latest   # main；dev 用 dev-latest
-ssh root@45.142.115.128 'bash -s' < scripts/deploy-portal-staging.sh
+gh run list --repo K4F7/easyapi --workflow "Build newapi-portal image" --limit 3
+gh run watch <run-id> --repo K4F7/easyapi --exit-status
 ```
 
-或在服务器上（需已将 `scripts/deploy-portal-staging.sh` 同步到该机，或粘贴脚本内容）：
+**必须等 GHA 成功后再部署**；否则服务器上的仍是旧镜像。
+
+### 步骤 2：SSH 到服务器，仅更新 portal-test
 
 ```bash
 ssh root@45.142.115.128
-export PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:test-latest
 cd /opt/easyapi-portal-test
-docker pull "${PORTAL_IMAGE}"
-docker compose -p easyapi-portal -f docker-compose.easyapi-portal-test.yml \
+
+docker pull ghcr.io/k4f7/easyapi/newapi-portal:test-latest
+
+PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:test-latest \
+  docker compose -p easyapi-portal \
+  -f docker-compose.easyapi-portal-test.yml \
   up -d --no-deps --force-recreate portal-test
 ```
 
@@ -309,7 +162,7 @@ curl -s https://test.easyapi.work/api/health
 {"ok":true}
 ```
 
-### 步骤 4：Seed 截图测试用户（本地；CI 在 deploy 后已自动 seed）
+### 步骤 4：Seed 截图测试用户
 
 在本地 **`newapi-portal`** 目录（部署完成且 health 正常后）：
 
@@ -332,35 +185,7 @@ npx playwright install chromium   # 首次需要
 pnpm screenshots:e2e
 ```
 
-输出目录：`newapi-portal/screenshots/<YYYY-MM-DD>/`（9 张 PNG：4 个公开页 + 5 个 dashboard 页，含 `/forgot-password` 与 `/dashboard/profile`）。
-
-### 步骤 6：生图 Playground 上线验证
-
-当 `STAGING_IMAGE_PLAYGROUND_URL` 已配置时，`verify_ui` 中的 [`playground.spec.ts`](../newapi-portal/tests/e2e/playground.spec.ts) 会断言：
-
-- `/dashboard/playground?tab=image` 必须出现 `iframe[title="生图 Playground"]`，不能退化为「未配置」提示。
-- iframe URL 必须包含 `apiUrl` / `baseUrl` / `imageApiUrl` 指向 Portal 本域代理。
-- iframe URL 的 `apiKey` / `playgroundSessionToken` 必须是 `portal-image-session-v1.*` 签名 token，不能出现真实 `sk-*`，也不能再使用 `portal-token-<id>` 这类裸 tokenId marker。
-
-手动检查 CORS preflight（把 origin 替换成真实 `STAGING_IMAGE_PLAYGROUND_URL` 的 origin）：
-
-```bash
-curl -i -X OPTIONS "https://test.easyapi.work/v1/images/generations" \
-  -H "Origin: https://image-playground.example.com" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: authorization,content-type"
-```
-
-期望响应包含：
-
-```text
-HTTP/2 204
-access-control-allow-origin: https://image-playground.example.com
-access-control-allow-headers: Content-Type, Authorization
-access-control-allow-credentials: true
-```
-
-如果没有 `access-control-allow-origin`，优先检查服务器 compose 是否已把 `IMAGE_PLAYGROUND_ALLOWED_ORIGIN` 注入 `portal-test` 容器，而不是只配置了 build-time 的 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`。
+输出目录：`newapi-portal/screenshots/<YYYY-MM-DD>/`（9 张 PNG：首页、登录、注册 + 6 个 dashboard 页）。
 
 ---
 
@@ -370,11 +195,6 @@ access-control-allow-credentials: true
 
 | 脚本 | 作用 |
 |------|------|
-| `test:e2e:ci` | 与 GHA `verify_ui` 相同：ui-pages + smoke + playground + register-billing |
-| `test:ui` | 全站界面可达性（10 页，与 CI `ui-pages` spec 一致） |
-| `test:e2e:playground` | 仅操练场 spec |
-| `test:e2e:register-billing` | 仅注册 + 财务邀请 spec |
-| `test:e2e` | 全部 Playwright spec（含 screenshots，本地/手工用） |
 | `seed:screenshot-user` | 对 `SEED_BASE_URL`（默认 staging）注册/验证 `scr@easyapi.work` |
 | `prepare:test-db` | SSH 远程重建 easyapi-portal 测试库、seed、导出 `test-data/*.sql.gz` |
 | `screenshots:e2e` | 仅运行 Playwright 截图 spec（需已部署新镜像 + 测试用户可登录） |
@@ -382,11 +202,6 @@ access-control-allow-credentials: true
 
 相关文件：
 
-- 路由清单：[`newapi-portal/tests/e2e/routes.ts`](../newapi-portal/tests/e2e/routes.ts)
-- UI 验证：[`newapi-portal/tests/e2e/ui-pages.spec.ts`](../newapi-portal/tests/e2e/ui-pages.spec.ts)
-- Smoke：[`newapi-portal/tests/e2e/portal-smoke.spec.ts`](../newapi-portal/tests/e2e/portal-smoke.spec.ts)
-- 操练场：[`newapi-portal/tests/e2e/playground.spec.ts`](../newapi-portal/tests/e2e/playground.spec.ts)
-- 注册/财务：[`newapi-portal/tests/e2e/register-billing.spec.ts`](../newapi-portal/tests/e2e/register-billing.spec.ts)
 - Seed：[`newapi-portal/scripts/seed-screenshot-user.mjs`](../newapi-portal/scripts/seed-screenshot-user.mjs)
 - 截图 spec：[`newapi-portal/tests/e2e/screenshots.spec.ts`](../newapi-portal/tests/e2e/screenshots.spec.ts)
 - Playwright 配置：[`newapi-portal/playwright.config.ts`](../newapi-portal/playwright.config.ts)
@@ -394,20 +209,6 @@ access-control-allow-credentials: true
 ---
 
 ## 6. 故障排查
-
-### CI `verify_ui` 失败
-
-1. 在 Actions 中打开 **Verify portal UI on staging** job，下载 `playwright-report` artifact（含 trace / 截图）。
-2. 确认 **Deploy** job 中 seed 与 login 校验已通过。
-3. 本地用相同凭据执行 `pnpm run test:e2e:ci`（或拆分 `test:ui` / `test:e2e:playground` / `test:e2e:register-billing`）复现。
-4. 若仅 `main` 失败且为登录问题，检查 `STAGING_NEWAPI_*` Secrets 是否可用于 seed admin fallback。
-
-### CI 部署失败：SSH / pull / health
-
-1. 在 GitHub Actions 查看 **Deploy portal-test to staging** job；失败时 **Collect portal logs** 步骤会拉取 `easyapi-portal-portal-test` 最近日志。
-2. 确认仓库 Secrets：`STAGING_SSH_HOST`、`STAGING_SSH_USER`、`STAGING_SSH_PRIVATE_KEY`。
-3. 确认服务器能 `docker pull`（`docker login ghcr.io` 或配置 `GHCR_PULL_TOKEN`）。
-4. 确认 `portal-test` 使用 `${PORTAL_IMAGE:-...}`（见 §1.1）。
 
 ### GHA 构建失败：`ERR_PNPM_OUTDATED_LOCKFILE`
 
@@ -482,14 +283,10 @@ docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easy
 
 ## 快速检查清单
 
-- [ ] `dev` 或 `main` 已 push（`newapi-portal/` 有变更），GHA **Portal staging CI/CD** 构建与 deploy 均为绿色
-- [ ] GitHub Variables 已配置：`STAGING_IMAGE_PLAYGROUND_URL`、`STAGING_PUBLIC_NEWAPI_BASE_URL`
-- [ ] 服务器 `portal-test.environment` 已注入：`IMAGE_PLAYGROUND_ALLOWED_ORIGIN`、`IMAGE_PLAYGROUND_URL`
-- [ ] 服务器 **仅** `portal-test` 已 recreate，镜像 tag 与分支一致（`dev-latest` / `test-latest`）
+- [ ] `main` 已 push，GHA **Build newapi-portal image** 为绿色
+- [ ] 服务器已 `docker pull` 且 **仅** `portal-test` 已 recreate
 - [ ] `curl https://test.easyapi.work/api/health` → `ok: true`
 - [ ] `pnpm seed:screenshot-user` 成功
-- [ ] `https://test.easyapi.work/dashboard/playground?tab=image` 在配置 `STAGING_IMAGE_PLAYGROUND_URL` 时出现生图 iframe，iframe URL 不含 `sk-*` 或 `portal-token-<id>`
-- [ ] `/v1/images/generations` CORS preflight 对 `STAGING_IMAGE_PLAYGROUND_URL` 的 origin 返回 `access-control-allow-origin`
 - [ ] `pnpm screenshots:e2e` 生成 9 张截图
 
 ### Portal static assets (public/)
@@ -498,8 +295,8 @@ Duck/brand images (e.g. `duck.webp`, `duck-icon.png`) live under `newapi-portal/
 
 Verify after deploy:
 
-```bash
+`ash
 curl -I https://test.easyapi.work/duck.webp
-```
+`
 
 Expect `HTTP/2 200` and `content-type: image/webp`.

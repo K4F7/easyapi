@@ -19,10 +19,9 @@ const config: Config = {
           "sans-serif",
         ],
         display: [
+          '"ZCOOL KuaiLe"',
           '"Noto Sans SC"',
           '"PingFang SC"',
-          '"Microsoft YaHei"',
-          '"Hiragino Sans GB"',
           "sans-serif",
         ],
         mono: [
@@ -43,7 +42,6 @@ const config: Config = {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
           soft: "hsl(var(--primary-soft))",
-          hover: "hsl(var(--primary-hover))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -66,31 +64,10 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
-          soft: "hsl(var(--success-soft))",
-        },
-        warning: {
-          DEFAULT: "hsl(var(--warning))",
-          foreground: "hsl(var(--warning-foreground))",
-          soft: "hsl(var(--warning-soft))",
-        },
-        error: {
-          DEFAULT: "hsl(var(--error))",
-          foreground: "hsl(var(--error-foreground))",
-          soft: "hsl(var(--error-soft))",
-        },
-        neutral: {
-          DEFAULT: "hsl(var(--neutral))",
-          foreground: "hsl(var(--neutral-foreground))",
-          soft: "hsl(var(--neutral-soft))",
-        },
-        info: {
-          DEFAULT: "hsl(var(--info))",
-          foreground: "hsl(var(--info-foreground))",
-          soft: "hsl(var(--info-soft))",
-        },
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        error: "hsl(var(--error))",
+        info: "hsl(var(--info))",
         divider: "hsl(var(--divider))",
       },
       borderRadius: {
