@@ -6,7 +6,7 @@ Frontend portal for EasyAPI, targeting the official upstream [NewAPI](https://gi
 
 ## Test environment deployment
 
-Staging runs at **https://test.easyapi.work**. Pushes to `dev` or `main` that touch `newapi-portal/` trigger [`.github/workflows/portal-staging.yml`](.github/workflows/portal-staging.yml) (deploy → seed → Playwright UI verification on all 9 pages). `dev` also restores a production DB snapshot before deploy. See:
+Staging runs at **https://test.easyapi.work**. Pull requests to `dev` / `main` run [`.github/workflows/portal-ci.yml`](.github/workflows/portal-ci.yml) (lint, unit tests, build). Pushes to `dev` or `main` that touch `newapi-portal/` trigger [`.github/workflows/portal-cd.yml`](.github/workflows/portal-cd.yml) (deploy → seed → Playwright UI verification). `dev` also restores a production DB snapshot before deploy. See:
 
 **[docs/test-deploy-easyapi-portal.md](docs/test-deploy-easyapi-portal.md)**
 

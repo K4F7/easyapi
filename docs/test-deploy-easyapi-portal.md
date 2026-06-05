@@ -20,26 +20,31 @@
 | Portal 端口 | `2333`（经反代对外为 443） |
 | 镜像（main） | `ghcr.io/k4f7/easyapi/newapi-portal:test-latest` |
 | 镜像（dev） | `ghcr.io/k4f7/easyapi/newapi-portal:dev-latest` |
-| GHA 工作流 | [`.github/workflows/portal-staging.yml`](../.github/workflows/portal-staging.yml) |
+| GHA CI（PR） | [`.github/workflows/portal-ci.yml`](../.github/workflows/portal-ci.yml) |
+| GHA CD（push） | [`.github/workflows/portal-cd.yml`](../.github/workflows/portal-cd.yml) |
 | 部署脚本 | [`scripts/deploy-portal-staging.sh`](../scripts/deploy-portal-staging.sh) |
 
-**标准流程顺序（CI 自动部署 + 自动界面验证）：**
+**标准流程顺序：**
 
 ```
-推送 dev/main（newapi-portal 有变更）→ GHA 构建并推送镜像 → SSH 部署 portal-test → health check
-→ seed 测试用户 + 登录校验 → verify_ui（Playwright：全站路由 + smoke + 操练场 + 注册/财务）
+提 PR → portal-ci（lint / 单测 / Next 构建 / Docker 构建校验，不部署）
+合并后 push dev/main → portal-cd（构建并推送镜像 → SSH 部署 → seed → verify_ui Playwright）
 → （本地可选）pnpm screenshots:e2e 生成截图
 ```
 
-除 `dev` / `main` 外，`feat/ui-future-design` 推送也会触发同一套 staging 构建、部署与 E2E；其他 `feat/*` 分支默认不跑，需合并到上述分支后再由 CI 验证。
+除 `dev` / `main` 外，`feat/ui-future-design` 推送也会触发 **CD**（构建、部署与 E2E）；其他 `feat/*` 分支默认不跑 CD，需开 PR 走 **CI** 或合并到上述分支后再部署。
 
-`dev` 与 `main` 推送到默认会**自动部署** staging；仅改 `docs/` 等路径不会触发工作流。
+`dev` 与 `main` 推送到默认会**自动部署** staging；仅改 `docs/` 等路径不会触发 CD。PR **不会**触发部署或 staging E2E。
 
 ---
 
-## 1.1 自动部署（CI）
+## 1.1 PR 检查（CI）
 
-工作流 **Portal staging CI/CD**（[`portal-staging.yml`](../.github/workflows/portal-staging.yml)）在 `push` 到 `dev` / `main` 且变更位于 `newapi-portal/**` 或该 workflow 文件时运行：
+工作流 **Portal CI**（[`portal-ci.yml`](../.github/workflows/portal-ci.yml)）在针对 `dev` / `main` 的 `pull_request` 且变更位于 `newapi-portal/**` 或上述 workflow 文件时运行：lint、typecheck、Vitest、`pnpm build`、Docker 镜像构建（`push: false`）。**不** SSH 部署、**不** seed、**不** 对 staging 跑 Playwright。
+
+## 1.2 自动部署（CD）
+
+工作流 **Portal staging CD**（[`portal-cd.yml`](../.github/workflows/portal-cd.yml)）仅在 `push` 到 `dev` / `main` / `feat/ui-future-design`（`paths-ignore` 排除仅 `docs/**` 变更）或带 **Deploy to staging** 的 `workflow_dispatch` 时运行：
 
 | 分支 | 推送的镜像 tag | 部署到 staging |
 |------|----------------|----------------|
@@ -107,7 +112,8 @@
 查看运行状态：
 
 ```bash
-gh run list --repo K4F7/easyapi --workflow "Portal staging CI/CD" --limit 5
+gh run list --repo K4F7/easyapi --workflow "Portal CI" --limit 5
+gh run list --repo K4F7/easyapi --workflow "Portal staging CD" --limit 5
 gh run watch <run-id> --repo K4F7/easyapi --exit-status
 ```
 
@@ -260,7 +266,7 @@ pnpm prepare:test-db
 
 ## 4. 部署流程（逐步）
 
-### 步骤 1：推送代码（CI 构建 + 自动部署）
+### 步骤 1：推送代码（CD 构建 + 自动部署）
 
 ```bash
 git push origin dev    # 镜像 dev-latest，自动部署 staging
@@ -482,7 +488,7 @@ docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easy
 
 ## 快速检查清单
 
-- [ ] `dev` 或 `main` 已 push（`newapi-portal/` 有变更），GHA **Portal staging CI/CD** 构建与 deploy 均为绿色
+- [ ] `dev` 或 `main` 已 push（`newapi-portal/` 有变更），GHA **Portal staging CD** 构建与 deploy 均为绿色
 - [ ] GitHub Variables 已配置：`STAGING_IMAGE_PLAYGROUND_URL`、`STAGING_PUBLIC_NEWAPI_BASE_URL`
 - [ ] 服务器 `portal-test.environment` 已注入：`IMAGE_PLAYGROUND_ALLOWED_ORIGIN`、`IMAGE_PLAYGROUND_URL`
 - [ ] 服务器 **仅** `portal-test` 已 recreate，镜像 tag 与分支一致（`dev-latest` / `test-latest`）
