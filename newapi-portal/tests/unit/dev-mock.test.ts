@@ -285,6 +285,20 @@ describe("dev mock API routes", () => {
     expect(html).toContain("portal-dev-mock-ready");
   });
 
+  it("serves the same image playground embed stub from the base route", async () => {
+    const { GET } = await import("@/app/playground/embed/route");
+
+    const response = await GET(
+      new Request("http://localhost/playground/embed"),
+    );
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toContain("text/html");
+    expect(html).toContain("Dev Mock Image Playground");
+    expect(html).toContain("portal-dev-mock-ready");
+  });
+
   it("reflects check-in and redeem quota changes in dashboard balance fields", async () => {
     const { GET: dashboard } = await import("@/app/api/dashboard/summary/route");
     const { POST: checkin } = await import("@/app/api/checkin/route");

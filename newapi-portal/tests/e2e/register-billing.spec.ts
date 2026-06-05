@@ -152,7 +152,7 @@ test.describe("Billing referral", () => {
     );
 
     const inviteInput = page.getByLabel("邀请链接");
-    await expect(inviteInput).not.toHaveValue("加载中...", { timeout: 60_000 });
+    await expect(inviteInput).not.toHaveValue("加载中…", { timeout: 60_000 });
     await expect(inviteInput).toHaveValue(/inviteCode=/, { timeout: 15_000 });
     const inviteUrl = (await inviteInput.inputValue()).trim();
     expect(inviteUrl).toMatch(/\/register\?inviteCode=[A-Za-z0-9]+/);
@@ -169,9 +169,8 @@ test.describe("Billing referral", () => {
     await expect(pendingBlock).toContainText("人");
     await expect(pendingBlock).not.toContainText("¥");
 
-    await expect(page.getByText("分享链接")).toBeVisible();
-    await expect(page.getByText("好友注册")).toBeVisible();
-    await expect(page.getByText("奖励到账")).toBeVisible();
+    await expect(page.getByLabel("邀请链接")).toBeVisible();
+    await expect(page.getByText("邀请与兑换")).toBeVisible();
 
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.getByRole("button", { name: "复制" }).click();
