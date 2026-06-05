@@ -7,28 +7,40 @@ import {
   Copy,
   ArrowRightLeft,
   CreditCard,
-  Sparkles,
-  Zap,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { motion, AnimatePresence, type Variants } from "framer-motion";
 
 import { EmptyState } from "@/components/page-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiFetch, apiPost } from "@/lib/client/api";
 import { formatCurrencyCny, formatDateTime, statusText } from "@/lib/client/format";
 import { useQuotaFormat } from "@/hooks/use-quota-format";
 import type { QuotaDisplayConfig } from "@/lib/quota/display-config.shared";
 
-// --- Types from Billing ---
 type Order = {
   id: string;
   status: string;
@@ -66,7 +78,6 @@ type BalanceSummary = {
   };
 };
 
-// --- Types from Referral ---
 type RewardMetadata = {
   quotaApplied?: boolean;
   quotaAmount?: number;
@@ -91,36 +102,39 @@ type ReferralData = {
 };
 
 const PAY_METHODS = [
-  { value: "alipay", label: "支付宝", icon: <Wallet className="w-5 h-5" />, color: "#1677FF" },
-  { value: "wechat", label: "微信", icon: <Wallet className="w-5 h-5" />, color: "#09B83E" },
+  { value: "alipay", label: "支付宝" },
+  { value: "wechat", label: "微信" },
 ] as const;
 
-const AMOUNT_PRESETS = [10, 50, 100, 200, 500] as const;
-
-const ACCENT = "#FF9500";
-
-// Animation Variants
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-};
+const AMOUNT_PRESETS = [10, 50, 100, 200] as const;
 
 function isPresetAmount(value: number): value is (typeof AMOUNT_PRESETS)[number] {
   return (AMOUNT_PRESETS as readonly number[]).includes(value);
 }
 
+function StatItem({
+  label,
+  value,
+  loading,
+}: {
+  label: string;
+  value: React.ReactNode;
+  loading?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 truncate text-lg font-semibold tabular-nums">
+        {loading ? <Skeleton className="h-7 w-20" /> : value}
+      </p>
+    </div>
+  );
+}
+
 export default function CombinedBillingReferralPage() {
-  const { formatQuota, quotaPerCny, config: quotaConfig, applyConfig, refresh } = useQuotaFormat();
-  
-  // Billing States
+  const { formatQuota, quotaPerCny, config: quotaConfig, applyConfig, refresh } =
+    useQuotaFormat();
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [balance, setBalance] = useState<BalanceSummary["newApi"] | null>(null);
@@ -130,9 +144,6 @@ export default function CombinedBillingReferralPage() {
   const [creating, setCreating] = useState(false);
   const [redeemCode, setRedeemCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
-  const [activeTab, setActiveTab] = useState<"billing" | "referral">("billing");
-
-  // Referral States
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
   const [referralLoading, setReferralLoading] = useState(true);
   const [origin, setOrigin] = useState("");
@@ -166,7 +177,10 @@ export default function CombinedBillingReferralPage() {
 
   const quota = balance?.self?.quota;
   const usedQuota = balance?.self?.used_quota;
-  const remaining = typeof quota === "number" && typeof usedQuota === "number" ? Math.max(quota - usedQuota, 0) : quota;
+  const remaining =
+    typeof quota === "number" && typeof usedQuota === "number"
+      ? Math.max(quota - usedQuota, 0)
+      : quota;
 
   const quotaPreview = amountValue !== null ? Math.round(amountValue * derivedRate.rate) : null;
 
@@ -176,14 +190,14 @@ export default function CombinedBillingReferralPage() {
     setReferralLoading(true);
 
     Promise.allSettled([
-      apiFetch<OrdersResponse>("/api/billing/orders").then(d => setOrders(d.orders)).catch(() => {}),
+      apiFetch<OrdersResponse>("/api/billing/orders").then((d) => setOrders(d.orders)).catch(() => {}),
       apiFetch<BalanceSummary>("/api/dashboard/summary")
         .then((d) => {
           setBalance(d.newApi);
           if (d.quotaConfig) applyConfig(d.quotaConfig);
         })
         .catch(() => {}),
-      apiFetch<ReferralData>("/api/referral").then(d => setReferralData(d)).catch(() => {}),
+      apiFetch<ReferralData>("/api/referral").then((d) => setReferralData(d)).catch(() => {}),
       refresh(),
     ]).finally(() => {
       setOrdersLoading(false);
@@ -214,16 +228,13 @@ export default function CombinedBillingReferralPage() {
     }
     setCreating(true);
     try {
-      const data = await apiPost<CreatePaymentResponse>(
-        "/api/billing/epay/create",
-        {
-          amount: String(amountValue),
-          payType,
-          productCode: "quota",
-          name: "EZAPI 余额充值",
-          idempotencyKey: crypto.randomUUID(),
-        }
-      );
+      const data = await apiPost<CreatePaymentResponse>("/api/billing/epay/create", {
+        amount: String(amountValue),
+        payType,
+        productCode: "quota",
+        name: "EZAPI 余额充值",
+        idempotencyKey: crypto.randomUUID(),
+      });
       toast.success("订单已创建，正在前往支付");
       window.location.href = data.payment.url;
     } catch (createError) {
@@ -237,7 +248,9 @@ export default function CombinedBillingReferralPage() {
     if (!redeemCode.trim()) return;
     setRedeeming(true);
     try {
-      const result = await apiPost<RedeemResponse>("/api/billing/redeem", { code: redeemCode.trim() });
+      const result = await apiPost<RedeemResponse>("/api/billing/redeem", {
+        code: redeemCode.trim(),
+      });
       const amountText = formatQuota(result.quotaAmount ?? result.ledger?.amount);
       toast.success(result.duplicate ? "兑换码已处理过" : `兑换成功：+${amountText}`);
       setRedeemCode("");
@@ -254,469 +267,342 @@ export default function CombinedBillingReferralPage() {
     toast.success(message);
   };
 
-  const inviteUrl = origin && referralData ? `${origin}/register?inviteCode=${referralData.inviteCode}` : referralData?.inviteLink || "";
+  const inviteUrl =
+    origin && referralData
+      ? `${origin}/register?inviteCode=${referralData.inviteCode}`
+      : referralData?.inviteLink || "";
   const rewardTotal = referralData?.rewards.reduce((sum, reward) => sum + reward.amount, 0) || 0;
   const pendingInvites = referralData?.invitedCount.pending || 0;
   const rewardedInvites = referralData?.invitedCount.rewarded || 0;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-12 pb-20">
-      {/* Header Section */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-[2rem] bg-zinc-950 p-8 md:p-12 text-zinc-50"
-      >
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-orange-500 via-transparent to-transparent" />
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-orange-500/20 blur-[80px]" />
-        
-        <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">资产中心</h1>
-            <p className="text-lg text-zinc-400 max-w-xl">
-              管理您的 API 额度、充值记录与邀请收益。透明、高效的财务总览。
-            </p>
-          </div>
-          <div className="flex gap-3">
-             <Button variant="outline" className="rounded-full border-zinc-800 bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:text-white backdrop-blur-md">
-               <Clock className="w-4 h-4 mr-2" />
-               账单明细
-             </Button>
-          </div>
-        </div>
-      </motion.div>
+    <div className="mx-auto w-full max-w-6xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-normal">财务与奖励</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          管理账户余额、充值记录与邀请收益。
+        </p>
+      </div>
 
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="grid gap-8 lg:grid-cols-12"
-      >
-        {/* Left Column: Balances & Stats (7 cols) */}
-        <div className="lg:col-span-7 space-y-8">
-          
-          {/* Main Balance Card */}
-          <motion.div variants={itemVariants} className="group relative overflow-hidden rounded-[2rem] border border-orange-200/50 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all hover:shadow-[0_8px_30px_rgb(255,149,0,0.1)]">
-            <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-orange-50 to-transparent opacity-50" />
-            
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-500/20">
-                    <Wallet className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">可用额度</h2>
-                    <p className="text-sm text-slate-500 font-medium">实时计算</p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-600 px-3 py-1 text-xs font-bold tracking-widest uppercase">
-                  <span className="relative flex h-2 w-2 mr-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-                  </span>
-                  Live
-                </Badge>
-              </div>
-
-              <div className="mb-10">
-                {balanceLoading ? (
-                  <Skeleton className="h-16 w-64 rounded-xl" />
-                ) : (
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-6xl font-black tracking-tighter text-slate-900 tabular-nums">
-                      {formatQuota(remaining).replace(/[^0-9.,]/g, '')}
-                    </span>
-                    <span className="text-2xl font-bold text-slate-400">
-                      {formatQuota(remaining).replace(/[0-9.,]/g, '')}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-2xl bg-slate-50 p-5 transition-colors group-hover:bg-orange-50/50">
-                  <div className="text-sm font-medium text-slate-500 mb-2">历史总消耗</div>
-                  <div className="text-2xl font-bold text-slate-900 tabular-nums">
-                    {balanceLoading ? <Skeleton className="h-8 w-24" /> : formatQuota(usedQuota)}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-slate-50 p-5 transition-colors group-hover:bg-orange-50/50">
-                  <div className="text-sm font-medium text-slate-500 mb-2">充值次数</div>
-                  <div className="text-2xl font-bold text-slate-900 tabular-nums">
-                    {ordersLoading ? <Skeleton className="h-8 w-16" /> : orders.length}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Referral Stats Card */}
-          <motion.div variants={itemVariants} className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
-                  <Gift className="h-5 w-5" />
-                </div>
-                <h2 className="text-xl font-bold text-slate-900">邀请收益</h2>
-              </div>
-              <Button variant="ghost" className="rounded-full font-semibold hover:bg-slate-100">
-                <ArrowRightLeft className="mr-2 h-4 w-4" />
-                划转
-              </Button>
-            </div>
-
-            <div className="grid sm:grid-cols-3 gap-6 mb-8">
-              <div>
-                <div className="text-sm font-medium text-slate-500 mb-1">累计奖励</div>
-                <div className="text-3xl font-black text-orange-500 tabular-nums">
-                  {referralLoading ? <Skeleton className="h-9 w-24" /> : formatQuota(rewardTotal)}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-slate-500 mb-1">成功邀请</div>
-                <div className="text-3xl font-bold text-slate-900 tabular-nums">
-                  {referralLoading ? <Skeleton className="h-9 w-16" /> : `${rewardedInvites} 人`}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-slate-500 mb-1">待确认</div>
-                <div className="text-3xl font-bold text-slate-900 tabular-nums">
-                  {referralLoading ? <Skeleton className="h-9 w-16" /> : `${pendingInvites} 人`}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-slate-50 p-2 flex items-center gap-2 border border-slate-100">
-              <div className="flex-1 truncate px-4 font-mono text-sm text-slate-600 select-all">
-                {referralLoading ? "加载中..." : inviteUrl}
-              </div>
-              <Button
-                onClick={() => copyToClipboard(inviteUrl, "邀请链接已复制")}
-                className="rounded-xl bg-slate-900 text-white hover:bg-slate-800 shadow-none font-bold px-6"
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                复制链接
-              </Button>
-            </div>
-          </motion.div>
-
-        </div>
-
-        {/* Right Column: Actions (5 cols) */}
-        <div className="lg:col-span-5 space-y-8">
-          
-          {/* Recharge Card */}
-          <motion.div variants={itemVariants} className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-            <div className="mb-8">
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-orange-500" />
-                快速充值
-              </h2>
-            </div>
-
-            <div className="space-y-8">
-              {/* Amount Selection */}
-              <div>
-                <Label className="text-sm font-bold text-slate-700 mb-4 block">选择金额 (CNY)</Label>
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  {AMOUNT_PRESETS.map(val => (
-                    <button 
-                      key={val}
-                      type="button"
-                      onClick={() => setAmount(String(val))}
-                      className={cn(
-                        "relative h-14 rounded-2xl border-2 text-lg font-bold transition-all duration-200 overflow-hidden",
-                        amountValue === val 
-                          ? "border-orange-500 bg-orange-50 text-orange-600" 
-                          : "border-slate-200 bg-white text-slate-600 hover:border-orange-200 hover:bg-orange-50/30"
-                      )}
-                    >
-                      {amountValue === val && (
-                        <motion.div 
-                          layoutId="amount-active" 
-                          className="absolute inset-0 bg-orange-100/50" 
-                          initial={false}
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                        />
-                      )}
-                      <span className="relative z-10">¥{val}</span>
-                    </button>
-                  ))}
-                  <div className="relative h-14 col-span-3 sm:col-span-1">
-                    <Input 
-                      className={cn(
-                        "h-full w-full rounded-2xl border-2 text-center text-lg font-bold transition-all focus-visible:ring-0",
-                        amountValue !== null && !isPresetAmount(amountValue)
-                          ? "border-orange-500 bg-orange-50 text-orange-600"
-                          : "border-slate-200 bg-white text-slate-600 focus-visible:border-orange-500"
-                      )}
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      type="number"
-                      min="1"
-                      placeholder="自定义"
-                    />
-                  </div>
-                </div>
-                
-                <AnimatePresence mode="wait">
-                  {amountValue !== null && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="flex items-center justify-between rounded-xl bg-slate-50 p-4 text-sm"
-                    >
-                      <span className="font-medium text-slate-500">预计获得额度</span>
-                      <span className="font-bold text-orange-600 flex items-center gap-1">
-                        <Sparkles className="w-4 h-4" />
-                        {formatQuota(quotaPreview || 0)}
-                      </span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Payment Method */}
-              <div>
-                <Label className="text-sm font-bold text-slate-700 mb-4 block">支付方式</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {PAY_METHODS.map((method) => (
-                    <button 
-                      key={method.value}
-                      type="button"
-                      onClick={() => setPayType(method.value)}
-                      className={cn(
-                        "flex flex-col items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all",
-                        payType === method.value 
-                          ? "border-slate-900 bg-slate-900 text-white" 
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                      )}
-                    >
-                      <div className={cn(
-                        "p-2 rounded-full",
-                        payType === method.value ? "bg-white/20" : "bg-slate-100"
-                      )}>
-                        {method.icon}
-                      </div>
-                      <span className="font-bold text-sm">{method.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Pay Button */}
-              <Button 
-                className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl shadow-orange-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
-                style={{ backgroundColor: ACCENT }}
-                onClick={submitOrder}
-                disabled={creating || !amountValue}
-              >
-                {creating ? "创建订单中..." : `确认支付 ¥${amountValue || 0}`}
-              </Button>
-            </div>
-          </motion.div>
-
-          {/* Redeem Card */}
-          <motion.div variants={itemVariants} className="rounded-[2rem] border border-slate-200 bg-slate-50 p-8">
-            <h2 className="text-lg font-bold text-slate-900 mb-4">兑换码</h2>
-            <div className="flex gap-2">
-              <Input 
-                className="h-12 rounded-xl border-slate-300 bg-white px-4 font-mono text-sm focus-visible:ring-orange-500 focus-visible:border-orange-500" 
-                placeholder="输入兑换码"
-                value={redeemCode}
-                onChange={e => setRedeemCode(e.target.value)}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>额度充值</CardTitle>
+            <CardDescription>查看可用额度并完成充值。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-3 rounded-lg border border-border/60 p-3">
+              <StatItem
+                label="可用额度"
+                value={formatQuota(remaining)}
+                loading={balanceLoading}
               />
-              <Button 
-                className="h-12 rounded-xl bg-slate-900 font-bold hover:bg-slate-800 px-6"
-                onClick={handleRedeem} 
-                disabled={redeeming || !redeemCode}
-              >
-                兑换
+              <StatItem
+                label="历史消耗"
+                value={formatQuota(usedQuota)}
+                loading={balanceLoading}
+              />
+              <StatItem
+                label="充值次数"
+                value={orders.length}
+                loading={ordersLoading}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <Label>充值金额（CNY）</Label>
+              <div className="flex flex-wrap gap-2">
+                {AMOUNT_PRESETS.map((val) => (
+                  <Button
+                    key={val}
+                    type="button"
+                    size="sm"
+                    variant={amountValue === val ? "default" : "outline"}
+                    onClick={() => setAmount(String(val))}
+                  >
+                    ¥{val}
+                  </Button>
+                ))}
+                <Input
+                  className="h-8 w-24"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  type="number"
+                  min="1"
+                  placeholder="自定义"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                ¥{amountValue || 0} → 约 {formatQuota(quotaPreview || 0)} 额度（预估，以实际到账为准）
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>支付方式</Label>
+              <div className="flex flex-wrap gap-2">
+                {PAY_METHODS.map((method) => (
+                  <Button
+                    key={method.value}
+                    type="button"
+                    size="sm"
+                    variant={payType === method.value ? "default" : "outline"}
+                    onClick={() => setPayType(method.value)}
+                  >
+                    <Wallet className="mr-1.5 h-3.5 w-3.5" />
+                    {method.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Button
+              className="w-full"
+              disabled={creating || !amountValue}
+              onClick={submitOrder}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              {creating ? "创建订单中…" : `去支付 ¥${amountValue || 0}`}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle>邀请与兑换</CardTitle>
+                <CardDescription>分享邀请链接或输入兑换码获取额度。</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" className="shrink-0">
+                <ArrowRightLeft className="mr-1.5 h-3.5 w-3.5" />
+                划转收益
               </Button>
             </div>
-          </motion.div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-3 rounded-lg border border-border/60 p-3">
+              <StatItem
+                label="累计奖励"
+                value={formatQuota(rewardTotal)}
+                loading={referralLoading}
+              />
+              <StatItem
+                label="成功邀请"
+                value={
+                  <>
+                    {rewardedInvites}
+                    <span className="ml-1 text-sm font-normal text-muted-foreground">人</span>
+                  </>
+                }
+                loading={referralLoading}
+              />
+              <StatItem
+                label="待确认"
+                value={
+                  <>
+                    {pendingInvites}
+                    <span className="ml-1 text-sm font-normal text-muted-foreground">人</span>
+                  </>
+                }
+                loading={referralLoading}
+              />
+            </div>
 
-        </div>
-      </motion.div>
-
-      {/* History Section */}
-      <motion.div 
-        variants={itemVariants} 
-        initial="hidden"
-        animate="show"
-        className="rounded-[2rem] border border-slate-200 bg-white overflow-hidden shadow-sm"
-      >
-        <div className="flex border-b border-slate-100">
-          <button
-            onClick={() => setActiveTab("billing")}
-            className={cn(
-              "flex-1 py-5 text-center text-sm font-bold transition-colors relative",
-              activeTab === "billing" ? "text-orange-600" : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            充值记录
-            {activeTab === "billing" && (
-              <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("referral")}
-            className={cn(
-              "flex-1 py-5 text-center text-sm font-bold transition-colors relative",
-              activeTab === "referral" ? "text-orange-600" : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            奖励记录
-            {activeTab === "referral" && (
-              <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
-            )}
-          </button>
-        </div>
-
-        <div className="p-0">
-          <AnimatePresence mode="wait">
-            {activeTab === "billing" ? (
-              <motion.div
-                key="billing"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-x-auto"
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                className="font-mono text-sm"
+                value={referralLoading ? "加载中…" : inviteUrl}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0"
+                onClick={() => copyToClipboard(inviteUrl, "邀请链接已复制")}
               >
-                {ordersLoading ? (
-                  <div className="p-8 space-y-4">
-                    <Skeleton className="h-12 w-full rounded-xl" />
-                    <Skeleton className="h-12 w-full rounded-xl" />
-                  </div>
-                ) : orders.length === 0 ? (
-                  <div className="p-16">
-                    <EmptyState title="暂无充值记录" description="发起充值后，订单会出现在这里。" />
-                  </div>
-                ) : (
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50/50 text-slate-500 font-medium">
-                      <tr>
-                        <th className="px-6 py-4 font-medium">时间</th>
-                        <th className="px-6 py-4 font-medium">金额</th>
-                        <th className="px-6 py-4 font-medium">方式</th>
-                        <th className="px-6 py-4 font-medium">状态</th>
-                        <th className="px-6 py-4 font-medium text-right">额度变化</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
+                <Copy className="mr-1.5 h-3.5 w-3.5" />
+                复制
+              </Button>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label htmlFor="redeemCode">兑换码</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="redeemCode"
+                  className="font-mono"
+                  placeholder="请输入兑换码"
+                  value={redeemCode}
+                  onChange={(e) => setRedeemCode(e.target.value)}
+                />
+                <Button
+                  className="shrink-0"
+                  disabled={redeeming || !redeemCode}
+                  onClick={handleRedeem}
+                >
+                  <Gift className="mr-1.5 h-3.5 w-3.5" />
+                  兑换
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                兑换成功后额度会即时加入可用额度。
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <Tabs defaultValue="billing" className="w-full">
+          <CardHeader className="pb-0">
+            <TabsList>
+              <TabsTrigger value="billing">充值记录</TabsTrigger>
+              <TabsTrigger value="referral">奖励记录</TabsTrigger>
+            </TabsList>
+          </CardHeader>
+          <CardContent className="p-0 pt-4">
+            <TabsContent value="billing" className="m-0">
+              {ordersLoading ? (
+                <div className="space-y-3 px-6 pb-6">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="px-6 pb-6">
+                  <EmptyState
+                    title="暂无充值记录"
+                    description="发起充值后，订单会出现在这里。"
+                  />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>时间</TableHead>
+                        <TableHead>金额</TableHead>
+                        <TableHead>支付方式</TableHead>
+                        <TableHead>状态</TableHead>
+                        <TableHead className="text-right">额度变化</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {orders.map((order) => (
-                        <tr key={order.id} className="hover:bg-slate-50/50 transition-colors group">
-                          <td className="px-6 py-4 font-mono text-slate-500">
+                        <TableRow key={order.id}>
+                          <TableCell className="whitespace-nowrap font-mono text-sm text-muted-foreground">
                             {formatDateTime(order.createdAt)}
-                          </td>
-                          <td className="px-6 py-4 font-mono font-bold text-slate-900">
+                          </TableCell>
+                          <TableCell className="font-mono tabular-nums">
                             {formatCurrencyCny(order.amountCents)}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center gap-2 font-medium text-slate-700">
-                              {order.provider?.includes('alipay') ? (
-                                <div className="w-6 h-6 rounded-full bg-[#1677FF]/10 flex items-center justify-center text-[#1677FF]"><Wallet className="w-3 h-3" /></div>
-                              ) : order.provider?.includes('wechat') ? (
-                                <div className="w-6 h-6 rounded-full bg-[#09B83E]/10 flex items-center justify-center text-[#09B83E]"><Wallet className="w-3 h-3" /></div>
-                              ) : (
-                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><CreditCard className="w-3 h-3" /></div>
-                              )}
-                              {order.provider?.includes('alipay') ? '支付宝' : order.provider?.includes('wechat') ? '微信' : order.provider || '—'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className={cn(
-                              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
-                              order.status.toUpperCase() === 'PAID' ? "bg-emerald-50 text-emerald-600" :
-                              order.status.toUpperCase() === 'PENDING' ? "bg-amber-50 text-amber-600" :
-                              "bg-red-50 text-red-600"
-                            )}>
-                              {order.status.toUpperCase() === 'PAID' ? <CheckCircle2 className="w-3 h-3" /> :
-                               order.status.toUpperCase() === 'PENDING' ? <Clock className="w-3 h-3" /> :
-                               <AlertCircle className="w-3 h-3" />}
-                              {statusText(order.status)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right font-mono font-bold text-emerald-600">
-                            {order.quotaAmount !== null ? `+${formatQuota(order.quotaAmount)}` : "—"}
-                          </td>
-                        </tr>
+                          </TableCell>
+                          <TableCell>
+                            {order.provider?.includes("alipay") ||
+                            order.provider?.includes("epay") ? (
+                              "支付宝"
+                            ) : order.provider?.includes("wechat") ? (
+                              "微信"
+                            ) : (
+                              order.provider || "—"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <OrderStatusBadge status={order.status} />
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-success tabular-nums">
+                            {order.quotaAmount !== null
+                              ? `+${formatQuota(order.quotaAmount)}`
+                              : "—"}
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                )}
-              </motion.div>
-            ) : (
-              <motion.div
-                key="referral"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-x-auto"
-              >
-                {referralLoading ? (
-                  <div className="p-8 space-y-4">
-                    <Skeleton className="h-12 w-full rounded-xl" />
-                    <Skeleton className="h-12 w-full rounded-xl" />
-                  </div>
-                ) : !referralData?.rewards.length ? (
-                  <div className="p-16">
-                    <EmptyState title="暂无奖励" description="好友注册成功后，你的奖励记录会显示在这里。" />
-                  </div>
-                ) : (
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50/50 text-slate-500 font-medium">
-                      <tr>
-                        <th className="px-6 py-4 font-medium">时间</th>
-                        <th className="px-6 py-4 font-medium">来源</th>
-                        <th className="px-6 py-4 font-medium">状态</th>
-                        <th className="px-6 py-4 font-medium text-right">奖励金额</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="referral" className="m-0">
+              {referralLoading ? (
+                <div className="space-y-3 px-6 pb-6">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : !referralData?.rewards.length ? (
+                <div className="px-6 pb-6">
+                  <EmptyState
+                    title="暂无奖励"
+                    description="好友注册成功后，你的奖励记录会显示在这里。"
+                  />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>时间</TableHead>
+                        <TableHead>来源</TableHead>
+                        <TableHead>状态</TableHead>
+                        <TableHead className="text-right">奖励金额</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {referralData.rewards.map((reward) => (
-                        <tr key={reward.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4 font-mono text-slate-500">
+                        <TableRow key={reward.id}>
+                          <TableCell className="whitespace-nowrap font-mono text-sm text-muted-foreground">
                             {formatDateTime(reward.createdAt)}
-                          </td>
-                          <td className="px-6 py-4 font-medium text-slate-700">
-                            <span className="inline-flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-orange-50 flex items-center justify-center text-orange-500">
-                                <Gift className="w-3 h-3" />
-                              </div>
-                              {reward.metadata?.referredUserId ? `好友 #${(reward.metadata.referredUserId || reward.referralId || '').slice(-6)}` : (reward.reason === 'referral_reward' ? '邀请好友' : reward.reason)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className={cn(
-                              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
-                              reward.metadata?.quotaApplied !== false ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
-                            )}>
-                              {reward.metadata?.quotaApplied !== false ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                          </TableCell>
+                          <TableCell>
+                            {reward.metadata?.referredUserId
+                              ? `好友 #${(reward.metadata.referredUserId || reward.referralId || "").slice(-6)}`
+                              : reward.reason === "referral_reward"
+                                ? "邀请好友"
+                                : reward.reason}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                reward.metadata?.quotaApplied !== false ? "success" : "warning"
+                              }
+                            >
                               {reward.metadata?.quotaApplied !== false ? "已发放" : "待结算"}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right font-mono font-bold text-orange-500">
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-primary tabular-nums">
                             +{formatQuota(reward.amount)}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </motion.div>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+          </CardContent>
+        </Tabs>
+      </Card>
     </div>
   );
 }
 
+function OrderStatusBadge({ status }: { status: string }) {
+  const normalized = status.toUpperCase();
+  const variant =
+    normalized === "PAID" ? "success" : normalized === "PENDING" ? "warning" : "error";
 
-
-
+  return (
+    <Badge variant={variant} className="gap-1">
+      {normalized === "PAID" ? (
+        <CheckCircle2 className="h-3 w-3" />
+      ) : normalized === "PENDING" ? (
+        <Clock className="h-3 w-3" />
+      ) : (
+        <AlertCircle className="h-3 w-3" />
+      )}
+      {statusText(status)}
+    </Badge>
+  );
+}
