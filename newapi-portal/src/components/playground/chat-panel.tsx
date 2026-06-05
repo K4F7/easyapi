@@ -463,23 +463,23 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
 
 function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   return (
-    <div className="flex flex-col items-center gap-6 py-10 text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-        <Terminal className="h-6 w-6" />
+    <div className="flex flex-col items-center gap-6 py-12 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-primary/10 text-primary shadow-sm">
+        <Terminal className="h-7 w-7" />
       </span>
       <div className="space-y-1">
-        <p className="text-sm font-medium">开始一段对话</p>
+        <p className="text-base font-semibold">开始一段对话</p>
         <p className="text-sm text-muted-foreground">
           选择下方建议，或直接在输入框提问。
         </p>
       </div>
-      <div className="grid w-full max-w-xl gap-2 sm:grid-cols-2">
+      <div className="grid w-full max-w-xl gap-3 sm:grid-cols-2 mt-4">
         {PROMPT_SUGGESTIONS.map((suggestion) => (
           <button
             key={suggestion}
             type="button"
             onClick={() => onPick(suggestion)}
-            className="rounded-xl border border-border bg-card px-4 py-3 text-left text-sm transition-colors hover:bg-muted"
+            className="rounded-xl border border-border/60 bg-card/50 px-4 py-3.5 text-left text-sm text-muted-foreground transition-all hover:bg-muted hover:text-foreground hover:shadow-sm"
           >
             {suggestion}
           </button>
