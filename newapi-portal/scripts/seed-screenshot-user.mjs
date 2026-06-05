@@ -5,6 +5,12 @@ const baseUrl = (process.env.SEED_BASE_URL ?? "https://test.easyapi.work").repla
   "",
 );
 const email = (process.env.SEED_EMAIL ?? "scr@easyapi.work").toLowerCase();
+const username =
+  process.env.SEED_USERNAME ??
+  email
+    .split("@")[0]
+    .replace(/[^a-zA-Z0-9_-]/g, "-")
+    .slice(0, 32);
 const password =
   process.env.SEED_PASSWORD ??
   process.env.E2E_PORTAL_PASSWORD ??
@@ -17,7 +23,7 @@ async function register() {
   const response = await fetch(`${baseUrl}/api/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ username, email, password }),
   });
   const payload = await readJson(response);
   return { response, payload };
@@ -48,7 +54,7 @@ async function adminCreateUser() {
       "New-Api-User": newApiAdminUserId,
     },
     body: JSON.stringify({
-      username: email,
+      username,
       password,
       display_name: "Screenshot Test User",
       role: 1,
@@ -79,16 +85,37 @@ async function readJson(response) {
 }
 
 function extractMessage(payload) {
-  if (!payload || typeof payload !== "object") {
+  if (payload === undefined || payload === null) {
+    return "unknown error";
+  }
+
+  if (typeof payload === "string") {
+    return payload;
+  }
+
+  if (typeof payload !== "object") {
     return String(payload ?? "unknown error");
   }
 
-  return payload.message ?? payload.error ?? payload.msg ?? JSON.stringify(payload);
+  const parts = [];
+  for (const key of ["message", "code", "details", "msg"]) {
+    const value = payload[key];
+    if (value !== undefined && value !== null) {
+      parts.push(`${key}: ${extractMessage(value)}`);
+    }
+  }
+
+  if (payload.error !== undefined && payload.error !== null) {
+    parts.push(`error: ${extractMessage(payload.error)}`);
+  }
+
+  return parts.length > 0 ? parts.join("; ") : JSON.stringify(payload);
 }
 
 function printCredentials(source) {
   console.log(`\nScreenshot test user ready (${source}).`);
   console.log(`SEED_BASE_URL=${baseUrl}`);
+  console.log(`SEED_USERNAME=${username}`);
   console.log(`E2E_PORTAL_IDENTIFIER=${email}`);
   console.log(`E2E_PORTAL_PASSWORD=${password}`);
 }

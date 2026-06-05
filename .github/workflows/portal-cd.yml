@@ -160,6 +160,8 @@ jobs:
 
       - name: Seed screenshot test user
         env:
+          E2E_PORTAL_IDENTIFIER: ${{ secrets.E2E_PORTAL_IDENTIFIER }}
+          E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
           NEWAPI_BASE_URL: ${{ secrets.STAGING_NEWAPI_BASE_URL }}
           NEWAPI_ADMIN_TOKEN: ${{ secrets.STAGING_NEWAPI_ADMIN_TOKEN }}
         run: node scripts/seed-staging-via-api.mjs
