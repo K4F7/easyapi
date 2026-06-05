@@ -120,9 +120,9 @@ function StatItem({
   return (
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 truncate text-lg font-semibold tabular-nums">
+      <div className="mt-0.5 truncate text-lg font-semibold tabular-nums">
         {loading ? <Skeleton className="h-7 w-20" /> : value}
-      </p>
+      </div>
     </div>
   );
 }
