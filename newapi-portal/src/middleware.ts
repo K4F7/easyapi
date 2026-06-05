@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { agentDiscoveryLinkHeader, wantsMarkdown } from "@/lib/agent-http";
 import {
   extractImagePlaygroundSessionToken,
   isImagePlaygroundEmbedPath,
@@ -19,6 +20,11 @@ const PUBLIC_PATHS = [
   "/api",
   "/_next",
   "/favicon.ico",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/auth.md",
+  "/.well-known",
+  "/oauth",
 ];
 
 const EMBED_DOCUMENT_PATH = /^\/playground\/embed\/?$/;
@@ -35,6 +41,35 @@ function isAuthPage(pathname: string): boolean {
 
 function isPlaygroundEmbedDocument(pathname: string): boolean {
   return EMBED_DOCUMENT_PATH.test(pathname);
+}
+
+function markdownHomeResponse(): NextResponse {
+  return new NextResponse(`# EZAPI Portal
+
+EZAPI Portal is a user-facing API console with public read-only discovery metadata for agents.
+
+## Discovery
+
+- API catalog: /.well-known/api-catalog
+- Auth instructions: /auth.md
+- OAuth authorization server metadata: /.well-known/oauth-authorization-server
+- OAuth protected resource metadata: /.well-known/oauth-protected-resource
+- MCP server card: /.well-known/mcp/server-card.json
+- Agent skills: /.well-known/agent-skills/index.json
+- Status: /api/health
+
+## Human workflows
+
+- Login: /login
+- Register: /register
+- Password reset: /forgot-password
+`, {
+    headers: {
+      "Content-Type": "text/markdown; charset=utf-8",
+      Link: agentDiscoveryLinkHeader,
+      Vary: "Accept",
+    },
+  });
 }
 
 function shouldBlockTopLevelEmbedNavigation(request: NextRequest): boolean {
@@ -63,6 +98,10 @@ export function middleware(request: NextRequest) {
 
   if (PUBLIC_STATIC.test(pathname)) {
     return NextResponse.next();
+  }
+
+  if (pathname === "/" && wantsMarkdown(request)) {
+    return markdownHomeResponse();
   }
 
   const hasSession = request.cookies.has(SESSION_COOKIE);

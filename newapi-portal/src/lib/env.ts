@@ -5,7 +5,13 @@ const quotaSchema = z.coerce.number().int().nonnegative();
 const serverEnvSchema = z.object({
   DATABASE_URL: z.string().url("DATABASE_URL must be a valid PostgreSQL URL"),
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
-  APP_URL: z.string().url("APP_URL must be a valid URL"),
+  APP_URL: z
+    .string()
+    .url("APP_URL must be a valid URL")
+    .refine((value) => {
+      const protocol = new URL(value).protocol;
+      return protocol === "http:" || protocol === "https:";
+    }, "APP_URL must use http or https"),
   NEWAPI_BASE_URL: z.string().url("NEWAPI_BASE_URL must be a valid URL"),
   NEWAPI_ADMIN_TOKEN: z.string().min(1, "NEWAPI_ADMIN_TOKEN is required"),
   NEWAPI_ADMIN_USER_ID: z.string().min(1, "NEWAPI_ADMIN_USER_ID is required"),

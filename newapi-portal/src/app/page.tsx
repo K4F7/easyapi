@@ -3,6 +3,7 @@ import { ArrowRight, KeyRound, ReceiptText, ShieldCheck } from "lucide-react";
 
 import { BrandMark } from "@/components/brand-mark";
 import { DuckLogo } from "@/components/duck-logo";
+import { WebMcpRegistration } from "@/components/webmcp-registration";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +32,7 @@ const capabilities = [
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-slate-50/50 overflow-x-hidden relative selection:bg-primary selection:text-primary-foreground">
+      <WebMcpRegistration />
       {/* Soft background blobs */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[500px] bg-primary opacity-5 rounded-full blur-3xl -z-10 pointer-events-none" />
       
