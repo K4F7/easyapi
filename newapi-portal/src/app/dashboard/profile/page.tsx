@@ -119,12 +119,7 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 page-transition">
-      <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur">
-        <h1 className="text-2xl font-semibold tracking-normal">个人资料</h1>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-          管理账户安全设置、绑定邮箱地址以及登录凭证。
-        </p>
-      </div>
+      <h1 className="text-2xl font-semibold tracking-normal">个人资料</h1>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">

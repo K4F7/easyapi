@@ -333,12 +333,7 @@ export default function UsagePage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur">
-        <h1 className="text-2xl font-semibold tracking-normal">用量</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          你的 API 用量概览，看看消费花在了哪个令牌、哪个模型上。
-        </p>
-      </div>
+      <h1 className="text-2xl font-semibold tracking-normal">用量</h1>
 
       {/* date range + presets */}
       <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">

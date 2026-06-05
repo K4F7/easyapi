@@ -280,12 +280,7 @@ export default function CombinedBillingReferralPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur">
-        <h1 className="text-2xl font-semibold tracking-normal">财务与奖励</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          管理账户余额、充值记录与邀请收益。
-        </p>
-      </div>
+      <h1 className="text-2xl font-semibold tracking-normal">财务与奖励</h1>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
