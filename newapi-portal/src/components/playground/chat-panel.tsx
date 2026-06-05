@@ -315,12 +315,12 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
   return (
     <Card
       className={cn(
-        "flex min-h-0 flex-col overflow-hidden",
+        "flex min-h-0 flex-col overflow-hidden rounded-2xl border-border/60 bg-background/80 shadow-sm backdrop-blur-sm",
         className ?? "h-[640px]",
       )}
     >
       {!isEmpty ? (
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-border/60 bg-background/60 px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">
             <span className="text-sm font-medium">在线对话</span>
             {activeModel ? (
@@ -378,7 +378,7 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
       </div>
 
       {/* 底部输入区 */}
-      <div className="border-t border-border px-4 py-3">
+      <div className="border-t border-border/60 bg-background/60 px-4 py-3">
         <div className="mx-auto w-full max-w-3xl space-y-2">
           {/* 快捷 prompt 胶囊行 */}
           <QuickPills
@@ -388,7 +388,7 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
             onPick={fillInput}
           />
 
-          <div className="flex items-end gap-2 rounded-2xl border border-input bg-card p-2 shadow-subtle focus-within:ring-2 focus-within:ring-ring">
+          <div className="flex items-end gap-2 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-subtle focus-within:ring-2 focus-within:ring-ring">
             <textarea
               ref={textareaRef}
               value={input}
@@ -479,7 +479,7 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
             key={suggestion}
             type="button"
             onClick={() => onPick(suggestion)}
-            className="rounded-xl border border-border/60 bg-card/50 px-4 py-3.5 text-left text-sm text-muted-foreground transition-all hover:bg-muted hover:text-foreground hover:shadow-sm"
+            className="rounded-xl border border-border/60 bg-background/80 px-4 py-3.5 text-left text-sm text-muted-foreground shadow-sm transition-[background-color,color,box-shadow,border-color] hover:border-primary/20 hover:bg-primary/5 hover:text-foreground hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {suggestion}
           </button>

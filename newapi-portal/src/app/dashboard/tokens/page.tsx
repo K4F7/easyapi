@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Infinity as InfinityIcon, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -119,7 +119,7 @@ export default function TokensPage() {
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<TokenItem | null>(null);
 
-  async function loadTokens() {
+  const loadTokens = useCallback(async () => {
     setError(null);
     setLoading(true);
 
@@ -134,11 +134,11 @@ export default function TokensPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [refresh]);
 
   useEffect(() => {
     void loadTokens();
-  }, []);
+  }, [loadTokens]);
 
   function handleCreated(key: string | null) {
     setCreateOpen(false);
@@ -184,8 +184,8 @@ export default function TokensPage() {
   }, [tokens, query]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="mx-auto w-full max-w-6xl space-y-6">
+      <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur sm:flex sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">令牌</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -193,7 +193,7 @@ export default function TokensPage() {
           </p>
         </div>
         {tokens.length > 0 ? (
-          <Button className="shrink-0" onClick={() => setCreateOpen(true)}>
+          <Button className="mt-3 shrink-0 sm:mt-0" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             创建令牌
           </Button>
@@ -217,7 +217,7 @@ export default function TokensPage() {
           onAction={() => setCreateOpen(true)}
         />
       ) : (
-        <Card>
+        <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
           <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1.5">
               <CardTitle>令牌列表</CardTitle>
@@ -226,7 +226,7 @@ export default function TokensPage() {
               </CardDescription>
             </div>
             <div className="relative w-full sm:w-64">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-subtle" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 aria-label="搜索令牌"
                 className="pl-9"
@@ -238,8 +238,8 @@ export default function TokensPage() {
           </CardHeader>
           <CardContent>
             {filtered.length === 0 ? (
-              <div className="py-12 text-center text-sm text-muted-foreground">
-                没有匹配「{query.trim()}」的令牌。
+              <div className="rounded-2xl border border-dashed border-border/70 bg-muted/30 px-4 py-12 text-center text-sm text-muted-foreground">
+                没有匹配「<span className="break-all">{query.trim()}</span>」的令牌。
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -370,7 +370,7 @@ function TokenRow({
             >
               <div
                 className={cn(
-                  "h-full rounded-full transition-all",
+                  "h-full rounded-full transition-[width,background-color]",
                   usedPct >= 100 ? "bg-error" : usedPct >= 80 ? "bg-warning" : "bg-primary",
                 )}
                 style={{ width: `${usedPct}%` }}
@@ -522,7 +522,7 @@ function CreateTokenDialog({
                 aria-pressed={neverExpire}
                 onClick={() => setNeverExpire((value) => !value)}
                 className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors",
+                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   neverExpire
                     ? "border-primary/30 bg-primary-soft text-primary"
                     : "border-input bg-card text-muted-foreground hover:bg-muted",
@@ -615,7 +615,7 @@ function DeleteTokenDialog({
 
 function TokenSkeleton() {
   return (
-    <Card>
+    <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
       <CardContent className="space-y-3 p-6">
         <Skeleton className="h-5 w-36" />
         <Skeleton className="h-10 w-full" />

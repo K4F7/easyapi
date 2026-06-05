@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -303,20 +303,23 @@ export default function UsagePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const toCnySeries = (series: { label: string; value: number }[]) =>
-    series.map((item) => ({ ...item, value: quotaToCny(item.value) }));
+  const toCnySeries = useCallback(
+    (series: { label: string; value: number }[]) =>
+      series.map((item) => ({ ...item, value: quotaToCny(item.value) })),
+    [quotaToCny],
+  );
 
   const dailySeries = useMemo(
     () => (usage ? toCnySeries(aggregateDaily(usage.items)) : []),
-    [usage, quotaToCny],
+    [usage, toCnySeries],
   );
   const modelRanks = useMemo(
     () => (usage ? toCnySeries(topModels(usage.items)) : []),
-    [usage, quotaToCny],
+    [usage, toCnySeries],
   );
   const tokenRanks = useMemo(
     () => (logs ? toCnySeries(topTokens(logs.items)) : []),
-    [logs, quotaToCny],
+    [logs, toCnySeries],
   );
 
   const sortedLogs = useMemo(
@@ -330,7 +333,7 @@ export default function UsagePage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div>
+      <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur">
         <h1 className="text-2xl font-semibold tracking-normal">用量</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           你的 API 用量概览，看看消费花在了哪个令牌、哪个模型上。
@@ -338,7 +341,7 @@ export default function UsagePage() {
       </div>
 
       {/* date range + presets */}
-      <Card>
+      <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
         <CardContent className="space-y-3 p-4">
           <div className="flex flex-wrap gap-2">
             {PRESETS.map((preset) => (
@@ -447,7 +450,7 @@ export default function UsagePage() {
 
           {/* daily chart + rankings */}
           <div className="grid items-stretch gap-4 lg:grid-cols-2">
-            <Card className="flex flex-col">
+            <Card className="flex flex-col border-border/60 bg-white/80 shadow-soft backdrop-blur">
               <CardHeader>
                 <CardTitle>按日用量</CardTitle>
                 <CardDescription>每天消费金额趋势（人民币）。</CardDescription>
@@ -469,7 +472,7 @@ export default function UsagePage() {
               </CardContent>
             </Card>
 
-            <Card className="flex flex-col">
+            <Card className="flex flex-col border-border/60 bg-white/80 shadow-soft backdrop-blur">
               <CardHeader>
                 <CardTitle>用量排名</CardTitle>
                 <CardDescription>
@@ -478,7 +481,7 @@ export default function UsagePage() {
               </CardHeader>
               <CardContent className="flex-1 space-y-5">
                 <div className="space-y-3">
-                  <div className="text-xs font-medium uppercase tracking-wide text-muted-subtle">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     按模型
                   </div>
                   <TopNBars
@@ -488,7 +491,7 @@ export default function UsagePage() {
                   />
                 </div>
                 <div className="space-y-3">
-                  <div className="text-xs font-medium uppercase tracking-wide text-muted-subtle">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     按令牌
                   </div>
                   <TopNBars
@@ -509,7 +512,7 @@ export default function UsagePage() {
           </div>
 
           {/* request logs */}
-          <Card>
+          <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle>最近请求记录</CardTitle>
@@ -639,7 +642,7 @@ function Metric({
   hint?: string;
 }) {
   return (
-    <Card>
+    <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
       <CardHeader className="pb-2">
         <CardDescription>{title}</CardDescription>
         <CardTitle className="flex items-baseline gap-1.5 truncate text-2xl tabular-nums">
@@ -675,7 +678,7 @@ function SortableHead({
         type="button"
         onClick={onClick}
         className={cn(
-          "inline-flex items-center gap-1 transition-colors hover:text-foreground",
+          "inline-flex items-center gap-1 rounded-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           active ? "text-foreground" : "text-muted-foreground",
         )}
       >
@@ -702,7 +705,7 @@ function EmptyUsage({
   onRefresh: () => void;
 }) {
   return (
-    <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-muted/30 p-6 text-center">
+    <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/70 bg-muted/30 p-6 text-center">
       <p className="text-sm font-medium">所选范围暂无用量</p>
       <p className="max-w-sm text-xs text-muted-foreground">
         这里的 0 表示该时间段还没有调用，并不代表出错。换个时间范围试试。
@@ -724,7 +727,7 @@ function UsageSkeleton() {
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {["quota", "count", "tokens"].map((key) => (
-          <Card key={key}>
+          <Card key={key} className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
             <CardContent className="space-y-3 p-6">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-8 w-32" />

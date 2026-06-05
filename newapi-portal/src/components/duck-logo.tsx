@@ -3,11 +3,17 @@ import { cn } from "@/lib/utils";
 
 type DuckLogoProps = {
   className?: string;
+  priority?: boolean;
   size?: number;
 };
 
-export function DuckLogo({ className, size = 32 }: DuckLogoProps) {
+export function DuckLogo({
+  className,
+  priority = false,
+  size = 32,
+}: DuckLogoProps) {
   const sizedByClass = /\b(h-|w-|size-)/.test(className ?? "");
+  const src = size <= 64 ? "/duck-64.webp" : "/duck.webp";
 
   return (
     <div
@@ -19,12 +25,12 @@ export function DuckLogo({ className, size = 32 }: DuckLogoProps) {
       style={sizedByClass ? undefined : { width: size, height: size }}
     >
       <Image
-        src="/duck.webp"
+        src={src}
         alt=""
         width={size}
         height={size}
         className="h-full w-full object-contain"
-        unoptimized
+        priority={priority}
       />
     </div>
   );

@@ -5,13 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2, ArrowRight, Mail, KeyRound } from "lucide-react";
 import { Suspense, useState } from "react";
 
-import { DuckLogo } from "@/components/duck-logo";
-import { PageTransition } from "@/components/page-transition";
+import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { sanitizeAuthError } from "@/lib/client/auth-error";
@@ -24,9 +19,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState<string | null>(
-    searchParams.get("error"),
-  );
+  const [error, setError] = useState<string | null>(searchParams.get("error"));
   const [identifierError, setIdentifierError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,7 +62,11 @@ function LoginForm() {
 
       if (!res.ok) {
         setError(
-          sanitizeAuthError(data.error?.code, data.error?.message, "登录失败，请稍后再试。"),
+          sanitizeAuthError(
+            data.error?.code,
+            data.error?.message,
+            "登录失败，请稍后再试。",
+          ),
         );
         return;
       }
@@ -84,155 +81,143 @@ function LoginForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-zinc-50/50 dark:bg-zinc-950 px-4 py-10 selection:bg-primary/20">
-      <PageTransition className="w-full max-w-[360px]">
-        <div className="mb-8 flex flex-col items-center justify-center gap-4">
-          <div className="rounded-2xl bg-white dark:bg-zinc-900 p-3 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-800">
-            <DuckLogo className="h-8 w-8" />
+    <AuthShell title="欢迎回来" description="登录以管理你的令牌和用量">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        {error && (
+          <div className="animate-in fade-in zoom-in-95 rounded-2xl border border-red-100 bg-red-50 px-3 py-2.5 text-[13px] leading-5 text-red-700">
+            {error}
           </div>
-          <div className="text-center space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-              欢迎回来
-            </h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              登录以管理你的令牌和用量
-            </p>
+        )}
+
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label
+              htmlFor="identifier"
+              className="text-xs font-semibold text-slate-700"
+            >
+              邮箱或用户名
+            </Label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="identifier"
+                type="text"
+                autoComplete="username"
+                placeholder="name@example.com"
+                aria-invalid={identifierError ? true : undefined}
+                value={identifier}
+                className={cn(
+                  "h-11 border-slate-200 bg-slate-50/70 pl-9 focus-visible:border-primary focus-visible:ring-primary/20",
+                  identifierError &&
+                    "border-red-500/50 focus-visible:ring-red-500/20",
+                )}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  if (identifierError) setIdentifierError(null);
+                }}
+              />
+            </div>
+            {identifierError && (
+              <p className="mt-1 text-[11px] font-medium text-destructive/90 animate-in fade-in slide-in-from-top-1">
+                {identifierError}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="password"
+                className="text-xs font-semibold text-slate-700"
+              >
+                密码
+              </Label>
+              <Link
+                href="/forgot-password"
+                className="rounded-md text-[11px] font-medium text-slate-500 transition-colors duration-200 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                忘记密码？
+              </Link>
+            </div>
+            <div className="relative">
+              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                placeholder="请输入密码"
+                className={cn(
+                  "h-11 border-slate-200 bg-slate-50/70 pl-9 pr-10 focus-visible:border-primary focus-visible:ring-primary/20",
+                  passwordError &&
+                    "border-red-500/50 focus-visible:ring-red-500/20",
+                )}
+                aria-invalid={passwordError ? true : undefined}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (passwordError) setPasswordError(null);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                aria-pressed={showPassword}
+                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-xl text-slate-400 transition-colors duration-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {passwordError && (
+              <p className="mt-1 text-[11px] font-medium text-destructive/90 animate-in fade-in slide-in-from-top-1">
+                {passwordError}
+              </p>
+            )}
           </div>
         </div>
 
-        <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-sm overflow-hidden">
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} noValidate className="space-y-4">
-              {error && (
-                <div className="rounded-xl bg-red-50 dark:bg-red-950/30 p-3 text-[13px] text-red-600 dark:text-red-400 ring-1 ring-inset ring-red-500/20 animate-in fade-in zoom-in-95">
-                  {error}
-                </div>
-              )}
+        <div className="pt-1">
+          <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-slate-500">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-3.5 w-3.5 cursor-pointer rounded border-slate-300 text-primary focus:ring-2 focus:ring-primary/30 focus:ring-offset-2"
+            />
+            保持登录状态
+          </label>
+        </div>
 
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label htmlFor="identifier" className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                    邮箱或用户名
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                    <Input
-                      id="identifier"
-                      type="text"
-                      autoComplete="username"
-                      placeholder="name@example.com"
-                      aria-invalid={identifierError ? true : undefined}
-                      value={identifier}
-                      className={cn(
-                        "pl-9 h-11 bg-zinc-50/50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 focus-visible:ring-primary/20",
-                        identifierError && "border-red-500/50 focus-visible:ring-red-500/20"
-                      )}
-                      onChange={(e) => {
-                        setIdentifier(e.target.value);
-                        if (identifierError) setIdentifierError(null);
-                      }}
-                    />
-                  </div>
-                  {identifierError && (
-                    <p className="mt-1 text-[11px] font-medium text-destructive/90 animate-in fade-in slide-in-from-top-1">
-                      {identifierError}
-                    </p>
-                  )}
-                </div>
+        <Button
+          className="group mt-2 h-11 w-full rounded-2xl font-semibold shadow-sm shadow-orange-200/50 transition-[background-color,box-shadow,transform] duration-200 hover:shadow-md hover:shadow-orange-200/60"
+          type="submit"
+          disabled={loading}
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <>
+              登录
+              <ArrowRight className="ml-2 h-4 w-4 opacity-70 transition-transform duration-200 group-hover:translate-x-1" />
+            </>
+          )}
+        </Button>
+      </form>
 
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                      密码
-                    </Label>
-                    <Link
-                      href="/forgot-password"
-                      className="text-[11px] font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                    >
-                      忘记密码？
-                    </Link>
-                  </div>
-                  <div className="relative">
-                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      placeholder="请输入密码"
-                      className={cn(
-                        "pl-9 pr-10 h-11 bg-zinc-50/50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 focus-visible:ring-primary/20",
-                        passwordError && "border-red-500/50 focus-visible:ring-red-500/20"
-                      )}
-                      aria-invalid={passwordError ? true : undefined}
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        if (passwordError) setPasswordError(null);
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                      aria-pressed={showPassword}
-                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors focus-visible:outline-none"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                  {passwordError && (
-                    <p className="mt-1 text-[11px] font-medium text-destructive/90 animate-in fade-in slide-in-from-top-1">
-                      {passwordError}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="pt-1">
-                <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-3.5 w-3.5 cursor-pointer rounded border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 focus:ring-zinc-900 dark:focus:ring-zinc-100"
-                  />
-                  保持登录状态
-                </label>
-              </div>
-
-              <Button
-                className="w-full h-11 mt-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-medium transition-all group"
-                type="submit"
-                disabled={loading}
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    登录
-                    <ArrowRight className="ml-2 h-4 w-4 opacity-70 group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <p className="mt-6 text-center text-[13px] text-zinc-500 dark:text-zinc-400">
-          还没账户？{" "}
-          <Link
-            className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline underline-offset-4"
-            href="/register"
-          >
-            免费创建账户
-          </Link>
-        </p>
-      </PageTransition>
-    </main>
+      <p className="mt-6 text-center text-[13px] text-slate-500">
+        还没账户？{" "}
+        <Link
+          className="rounded-md font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          href="/register"
+        >
+          免费创建账户
+        </Link>
+      </p>
+    </AuthShell>
   );
 }
 

@@ -1,8 +1,5 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowRight, KeyRound, ReceiptText, ShieldCheck } from "lucide-react";
-import { motion, type Variants } from "framer-motion";
 
 import { BrandMark } from "@/components/brand-mark";
 import { DuckLogo } from "@/components/duck-logo";
@@ -31,126 +28,81 @@ const capabilities = [
   },
 ];
 
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants: Variants = {
-  hidden: { y: 20, opacity: 0 },
-  show: {
-    y: 0,
-    opacity: 1,
-    transition: { type: "spring", stiffness: 100, damping: 20 },
-  },
-};
-
-const floatingVariants: Variants = {
-  animate: {
-    y: [0, -8, 0],
-    transition: {
-      duration: 4,
-      repeat: Infinity,
-      ease: "easeInOut",
-    },
-  },
-};
-
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-slate-50/50 overflow-x-hidden relative selection:bg-primary selection:text-primary-foreground">
       {/* Soft background blobs */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[500px] bg-primary opacity-5 rounded-full blur-3xl -z-10 pointer-events-none" />
       
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-6 relative z-10">
-        <motion.header 
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="flex items-center justify-between bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-sm border border-slate-100"
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 sm:px-6 relative z-10">
+        <header
+          className="home-enter flex items-center justify-between bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-sm border border-slate-100"
         >
           <Link href="/" className="flex items-center gap-3 group">
-            <motion.div 
-              whileHover={{ scale: 1.05, rotate: 5 }}
-              transition={{ type: "spring", stiffness: 400, damping: 10 }}
-            >
-              <DuckLogo size={36} />
-            </motion.div>
+            <div className="transition-transform duration-200 group-hover:rotate-[5deg] group-hover:scale-105">
+              <DuckLogo size={36} priority />
+            </div>
             <span className="text-xl font-bold tracking-tight text-slate-800">EZAPI</span>
           </Link>
           <div className="flex items-center gap-3">
             <Button asChild variant="ghost" className="hidden md:flex rounded-xl hover:bg-slate-100 text-slate-600">
-              <Link href="/login">登录</Link>
+              <Link href="/login" prefetch={false}>登录</Link>
             </Button>
-            <Button asChild className="rounded-xl shadow-sm hover:shadow-md transition-all">
-              <Link href="/register">注册</Link>
+            <Button asChild className="rounded-xl shadow-sm transition-shadow hover:shadow-md">
+              <Link href="/register" prefetch={false}>注册</Link>
             </Button>
           </div>
-        </motion.header>
+        </header>
 
-        <section className="flex-1 py-16 md:py-24 flex items-center">
+        <section className="flex-1 py-14 sm:py-16 md:py-24 flex items-center">
           <div className="grid gap-16 lg:grid-cols-[1.1fr_1fr] items-center w-full">
             
-            <motion.div 
-              variants={containerVariants}
-              initial="hidden"
-              animate="show"
+            <div
               className="max-w-2xl relative"
             >
-              <motion.div variants={itemVariants}>
+              <div className="home-enter home-enter-1">
                 <Badge variant="secondary" className="mb-6 text-base font-medium px-5 py-2 shadow-sm rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors border-0">
                   不懂技术也能轻松调用AI
                 </Badge>
-              </motion.div>
+              </div>
               
-              <motion.h1 
-                variants={itemVariants}
-                className="text-4xl sm:text-5xl lg:text-6xl xl:text-[4rem] font-extrabold tracking-normal text-slate-900 leading-[1.2] sm:leading-[1.15]"
+              <h1
+                className="text-balance text-[2.2rem] sm:text-5xl lg:text-6xl xl:text-[4rem] font-extrabold tracking-normal text-slate-900 leading-[1.18] sm:leading-[1.15]"
               >
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-blue-600 inline-block">
-                  管令牌、看用量、随时充值
+                  <span className="block sm:inline">管令牌、看用量、</span>
+                  <span className="block sm:inline">随时充值</span>
                 </span>
-              </motion.h1>
+              </h1>
               
-              <motion.div variants={itemVariants} className="mt-6 max-w-xl">
+              <div className="home-enter home-enter-2 mt-6 max-w-xl">
                 <p className="text-lg leading-relaxed text-slate-600">
                   不需要配置服务器，注册即用。管令牌、看用量、在线充值，就这么简单。
                 </p>
-              </motion.div>
+              </div>
               
-              <motion.div variants={itemVariants} className="mt-10 flex flex-wrap gap-4">
-                <Button asChild size="lg" className="h-14 px-8 rounded-2xl text-base shadow-sm hover:shadow-md transition-all">
-                  <Link href="/register">
+              <div className="home-enter home-enter-3 mt-10 flex flex-wrap gap-4">
+                <Button asChild size="lg" className="h-14 px-8 rounded-2xl text-base shadow-sm transition-shadow hover:shadow-md">
+                  <Link href="/register" prefetch={false}>
                     免费注册，马上试用
                     <ArrowRight className="h-5 w-5 ml-2" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="h-14 px-8 rounded-2xl text-base border-slate-200 text-slate-700 hover:bg-slate-50 transition-all">
-                  <Link href="/dashboard">进入控制台</Link>
+                <Button asChild variant="outline" size="lg" className="h-14 px-8 rounded-2xl text-base border-slate-200 text-slate-700 transition-colors hover:bg-slate-50">
+                  <Link href="/dashboard" prefetch={false}>进入控制台</Link>
                 </Button>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
 
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
-              className="relative"
+            <div
+              className="home-enter home-enter-2 relative"
             >
-              <motion.div 
-                variants={floatingVariants}
-                animate="animate"
-                className="rounded-3xl border border-slate-100 bg-white/60 backdrop-blur-xl p-8 shadow-xl shadow-slate-200/40 relative z-10"
+              <div
+                className="home-float rounded-3xl border border-slate-100 bg-white/60 backdrop-blur-xl p-8 shadow-xl shadow-slate-200/40 relative z-10"
               >
                 <div className="flex items-center gap-5 mb-8 pb-6 border-b border-slate-100">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-slate-50 bg-white p-1.5 shadow-sm">
-                    <BrandMark compact className="h-full w-full" />
+                    <BrandMark compact priority className="h-full w-full" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-slate-800">系统状态</h2>
@@ -166,15 +118,11 @@ export default function HomePage() {
                 
                 <div className="grid gap-4">
                   {capabilities.map((item, i) => (
-                    <motion.div 
+                    <div
                       key={item.title}
-                      initial={{ x: 20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ delay: 0.4 + i * 0.1, duration: 0.5 }}
-                      whileHover={{ scale: 1.02 }}
-                      className="group cursor-default"
+                      className={`home-enter home-enter-${i + 4} group cursor-default transition-transform duration-200 hover:scale-[1.02]`}
                     >
-                      <Card className="border-0 shadow-sm hover:shadow-md transition-all bg-white rounded-2xl overflow-hidden">
+                      <Card className="border-0 bg-white shadow-sm transition-shadow hover:shadow-md rounded-2xl overflow-hidden">
                         <CardContent className="flex items-center gap-4 p-4">
                           <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${item.color} transition-colors`}>
                             <item.icon className="h-6 w-6" strokeWidth={2} />
@@ -187,11 +135,11 @@ export default function HomePage() {
                           </div>
                         </CardContent>
                       </Card>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
             
           </div>
         </section>

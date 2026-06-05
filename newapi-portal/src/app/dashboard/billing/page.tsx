@@ -108,10 +108,6 @@ const PAY_METHODS = [
 
 const AMOUNT_PRESETS = [10, 50, 100, 200] as const;
 
-function isPresetAmount(value: number): value is (typeof AMOUNT_PRESETS)[number] {
-  return (AMOUNT_PRESETS as readonly number[]).includes(value);
-}
-
 function StatItem({
   label,
   value,
@@ -277,7 +273,7 @@ export default function CombinedBillingReferralPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div>
+      <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur">
         <h1 className="text-2xl font-semibold tracking-normal">财务与奖励</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           管理账户余额、充值记录与邀请收益。
@@ -285,13 +281,13 @@ export default function CombinedBillingReferralPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
           <CardHeader className="pb-3">
             <CardTitle>额度充值</CardTitle>
             <CardDescription>查看可用额度并完成充值。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-3 rounded-lg border border-border/60 p-3">
+            <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border/60 bg-muted/30 p-3 sm:grid-cols-3">
               <StatItem
                 label="可用额度"
                 value={formatQuota(remaining)}
@@ -326,7 +322,8 @@ export default function CombinedBillingReferralPage() {
                   </Button>
                 ))}
                 <Input
-                  className="h-8 w-24"
+                  aria-label="自定义充值金额"
+                  className="h-8 w-28"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   type="number"
@@ -368,21 +365,21 @@ export default function CombinedBillingReferralPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <CardTitle>邀请与兑换</CardTitle>
                 <CardDescription>分享邀请链接或输入兑换码获取额度。</CardDescription>
               </div>
-              <Button variant="outline" size="sm" className="shrink-0">
+              <Button variant="outline" size="sm" className="shrink-0" type="button">
                 <ArrowRightLeft className="mr-1.5 h-3.5 w-3.5" />
                 划转收益
               </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-3 rounded-lg border border-border/60 p-3">
+            <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border/60 bg-muted/30 p-3 sm:grid-cols-3">
               <StatItem
                 label="累计奖励"
                 value={formatQuota(rewardTotal)}
@@ -413,7 +410,8 @@ export default function CombinedBillingReferralPage() {
             <div className="flex items-center gap-2">
               <Input
                 readOnly
-                className="font-mono text-sm"
+                aria-label="邀请链接"
+                className="min-w-0 font-mono text-sm"
                 value={referralLoading ? "加载中…" : inviteUrl}
               />
               <Button
@@ -456,7 +454,7 @@ export default function CombinedBillingReferralPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
         <Tabs defaultValue="billing" className="w-full">
           <CardHeader className="pb-0">
             <TabsList>
