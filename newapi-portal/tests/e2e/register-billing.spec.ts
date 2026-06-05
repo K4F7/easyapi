@@ -158,13 +158,12 @@ test.describe("Billing referral", () => {
     expect(inviteUrl).toMatch(/\/register\?inviteCode=[A-Za-z0-9]+/);
     expect(inviteUrl).not.toMatch(/[?&]aff=/);
 
-    await expect(page.getByText("累计已发奖励")).toBeVisible();
+    await expect(page.getByText("累计奖励")).toBeVisible();
     await expect(page.getByText("待确认")).toBeVisible();
     await expect(page.getByText("成功邀请")).toBeVisible();
 
     const pendingBlock = page
       .getByText("待确认", { exact: true })
-      .locator("..")
       .locator("..");
     await expect(pendingBlock).toContainText("人");
     await expect(pendingBlock).not.toContainText("¥");
