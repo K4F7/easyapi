@@ -17,6 +17,7 @@ const baseUrl = (process.env.SEED_BASE_URL ?? "https://test.easyapi.work").repla
 );
 const attempts = Number(process.env.SEED_HEALTH_ATTEMPTS ?? "60");
 const delayMs = Number(process.env.SEED_HEALTH_DELAY_MS ?? "5000");
+const seedAttempts = Number(process.env.SEED_SCRIPT_ATTEMPTS ?? "12");
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -61,7 +62,7 @@ function runNode(script, env) {
 
 async function main() {
   await waitForHealth();
-  await runNode(seedScript, {
+  const env = {
     SEED_BASE_URL: baseUrl,
     SEED_EMAIL:
       process.env.SEED_EMAIL ??
@@ -74,7 +75,24 @@ async function main() {
     NEWAPI_BASE_URL: process.env.NEWAPI_BASE_URL,
     NEWAPI_ADMIN_TOKEN: process.env.NEWAPI_ADMIN_TOKEN,
     NEWAPI_ADMIN_USER_ID: process.env.NEWAPI_ADMIN_USER_ID,
-  });
+  };
+
+  for (let attempt = 1; attempt <= seedAttempts; attempt += 1) {
+    try {
+      await runNode(seedScript, env);
+      return;
+    } catch (error) {
+      if (attempt === seedAttempts) {
+        throw error;
+      }
+      console.warn(
+        `Seed attempt ${attempt}/${seedAttempts} failed: ${
+          error instanceof Error ? error.message : error
+        }`,
+      );
+      await sleep(delayMs);
+    }
+  }
 }
 
 main().catch((error) => {
