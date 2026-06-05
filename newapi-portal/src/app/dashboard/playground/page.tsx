@@ -41,7 +41,7 @@ function PlaygroundContent() {
       <div
         role="tablist"
         aria-label="试玩模式"
-        className="mb-3 inline-flex h-9 shrink-0 items-center self-start rounded-md bg-muted p-1 text-muted-foreground"
+        className="mb-4 inline-flex h-10 shrink-0 items-center self-center sm:self-start rounded-full bg-muted/60 p-1 text-muted-foreground backdrop-blur-sm"
       >
         {TABS.map((tab) => {
           const active = tab.key === activeTab;
@@ -53,12 +53,17 @@ function PlaygroundContent() {
               aria-selected={active}
               onClick={() => selectTab(tab.key)}
               className={cn(
-                "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                active
-                  ? "bg-card text-orange-600 shadow-subtle"
-                  : "hover:text-foreground",
+                "relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring z-10",
+                active ? "text-primary" : "hover:text-foreground",
               )}
             >
+              {active && (
+                <motion.div
+                  layoutId="playground-tab-indicator"
+                  className="absolute inset-0 -z-10 rounded-full bg-background shadow-sm border border-border/50"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
               <tab.icon className="h-4 w-4" />
               {tab.label}
             </button>
