@@ -1,9 +1,14 @@
 import { AuthError, jsonError, jsonOk, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { isDevMockEnabled, mockBillingOrdersResponse } from "@/lib/dev-mock";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  if (isDevMockEnabled()) {
+    return mockBillingOrdersResponse();
+  }
+
   try {
     const user = await requireUser();
     const orders = await db.order.findMany({

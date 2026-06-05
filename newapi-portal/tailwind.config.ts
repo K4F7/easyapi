@@ -12,20 +12,26 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: [
-          '"Noto Sans SC"',
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
           '"PingFang SC"',
           '"Microsoft YaHei"',
           '"Hiragino Sans GB"',
           "sans-serif",
         ],
         display: [
-          '"ZCOOL KuaiLe"',
-          '"Noto Sans SC"',
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
           '"PingFang SC"',
+          '"Microsoft YaHei"',
+          '"Hiragino Sans GB"',
           "sans-serif",
         ],
         mono: [
-          '"JetBrains Mono"',
           '"SF Mono"',
           "Consolas",
           '"Liberation Mono"',
@@ -42,6 +48,7 @@ const config: Config = {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
           soft: "hsl(var(--primary-soft))",
+          hover: "hsl(var(--primary-hover))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -64,10 +71,31 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        success: "hsl(var(--success))",
-        warning: "hsl(var(--warning))",
-        error: "hsl(var(--error))",
-        info: "hsl(var(--info))",
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+          soft: "hsl(var(--success-soft))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+          soft: "hsl(var(--warning-soft))",
+        },
+        error: {
+          DEFAULT: "hsl(var(--error))",
+          foreground: "hsl(var(--error-foreground))",
+          soft: "hsl(var(--error-soft))",
+        },
+        neutral: {
+          DEFAULT: "hsl(var(--neutral))",
+          foreground: "hsl(var(--neutral-foreground))",
+          soft: "hsl(var(--neutral-soft))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+          soft: "hsl(var(--info-soft))",
+        },
         divider: "hsl(var(--divider))",
       },
       borderRadius: {

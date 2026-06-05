@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth";
 import { upsertPortalUserFromNewApiIdentity } from "@/lib/auth/newapi-user";
 import { db } from "@/lib/db";
+import { isDevMockEnabled, mockRegisterResponse } from "@/lib/dev-mock";
 import { getServerEnv } from "@/lib/env";
 import { adminAddQuota } from "@/lib/newapi";
 import {
@@ -25,13 +26,14 @@ import {
 export const runtime = "nodejs";
 
 const registerSchema = z.object({
+  username: z.string().trim().min(2).max(64),
   email: z
     .string()
     .trim()
     .email()
     .max(320)
     .transform((value) => value.toLowerCase()),
-  password: z.string().min(8).max(128),
+  password: z.string().min(8).max(20),
   inviteCode: z
     .string()
     .trim()
@@ -43,6 +45,10 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockRegisterResponse(request);
+  }
+
   try {
     const input = await readJson(request, registerSchema);
     const existingPortalUser = await db.user.findUnique({
@@ -79,6 +85,7 @@ export async function POST(request: Request) {
 
     try {
       await registerNewApiUser({
+        username: input.username,
         email: input.email,
         password: input.password,
         verificationCode: input.verificationCode,
@@ -97,7 +104,7 @@ export async function POST(request: Request) {
 
     try {
       newApiLogin = await loginNewApiWithPassword({
-        username: input.email,
+        username: input.username,
         password: input.password,
       });
     } catch (error) {

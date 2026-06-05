@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AuthError, jsonError, jsonOk, readJson, requireUser, zodErrorResponse } from "@/lib/auth";
 import { getUserNewApiAuth } from "@/lib/api/bff";
 import { db } from "@/lib/db";
+import { isDevMockEnabled, mockBillingEpayCreateResponse } from "@/lib/dev-mock";
 import { getServerEnv } from "@/lib/env";
 import { newApiUserRequest } from "@/lib/newapi";
 import { NewApiError } from "@/lib/newapi/client";
@@ -33,6 +34,10 @@ type NewApiPayResponse = {
 };
 
 export async function POST(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockBillingEpayCreateResponse(request);
+  }
+
   try {
     const publicUser = await requireUser();
     const authResult = await getUserNewApiAuth(publicUser);

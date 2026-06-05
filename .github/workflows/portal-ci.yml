@@ -1,0 +1,78 @@
+name: Portal CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+    paths:
+      - "newapi-portal/**"
+      - ".github/workflows/portal-ci.yml"
+      - ".github/workflows/portal-cd.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Lint, test, and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: newapi-portal
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: newapi-portal/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Next.js production build
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/newapi_portal?schema=newapi_portal
+          AUTH_SECRET: build-only-placeholder-secret-32-chars
+          APP_URL: http://localhost:3000
+          NEWAPI_BASE_URL: http://localhost:3001
+          NEWAPI_ADMIN_TOKEN: build-only-placeholder
+          NEWAPI_ADMIN_USER_ID: "1"
+          REGISTER_QUOTA: "100000"
+          CHECKIN_QUOTA: "1000"
+          INVITE_REWARD_QUOTA: "5000"
+          NEXT_PUBLIC_NEWAPI_BASE_URL: ${{ vars.STAGING_PUBLIC_NEWAPI_BASE_URL }}
+        run: pnpm build
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Verify Docker image builds
+        uses: docker/build-push-action@v7
+        with:
+          context: ./newapi-portal
+          file: ./newapi-portal/Dockerfile
+          push: false
+          build-args: |
+            NEXT_PUBLIC_NEWAPI_BASE_URL=${{ vars.STAGING_PUBLIC_NEWAPI_BASE_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

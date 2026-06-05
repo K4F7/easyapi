@@ -2,34 +2,53 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff, Loader2, ArrowRight, Mail, KeyRound } from "lucide-react";
 import { Suspense, useState } from "react";
 
-import { DuckLogo } from "@/components/duck-logo";
-import { PageTransition } from "@/components/page-transition";
+import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { sanitizeAuthError } from "@/lib/client/auth-error";
+import { cn } from "@/lib/utils";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(
-    searchParams.get("error"),
-  );
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState<string | null>(searchParams.get("error"));
+  const [identifierError, setIdentifierError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function validate() {
+    let valid = true;
+    if (!identifier.trim()) {
+      setIdentifierError("请输入邮箱或用户名");
+      valid = false;
+    } else {
+      setIdentifierError(null);
+    }
+    if (!password) {
+      setPasswordError("请输入密码");
+      valid = false;
+    } else {
+      setPasswordError(null);
+    }
+    return valid;
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+
+    if (!validate()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -42,7 +61,13 @@ function LoginForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error?.message ?? "登录失败");
+        setError(
+          sanitizeAuthError(
+            data.error?.code,
+            data.error?.message,
+            "登录失败，请稍后再试。",
+          ),
+        );
         return;
       }
 
@@ -56,67 +81,143 @@ function LoginForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
-      <PageTransition className="w-full max-w-sm">
-        <Link
-          href="/"
-          className="mb-6 flex items-center justify-center gap-3"
-        >
-          <DuckLogo />
-          <span className="text-sm font-semibold">EZAPI 控制台</span>
-        </Link>
-        <Card>
-          <CardHeader>
-            <CardTitle>登录</CardTitle>
-            <CardDescription>欢迎回来！登录后即可管理你的令牌和用量。</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="identifier">邮箱或用户名</Label>
-                <Input
-                  id="identifier"
-                  type="text"
-                  autoComplete="username"
-                  placeholder="name@example.com 或用户名"
-                  required
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">密码</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="请输入密码"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <Button className="w-full" type="submit" disabled={loading}>
-                {loading ? "登录中..." : "登录"}
-              </Button>
-            </form>
-            <p className="mt-4 text-center text-sm text-muted-foreground">
-              还没注册？{" "}
-              <Link
-                className="font-medium text-foreground hover:underline"
-                href="/register"
+    <AuthShell title="欢迎回来" description="登录以管理你的令牌和用量">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        {error && (
+          <div className="animate-in fade-in zoom-in-95 rounded-2xl border border-red-100 bg-red-50 px-3 py-2.5 text-[13px] leading-5 text-red-700">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label
+              htmlFor="identifier"
+              className="text-xs font-semibold text-slate-700"
+            >
+              邮箱或用户名
+            </Label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="identifier"
+                type="text"
+                autoComplete="username"
+                placeholder="name@example.com"
+                aria-invalid={identifierError ? true : undefined}
+                value={identifier}
+                className={cn(
+                  "h-11 border-slate-200 bg-slate-50/70 pl-9 focus-visible:border-primary focus-visible:ring-primary/20",
+                  identifierError &&
+                    "border-red-500/50 focus-visible:ring-red-500/20",
+                )}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  if (identifierError) setIdentifierError(null);
+                }}
+              />
+            </div>
+            {identifierError && (
+              <p className="mt-1 text-[11px] font-medium text-destructive/90 animate-in fade-in slide-in-from-top-1">
+                {identifierError}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="password"
+                className="text-xs font-semibold text-slate-700"
               >
-                免费创建账户
+                密码
+              </Label>
+              <Link
+                href="/forgot-password"
+                className="rounded-md text-[11px] font-medium text-slate-500 transition-colors duration-200 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                忘记密码？
               </Link>
-            </p>
-          </CardContent>
-        </Card>
-      </PageTransition>
-    </main>
+            </div>
+            <div className="relative">
+              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                placeholder="请输入密码"
+                className={cn(
+                  "h-11 border-slate-200 bg-slate-50/70 pl-9 pr-10 focus-visible:border-primary focus-visible:ring-primary/20",
+                  passwordError &&
+                    "border-red-500/50 focus-visible:ring-red-500/20",
+                )}
+                aria-invalid={passwordError ? true : undefined}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (passwordError) setPasswordError(null);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                aria-pressed={showPassword}
+                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-xl text-slate-400 transition-colors duration-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {passwordError && (
+              <p className="mt-1 text-[11px] font-medium text-destructive/90 animate-in fade-in slide-in-from-top-1">
+                {passwordError}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="pt-1">
+          <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-slate-500">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-3.5 w-3.5 cursor-pointer rounded border-slate-300 text-primary focus:ring-2 focus:ring-primary/30 focus:ring-offset-2"
+            />
+            保持登录状态
+          </label>
+        </div>
+
+        <Button
+          className="group mt-2 h-11 w-full rounded-2xl font-semibold shadow-sm shadow-orange-200/50 transition-[background-color,box-shadow,transform] duration-200 hover:shadow-md hover:shadow-orange-200/60"
+          type="submit"
+          disabled={loading}
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <>
+              登录
+              <ArrowRight className="ml-2 h-4 w-4 opacity-70 transition-transform duration-200 group-hover:translate-x-1" />
+            </>
+          )}
+        </Button>
+      </form>
+
+      <p className="mt-6 text-center text-[13px] text-slate-500">
+        还没账户？{" "}
+        <Link
+          className="rounded-md font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          href="/register"
+        >
+          免费创建账户
+        </Link>
+      </p>
+    </AuthShell>
   );
 }
 

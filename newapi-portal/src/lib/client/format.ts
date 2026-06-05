@@ -6,6 +6,10 @@ export function formatQuota(value: number | null | undefined): string {
   return new Intl.NumberFormat("zh-CN").format(value);
 }
 
+export function formatCount(value: number | null | undefined): string {
+  return formatQuota(value);
+}
+
 export function formatCurrencyCny(cents: number | null | undefined): string {
   if (cents === null || cents === undefined) {
     return "-";

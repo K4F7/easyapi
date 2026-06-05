@@ -1,0 +1,107 @@
+name: Check-in diagnostics
+
+on:
+  workflow_dispatch:
+
+jobs:
+  checkin-diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: newapi-portal
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: newapi_portal
+          POSTGRES_USER: portal
+          POSTGRES_PASSWORD: portal
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U portal -d newapi_portal"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      APP_URL: http://127.0.0.1:3000
+      AUTH_SECRET: checkin-diagnostics-auth-secret-32chars
+      DATABASE_URL: postgresql://portal:portal@127.0.0.1:5432/newapi_portal?schema=newapi_portal
+      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_PORTAL_IDENTIFIER: ${{ secrets.E2E_PORTAL_IDENTIFIER }}
+      E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
+      INVITE_REWARD_QUOTA: "5000"
+      CHECKIN_QUOTA: "1000"
+      NEWAPI_ADMIN_TOKEN: ${{ secrets.NEWAPI_ADMIN_TOKEN }}
+      NEWAPI_ADMIN_USER_ID: ${{ secrets.NEWAPI_ADMIN_USER_ID }}
+      NEWAPI_BASE_URL: ${{ secrets.NEWAPI_BASE_URL }}
+      NEXT_PUBLIC_NEWAPI_BASE_URL: ${{ secrets.NEWAPI_BASE_URL }}
+      REGISTER_QUOTA: "100000"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: newapi-portal/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Apply database migrations
+        run: pnpm exec prisma migrate deploy
+
+      - name: Build Portal
+        run: pnpm build
+
+      - name: Start Portal
+        run: |
+          pnpm exec next start -H 127.0.0.1 -p 3000 > next-checkin.log 2>&1 &
+          echo $! > next-checkin.pid
+
+          for attempt in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat next-checkin.log
+          exit 1
+
+      - name: Run check-in diagnostics
+        run: pnpm test:e2e:checkin
+
+      - name: Print Portal log
+        if: always()
+        run: |
+          if [ -f next-checkin.log ]; then
+            cat next-checkin.log
+          else
+            echo "next-checkin.log not found"
+          fi
+
+      - name: Upload diagnostics artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkin-diagnostics-artifacts
+          if-no-files-found: ignore
+          path: |
+            newapi-portal/next-checkin.log
+            newapi-portal/playwright-report/

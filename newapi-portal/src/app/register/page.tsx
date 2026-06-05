@@ -2,70 +2,68 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, useRef, Suspense } from "react";
-import { Eye, EyeOff, Check, Loader2 } from "lucide-react";
-
-import { DuckLogo } from "@/components/duck-logo";
-import { PageTransition } from "@/components/page-transition";
-import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState, Suspense, type ReactNode } from "react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  Ticket,
+  User,
+  type LucideIcon,
+} from "lucide-react";
+
+import { AuthShell } from "@/components/auth-shell";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { sanitizeAuthError } from "@/lib/client/auth-error";
 import { cn } from "@/lib/utils";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RESEND_SECONDS = 60;
 
 type FieldErrors = {
+  username?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
   verificationCode?: string;
-  agree?: string;
 };
 
 function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
   return (
-    <p className="min-h-[1rem] text-xs leading-4 text-destructive/90">
-      {message ?? ""}
-    </p>
+    <p className="mt-1 text-xs font-medium text-destructive/90">{message}</p>
   );
 }
 
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const refCode = searchParams.get("inviteCode") ?? searchParams.get("ref") ?? "";
+  const refCode =
+    searchParams.get("inviteCode") ?? searchParams.get("ref") ?? "";
 
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
-  const [agreed, setAgreed] = useState(false);
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Verification code is only required on demand: the field appears after a
-  // code has been requested, so it never sits as a dead-end input.
-  const [codeRequested, setCodeRequested] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const emailValid = EMAIL_RE.test(email);
-  const passwordLongEnough = password.length >= 8;
-  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
 
   useEffect(() => {
     return () => {
@@ -109,11 +107,16 @@ function RegisterForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error?.message ?? "验证码发送失败，请稍后再试。");
+        setError(
+          sanitizeAuthError(
+            data.error?.code,
+            data.error?.message,
+            "验证码发送失败，请稍后再试。",
+          ),
+        );
         return;
       }
 
-      setCodeRequested(true);
       setNotice("验证码已发送，请查收邮箱（含垃圾箱）。");
       startCooldown();
     } catch {
@@ -125,19 +128,23 @@ function RegisterForm() {
 
   function validate(): boolean {
     const next: FieldErrors = {};
+
+    if (!username.trim()) next.username = "请输入用户名";
+    else if (username.trim().length < 2) next.username = "用户名至少 2 个字符";
+
+    if (!password) next.password = "请输入密码";
+    else if (password.length < 8) next.password = "密码至少需要 8 位";
+    else if (password.length > 20) next.password = "密码最长 20 位";
+
+    if (!confirmPassword) next.confirmPassword = "请再次输入密码";
+    else if (confirmPassword !== password) {
+      next.confirmPassword = "两次输入的密码不一致";
+    }
+
     if (!email) next.email = "请输入邮箱";
     else if (!emailValid) next.email = "请输入有效的邮箱地址";
 
-    if (!password) next.password = "请输入密码";
-    else if (!passwordLongEnough) next.password = "密码至少需要 8 位";
-
-    if (!confirmPassword) next.confirmPassword = "请再次输入密码";
-    else if (password !== confirmPassword) next.confirmPassword = "两次输入的密码不一致";
-
-    if (codeRequested && !verificationCode.trim())
-      next.verificationCode = "请输入收到的验证码";
-
-    if (!agreed) next.agree = "请阅读并同意服务条款与隐私政策";
+    if (!verificationCode.trim()) next.verificationCode = "请输入验证码";
 
     setFieldErrors(next);
     return Object.keys(next).length === 0;
@@ -152,14 +159,21 @@ function RegisterForm() {
 
     setLoading(true);
     try {
-      const body: Record<string, string> = { email, password };
+      const body: {
+        username: string;
+        email: string;
+        password: string;
+        verificationCode: string;
+        inviteCode?: string;
+      } = {
+        username: username.trim(),
+        email,
+        password,
+        verificationCode: verificationCode.trim(),
+      };
+
       const effectiveInviteCode = inviteCode.trim() || refCode.trim();
-      if (effectiveInviteCode) {
-        body.inviteCode = effectiveInviteCode;
-      }
-      if (verificationCode.trim()) {
-        body.verificationCode = verificationCode.trim();
-      }
+      if (effectiveInviteCode) body.inviteCode = effectiveInviteCode;
 
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -170,21 +184,18 @@ function RegisterForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        // Backend signals that an email verification step is needed: surface
-        // the verification field so the user has a clear next action.
-        if (data.error?.code === "NEWAPI_VERIFICATION_REQUIRED") {
-          setCodeRequested(true);
-          setError("注册需要先完成邮箱验证，请点击「发送验证码」并填写收到的验证码。");
-          return;
-        }
-        setError(data.error?.message ?? "注册失败，请稍后再试。");
+        setError(
+          sanitizeAuthError(
+            data.error?.code,
+            data.error?.message,
+            "注册失败，请稍后再试。",
+          ),
+        );
         return;
       }
 
       if (res.status === 202) {
-        setNotice(
-          data.data?.message ?? "注册成功！请完成邮箱验证后再登录。",
-        );
+        setNotice(data.data?.message ?? "注册成功！请完成邮箱验证后再登录。");
         return;
       }
 
@@ -200,254 +211,263 @@ function RegisterForm() {
   const sendDisabled = sendingCode || cooldown > 0 || !emailValid;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
-      <PageTransition className="w-full max-w-sm">
-        <Link href="/" className="mb-6 flex items-center justify-center gap-3">
-          <DuckLogo />
-          <span className="text-sm font-semibold">EZAPI 控制台</span>
-        </Link>
-        <Card>
-          <CardHeader>
-            <CardTitle>注册</CardTitle>
-            <CardDescription>
-              注册后立刻拥有你的专属控制台，管令牌、充值、看用量。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              {error && (
-                <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  {error}
-                </div>
+    <AuthShell
+      title="免费创建账户"
+      description="注册后即可创建令牌、查看用量并在线充值。"
+      className="max-w-[460px]"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {error ? (
+          <div className="rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm leading-5 text-destructive">
+            {error}
+          </div>
+        ) : null}
+        {notice ? (
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-sm leading-5 text-emerald-700">
+            {notice}
+          </div>
+        ) : null}
+
+        <AuthInput
+          id="username"
+          label="用户名"
+          icon={User}
+          placeholder="请输入用户名"
+          autoComplete="username"
+          value={username}
+          error={fieldErrors.username}
+          onChange={(value) => {
+            setUsername(value);
+            if (fieldErrors.username) {
+              setFieldErrors((p) => ({ ...p, username: undefined }));
+            }
+          }}
+        />
+
+        <AuthInput
+          id="password"
+          label="密码"
+          icon={LockKeyhole}
+          type={showPassword ? "text" : "password"}
+          placeholder="输入密码，最短 8 位，最长 20 位"
+          autoComplete="new-password"
+          value={password}
+          error={fieldErrors.password}
+          trailing={
+            <button
+              type="button"
+              aria-label={showPassword ? "隐藏密码" : "显示密码"}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((v) => !v)}
+              className="rounded-md p-1 text-slate-400 transition-colors duration-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
               )}
-              {notice && (
-                <div className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
-                  {notice}
-                </div>
+            </button>
+          }
+          onChange={(value) => {
+            setPassword(value);
+            if (fieldErrors.password) {
+              setFieldErrors((p) => ({ ...p, password: undefined }));
+            }
+          }}
+        />
+
+        <AuthInput
+          id="confirmPassword"
+          label="确认密码"
+          icon={LockKeyhole}
+          type={showPassword ? "text" : "password"}
+          placeholder="确认密码"
+          autoComplete="new-password"
+          value={confirmPassword}
+          error={fieldErrors.confirmPassword}
+          trailing={
+            <button
+              type="button"
+              aria-label={showPassword ? "隐藏密码" : "显示密码"}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((v) => !v)}
+              className="rounded-md p-1 text-slate-400 transition-colors duration-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
               )}
+            </button>
+          }
+          onChange={(value) => {
+            setConfirmPassword(value);
+            if (fieldErrors.confirmPassword) {
+              setFieldErrors((p) => ({ ...p, confirmPassword: undefined }));
+            }
+          }}
+        />
 
-              <div className="space-y-1.5">
-                <Label htmlFor="email">邮箱</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  autoComplete="email"
-                  value={email}
-                  aria-invalid={!!fieldErrors.email}
-                  className={cn(
-                    fieldErrors.email && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive",
-                  )}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (fieldErrors.email)
-                      setFieldErrors((p) => ({ ...p, email: undefined }));
-                  }}
-                />
-                <FieldError message={fieldErrors.email} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="password">密码</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="设置登录密码"
-                    autoComplete="new-password"
-                    value={password}
-                    aria-invalid={!!fieldErrors.password}
-                    className={cn(
-                      "pr-10",
-                      fieldErrors.password && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive",
-                    )}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      if (fieldErrors.password)
-                        setFieldErrors((p) => ({ ...p, password: undefined }));
-                    }}
-                  />
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-subtle transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                <p
-                  className={cn(
-                    "flex items-center gap-1.5 min-h-[1rem] text-xs leading-4 transition-colors",
-                    password.length === 0
-                      ? "text-muted-foreground"
-                      : passwordLongEnough
-                        ? "text-emerald-600 dark:text-emerald-500"
-                        : "text-destructive/90",
-                  )}
-                >
-                  <Check
-                    className={cn(
-                      "h-3.5 w-3.5 shrink-0",
-                      passwordLongEnough ? "opacity-100" : "opacity-30",
-                    )}
-                  />
-                  至少 8 位字符
-                </p>
-                <FieldError message={fieldErrors.password} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="confirmPassword">确认密码</Label>
-                <Input
-                  id="confirmPassword"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="再次输入密码"
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  aria-invalid={!!fieldErrors.confirmPassword}
-                  className={cn(
-                    fieldErrors.confirmPassword && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive",
-                    passwordsMatch && !fieldErrors.confirmPassword && "border-emerald-500/60",
-                  )}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    if (fieldErrors.confirmPassword)
-                      setFieldErrors((p) => ({ ...p, confirmPassword: undefined }));
-                  }}
-                />
-                <FieldError message={fieldErrors.confirmPassword} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="inviteCode">邀请码（可选）</Label>
-                <Input
-                  id="inviteCode"
-                  placeholder="如有邀请码可填写"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                />
-              </div>
-
-              {codeRequested && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="verificationCode">邮箱验证码</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="verificationCode"
-                      className={cn(
-                        "min-w-0 flex-1",
-                        fieldErrors.verificationCode && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive",
-                      )}
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      placeholder="请输入收到的验证码"
-                      value={verificationCode}
-                      aria-invalid={!!fieldErrors.verificationCode}
-                      onChange={(e) => {
-                        setVerificationCode(e.target.value);
-                        if (fieldErrors.verificationCode)
-                          setFieldErrors((p) => ({ ...p, verificationCode: undefined }));
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="shrink-0"
-                      disabled={sendDisabled}
-                      onClick={handleSendVerificationCode}
-                    >
-                      {sendingCode
-                        ? "发送中…"
-                        : cooldown > 0
-                          ? `${cooldown}s 后重发`
-                          : "重新发送"}
-                    </Button>
-                  </div>
-                  <FieldError message={fieldErrors.verificationCode} />
-                </div>
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="email"
+            className="text-xs font-semibold text-slate-700"
+          >
+            邮箱
+          </Label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              id="email"
+              type="email"
+              placeholder="输入邮箱地址"
+              autoComplete="email"
+              value={email}
+              aria-invalid={!!fieldErrors.email}
+              className={cn(
+                "h-11 border-slate-200 bg-slate-50/70 pl-9 pr-[7.5rem] focus-visible:border-primary focus-visible:ring-primary/20",
+                fieldErrors.email &&
+                  "border-destructive focus-visible:ring-destructive",
               )}
-
-              {!codeRequested && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  disabled={sendDisabled}
-                  onClick={handleSendVerificationCode}
-                >
-                  {sendingCode ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      发送中…
-                    </>
-                  ) : cooldown > 0 ? (
-                    `${cooldown}s 后可重发`
-                  ) : (
-                    "发送邮箱验证码"
-                  )}
-                </Button>
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (fieldErrors.email) {
+                  setFieldErrors((p) => ({ ...p, email: undefined }));
+                }
+              }}
+            />
+            <button
+              type="button"
+              disabled={sendDisabled}
+              onClick={handleSendVerificationCode}
+              className="absolute right-2 top-1/2 min-w-20 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-semibold text-primary transition-colors duration-200 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sendingCode ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : cooldown > 0 ? (
+                `${cooldown}s`
+              ) : (
+                "获取验证码"
               )}
+            </button>
+          </div>
+          <FieldError message={fieldErrors.email} />
+        </div>
 
-              <div className="space-y-1.5 pt-1">
-                <label className="flex cursor-pointer items-start gap-2 text-sm text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={agreed}
-                    onChange={(e) => {
-                      setAgreed(e.target.checked);
-                      if (fieldErrors.agree)
-                        setFieldErrors((p) => ({ ...p, agree: undefined }));
-                    }}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-input accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                  <span>
-                    我已阅读并同意
-                    <Link href="/terms" className="mx-0.5 font-medium text-foreground hover:underline">
-                      服务条款
-                    </Link>
-                    与
-                    <Link href="/privacy" className="mx-0.5 font-medium text-foreground hover:underline">
-                      隐私政策
-                    </Link>
-                  </span>
-                </label>
-                <FieldError message={fieldErrors.agree} />
-              </div>
+        <AuthInput
+          id="verificationCode"
+          label="验证码"
+          icon={KeyRound}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          placeholder="输入验证码"
+          value={verificationCode}
+          error={fieldErrors.verificationCode}
+          onChange={(value) => {
+            setVerificationCode(value);
+            if (fieldErrors.verificationCode) {
+              setFieldErrors((p) => ({ ...p, verificationCode: undefined }));
+            }
+          }}
+        />
 
-              <Button
-                className="w-full bg-primary/95 hover:bg-primary"
-                type="submit"
-                disabled={loading || !agreed}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    注册中…
-                  </>
-                ) : (
-                  "免费注册"
-                )}
-              </Button>
-            </form>
-            <p className="mt-5 text-center text-sm text-muted-foreground">
-              已有账户？{" "}
-              <Link
-                className="font-semibold text-primary underline-offset-4 hover:underline"
-                href="/login"
-              >
-                直接登录
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
-      </PageTransition>
-    </main>
+        <AuthInput
+          id="inviteCode"
+          label={
+            <>
+              邀请码 <span className="font-normal text-slate-500">(可选)</span>
+            </>
+          }
+          icon={Ticket}
+          placeholder="如有邀请码可填写"
+          value={inviteCode}
+          onChange={(value) => setInviteCode(value.toUpperCase())}
+        />
+
+        <Button
+          className="h-11 w-full rounded-2xl text-base font-semibold shadow-sm shadow-orange-200/50 transition-[background-color,box-shadow,transform] duration-200 hover:shadow-md hover:shadow-orange-200/60"
+          type="submit"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              注册中…
+            </>
+          ) : (
+            "注册"
+          )}
+        </Button>
+
+        <p className="pt-1 text-center text-sm text-slate-500">
+          已有账户？{" "}
+          <Link
+            className="rounded-md font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            href="/login"
+          >
+            登录
+          </Link>
+        </p>
+      </form>
+    </AuthShell>
+  );
+}
+
+function AuthInput({
+  id,
+  label,
+  icon: Icon,
+  type = "text",
+  placeholder,
+  autoComplete,
+  inputMode,
+  value,
+  error,
+  trailing,
+  onChange,
+}: {
+  id: string;
+  label: ReactNode;
+  icon: LucideIcon;
+  type?: string;
+  placeholder: string;
+  autoComplete?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  value: string;
+  error?: string;
+  trailing?: ReactNode;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id} className="text-xs font-semibold text-slate-700">
+        {label}
+      </Label>
+      <div className="relative">
+        <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Input
+          id={id}
+          type={type}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          inputMode={inputMode}
+          value={value}
+          aria-invalid={!!error}
+          className={cn(
+            "h-11 border-slate-200 bg-slate-50/70 pl-9 focus-visible:border-primary focus-visible:ring-primary/20",
+            trailing && "pr-10",
+            error && "border-destructive focus-visible:ring-destructive",
+          )}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {trailing ? (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            {trailing}
+          </div>
+        ) : null}
+      </div>
+      <FieldError message={error} />
+    </div>
   );
 }
 

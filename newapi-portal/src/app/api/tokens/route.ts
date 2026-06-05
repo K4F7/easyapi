@@ -6,6 +6,11 @@ import {
   handleApiError,
   parsePositiveInt,
 } from "@/lib/api/bff";
+import {
+  isDevMockEnabled,
+  mockTokenCreateResponse,
+  mockTokensListResponse,
+} from "@/lib/dev-mock";
 import { createTokenAndRevealKey, listTokens, type NewApiToken } from "@/lib/newapi";
 import { maskToken, normalizePage } from "@/lib/quota/usage";
 
@@ -24,6 +29,10 @@ const createTokenSchema = z.object({
 });
 
 export async function GET(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockTokensListResponse(request);
+  }
+
   try {
     const user = await requireUser();
     const authResult = await getUserNewApiAuth(user);
@@ -57,6 +66,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockTokenCreateResponse(request);
+  }
+
   try {
     const user = await requireUser();
     const authResult = await getUserNewApiAuth(user);

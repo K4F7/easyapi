@@ -26,7 +26,10 @@ export function DashboardNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1 py-2 md:block md:space-y-1 md:overflow-visible md:p-3">
+    <nav
+      aria-label="控制台导航"
+      className="flex gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none] md:block md:space-y-1.5 md:overflow-visible md:p-0 [&::-webkit-scrollbar]:hidden"
+    >
       {navItems.map((item) => {
         const active = item.exact
           ? pathname === item.href
@@ -37,12 +40,14 @@ export function DashboardNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex h-10 shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:gap-3",
-              active && "bg-orange-100 text-orange-600 hover:bg-orange-100 hover:text-orange-600",
+              "flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-muted-foreground outline-none transition-[background-color,color,box-shadow] duration-200 hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:gap-3",
+              active &&
+                "bg-primary/10 text-primary shadow-sm shadow-primary/10 hover:bg-primary/10 hover:text-primary",
             )}
+            aria-current={active ? "page" : undefined}
           >
-            <item.icon className="h-4 w-4" />
-            {item.label}
+            <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="whitespace-nowrap">{item.label}</span>
           </Link>
         );
       })}
