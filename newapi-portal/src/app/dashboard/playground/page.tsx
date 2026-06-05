@@ -58,7 +58,7 @@ function PlaygroundContent() {
               onClick={() => selectTab(tab.key)}
               className={cn(
                 "relative z-10 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-[color,background-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                active ? "text-primary" : "hover:text-foreground",
+                active ? "text-foreground" : "hover:text-foreground",
               )}
             >
               {active && (

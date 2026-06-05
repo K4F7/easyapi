@@ -519,7 +519,7 @@ function CreateTokenDialog({
                 className={cn(
                   "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   neverExpire
-                    ? "border-primary/30 bg-primary-soft text-primary"
+                    ? "border-primary/30 bg-primary-soft text-foreground"
                     : "border-input bg-card text-muted-foreground hover:bg-muted",
                 )}
               >

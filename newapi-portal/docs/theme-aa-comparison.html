@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EZAPI 橙色 AA 主题对比</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --page: #f8fafc;
+        --ink: #111827;
+        --muted: #64748b;
+        --line: #e2e8f0;
+        --card: #ffffff;
+        --success: #047857;
+        --shadow: 0 22px 55px rgba(15, 23, 42, 0.1);
+        --radius: 18px;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          "PingFang SC",
+          "Microsoft YaHei",
+          "Hiragino Sans GB",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.08), transparent 36rem),
+          var(--page);
+        color: var(--ink);
+      }
+
+      a,
+      button {
+        font: inherit;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      a:focus-visible,
+      button:focus-visible {
+        outline: 3px solid var(--focus, #2563eb);
+        outline-offset: 3px;
+      }
+
+      .shell {
+        width: min(1240px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 44px;
+      }
+
+      .intro {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 18px;
+        margin-bottom: 20px;
+      }
+
+      .intro h1 {
+        margin: 0;
+        font-size: clamp(1.7rem, 3vw, 2.6rem);
+        line-height: 1.12;
+        letter-spacing: 0;
+      }
+
+      .intro p {
+        max-width: 760px;
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.7;
+      }
+
+      .note {
+        border: 1px solid #fed7aa;
+        background: #fff7ed;
+        color: #7c2d12;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 0.92rem;
+        line-height: 1.5;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .scheme {
+        --primary: #f97316;
+        --hover: #ea580c;
+        --soft: #fff3e8;
+        --fg: #111827;
+        --soft-fg: #7c2d12;
+        --border-accent: #fed7aa;
+        --accent: #f97316;
+        --hero-bg: #ffffff;
+        --focus: var(--primary);
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: var(--hero-bg);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+      }
+
+      .scheme::before {
+        content: "";
+        position: absolute;
+        inset: -160px auto auto 44%;
+        width: 430px;
+        height: 430px;
+        border-radius: 999px;
+        background: var(--primary);
+        opacity: 0.07;
+        filter: blur(34px);
+        pointer-events: none;
+      }
+
+      .scheme-b {
+        --primary: #c2410c;
+        --hover: #9a3412;
+        --soft: #fff7ed;
+        --fg: #ffffff;
+        --soft-fg: #7c2d12;
+        --border-accent: #fdba74;
+        --accent: #f97316;
+      }
+
+      .scheme-c {
+        --primary: #b45309;
+        --hover: #92400e;
+        --soft: #ffead5;
+        --fg: #ffffff;
+        --soft-fg: #713f12;
+        --border-accent: #fbbf24;
+        --accent: #d97706;
+      }
+
+      .scheme-d {
+        --primary: #111827;
+        --hover: #374151;
+        --soft: #fff3e8;
+        --fg: #ffffff;
+        --soft-fg: #9a3412;
+        --border-accent: #fdba74;
+        --accent: #f97316;
+        --hero-bg: linear-gradient(180deg, #ffffff 0%, #fffaf6 100%);
+      }
+
+      .scheme-inner {
+        position: relative;
+        z-index: 1;
+        padding: 18px;
+      }
+
+      .meta {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .meta-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .meta h2 {
+        margin: 0;
+        font-size: 1.06rem;
+        line-height: 1.35;
+      }
+
+      .meta p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.55;
+      }
+
+      .swatches,
+      .ratios {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .swatch,
+      .ratio {
+        min-height: 30px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #fff;
+        padding: 6px 9px;
+        color: #334155;
+        font-size: 0.76rem;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .swatch::before {
+        content: "";
+        display: inline-block;
+        width: 0.78rem;
+        height: 0.78rem;
+        margin-right: 6px;
+        border: 1px solid rgba(15, 23, 42, 0.14);
+        border-radius: 999px;
+        vertical-align: -0.12rem;
+        background: var(--dot);
+      }
+
+      .ratio {
+        background: #f8fafc;
+      }
+
+      .mock {
+        min-height: 520px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: #ffffff;
+        padding: 14px;
+      }
+
+      .mock-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.82);
+        padding: 10px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      }
+
+      .brand {
+        display: inline-flex;
+        min-width: 0;
+        align-items: center;
+        gap: 9px;
+        font-weight: 800;
+      }
+
+      .brand img {
+        width: 32px;
+        height: 32px;
+        object-fit: contain;
+      }
+
+      .nav-actions {
+        display: flex;
+        flex: 0 0 auto;
+        gap: 8px;
+      }
+
+      .btn {
+        display: inline-flex;
+        min-height: 38px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        border-radius: 12px;
+        padding: 0 14px;
+        cursor: pointer;
+        font-weight: 700;
+        line-height: 1;
+        transition:
+          background 120ms ease,
+          border-color 120ms ease,
+          transform 120ms ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .btn-primary {
+        background: var(--primary);
+        color: var(--fg);
+      }
+
+      .btn-primary:hover {
+        background: var(--hover);
+      }
+
+      .btn-secondary {
+        border-color: var(--line);
+        background: #ffffff;
+        color: #1f2937;
+      }
+
+      .btn-secondary:hover {
+        border-color: var(--border-accent);
+        background: var(--soft);
+      }
+
+      .mock-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(260px, 0.95fr);
+        align-items: center;
+        gap: 22px;
+        padding: 34px 4px 4px;
+      }
+
+      .hero-copy {
+        min-width: 0;
+      }
+
+      .badge {
+        display: inline-flex;
+        max-width: 100%;
+        align-items: center;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        background: var(--primary);
+        color: var(--fg);
+        padding: 7px 12px;
+        font-size: 0.82rem;
+        font-weight: 750;
+      }
+
+      .scheme-d .badge {
+        border-color: var(--border-accent);
+        background: var(--soft);
+        color: var(--soft-fg);
+      }
+
+      .hero-copy h3 {
+        margin: 18px 0 0;
+        color: #111827;
+        font-size: clamp(2rem, 4vw, 3.35rem);
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+
+      .hero-copy h3 span {
+        display: block;
+        color: var(--primary);
+      }
+
+      .scheme-d .hero-copy h3 span {
+        color: var(--soft-fg);
+      }
+
+      .hero-copy p {
+        max-width: 34rem;
+        margin: 16px 0 0;
+        color: var(--muted);
+        font-size: 0.98rem;
+        line-height: 1.75;
+      }
+
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      .metric-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 24px;
+      }
+
+      .metric {
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: #ffffff;
+        padding: 11px;
+      }
+
+      .metric strong {
+        display: block;
+        color: #111827;
+        font-size: 1.08rem;
+        line-height: 1.15;
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.76rem;
+      }
+
+      .preview {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.72);
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .preview-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 15px;
+        margin-bottom: 14px;
+      }
+
+      .mark {
+        display: grid;
+        width: 46px;
+        height: 46px;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: #ffffff;
+      }
+
+      .mark img {
+        width: 34px;
+        height: 34px;
+        object-fit: contain;
+      }
+
+      .preview h4,
+      .cap h5 {
+        margin: 0;
+        color: #111827;
+        font-size: 1rem;
+        line-height: 1.25;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 4px;
+        color: var(--success);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .status::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
+      }
+
+      .caps {
+        display: grid;
+        gap: 10px;
+      }
+
+      .cap {
+        display: grid;
+        grid-template-columns: 42px minmax(0, 1fr);
+        align-items: center;
+        gap: 11px;
+        border: 1px solid transparent;
+        border-radius: 15px;
+        background: #ffffff;
+        padding: 11px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      }
+
+      .cap-icon {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        place-items: center;
+        border: 1px solid var(--border-accent);
+        border-radius: 12px;
+        background: var(--soft);
+        color: var(--soft-fg);
+        font-weight: 900;
+      }
+
+      .cap p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 0.78rem;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 980px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 700px) {
+        .shell {
+          width: min(100% - 20px, 1240px);
+          padding-top: 14px;
+        }
+
+        .intro {
+          grid-template-columns: 1fr;
+        }
+
+        .scheme-inner,
+        .mock {
+          padding: 12px;
+        }
+
+        .scheme::before {
+          inset: -120px auto auto 36%;
+          width: 260px;
+          height: 260px;
+        }
+
+        .mock-main {
+          grid-template-columns: 1fr;
+          padding-top: 24px;
+        }
+
+        .metric-row {
+          grid-template-columns: 1fr;
+        }
+
+        .nav-actions .btn-secondary {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <h1 id="page-title">EZAPI 主界面橙色 AA 主题对比</h1>
+          <p>
+            静态样张复刻当前首页的 header、hero、CTA、指标卡片、能力卡片与右侧产品预览区域。所有主按钮文字组合均按 WCAG AA
+            普通文本检查；其中亮橙 #F97316 不能配白字，因此 A 方案使用深色前景。
+          </p>
+        </div>
+        <div class="note">基准：AA 普通文本要求对比度不低于 4.5:1。</div>
+      </section>
+
+      <section class="grid" aria-label="橙色主题方案">
+        <article class="scheme scheme-a">
+          <div class="scheme-inner">
+            <header class="meta">
+              <div class="meta-top">
+                <div>
+                  <h2>A. 亮橙品牌感</h2>
+                  <p>#F97316 保持当前活力，但按钮文字必须用 #111827。</p>
+                </div>
+              </div>
+              <div class="swatches" aria-label="A 方案颜色">
+                <span class="swatch" style="--dot: #f97316">primary #F97316</span>
+                <span class="swatch" style="--dot: #ea580c">hover #EA580C</span>
+                <span class="swatch" style="--dot: #fff3e8">soft #FFF3E8</span>
+                <span class="swatch" style="--dot: #111827">foreground #111827</span>
+                <span class="swatch" style="--dot: #fed7aa">border #FED7AA</span>
+              </div>
+              <div class="ratios">
+                <span class="ratio">primary/foreground 6.33:1</span>
+                <span class="ratio">hover/foreground 4.98:1</span>
+                <span class="ratio">soft/deep text 8.58:1</span>
+              </div>
+            </header>
+            <div class="mock">
+              <div class="mock-header">
+                <a href="#" class="brand" aria-label="EZAPI 首页">
+                  <img src="../public/duck-64.webp" alt="" />
+                  <span>EZAPI</span>
+                </a>
+                <div class="nav-actions">
+                  <a class="btn btn-secondary" href="#">登录</a>
+                  <a class="btn btn-primary" href="#">注册</a>
+                </div>
+              </div>
+              <div class="mock-main">
+                <div class="hero-copy">
+                  <span class="badge">不懂技术也能轻松调用AI</span>
+                  <h3><span>管令牌、看用量、</span><span>随时充值</span></h3>
+                  <p>不需要配置服务器，注册即用。管令牌、看用量、在线充值，就这么简单。</p>
+                  <div class="cta-row">
+                    <a class="btn btn-primary" href="#">免费注册，马上试用 →</a>
+                    <a class="btn btn-secondary" href="#">进入控制台</a>
+                  </div>
+                  <div class="metric-row" aria-label="指标卡片">
+                    <div class="metric"><strong>3 min</strong><span>完成注册</span></div>
+                    <div class="metric"><strong>99.9%</strong><span>服务状态</span></div>
+                    <div class="metric"><strong>24h</strong><span>用量可查</span></div>
+                  </div>
+                </div>
+                <aside class="preview" aria-label="产品预览">
+                  <div class="preview-head">
+                    <div class="mark">
+                      <img src="../public/duck-64.webp" alt="" />
+                    </div>
+                    <div>
+                      <h4>系统状态</h4>
+                      <span class="status">所有服务运行正常</span>
+                    </div>
+                  </div>
+                  <div class="caps">
+                    <div class="cap"><span class="cap-icon">K</span><div><h5>注册就能用</h5><p>三分钟完成注册，立刻创建你的第一个令牌。</p></div></div>
+                    <div class="cap"><span class="cap-icon">¥</span><div><h5>充值 &amp; 赚奖励</h5><p>支持在线充值，邀请好友注册还有返利。</p></div></div>
+                    <div class="cap"><span class="cap-icon">S</span><div><h5>密钥不外露</h5><p>真实 API 密钥代为保管，只暴露你的令牌。</p></div></div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="scheme scheme-b">
+          <div class="scheme-inner">
+            <header class="meta">
+              <div>
+                <h2>B. 深橙按钮 + 亮橙强调</h2>
+                <p>按钮用 #C2410C 配白字，#F97316 退到强调、图标和局部状态。</p>
+              </div>
+              <div class="swatches" aria-label="B 方案颜色">
+                <span class="swatch" style="--dot: #c2410c">primary #C2410C</span>
+                <span class="swatch" style="--dot: #9a3412">hover #9A3412</span>
+                <span class="swatch" style="--dot: #fff7ed">soft #FFF7ED</span>
+                <span class="swatch" style="--dot: #ffffff">foreground #FFFFFF</span>
+                <span class="swatch" style="--dot: #f97316">accent #F97316</span>
+              </div>
+              <div class="ratios">
+                <span class="ratio">primary/foreground 5.18:1</span>
+                <span class="ratio">hover/foreground 7.31:1</span>
+                <span class="ratio">soft/deep text 8.83:1</span>
+              </div>
+            </header>
+            <div class="mock">
+              <div class="mock-header">
+                <a href="#" class="brand" aria-label="EZAPI 首页">
+                  <img src="../public/duck-64.webp" alt="" />
+                  <span>EZAPI</span>
+                </a>
+                <div class="nav-actions">
+                  <a class="btn btn-secondary" href="#">登录</a>
+                  <a class="btn btn-primary" href="#">注册</a>
+                </div>
+              </div>
+              <div class="mock-main">
+                <div class="hero-copy">
+                  <span class="badge">不懂技术也能轻松调用AI</span>
+                  <h3><span>管令牌、看用量、</span><span>随时充值</span></h3>
+                  <p>深橙主按钮更适合长期使用，亮橙作为强调色仍保留品牌活力。</p>
+                  <div class="cta-row">
+                    <a class="btn btn-primary" href="#">免费注册，马上试用 →</a>
+                    <a class="btn btn-secondary" href="#">进入控制台</a>
+                  </div>
+                  <div class="metric-row">
+                    <div class="metric"><strong>3 min</strong><span>完成注册</span></div>
+                    <div class="metric"><strong>¥ 0</strong><span>低门槛试用</span></div>
+                    <div class="metric"><strong>实时</strong><span>账单同步</span></div>
+                  </div>
+                </div>
+                <aside class="preview">
+                  <div class="preview-head">
+                    <div class="mark"><img src="../public/duck-64.webp" alt="" /></div>
+                    <div><h4>系统状态</h4><span class="status">所有服务运行正常</span></div>
+                  </div>
+                  <div class="caps">
+                    <div class="cap"><span class="cap-icon">K</span><div><h5>注册就能用</h5><p>创建令牌后即可开始调用 API。</p></div></div>
+                    <div class="cap"><span class="cap-icon">¥</span><div><h5>充值 &amp; 赚奖励</h5><p>充值、兑换码和邀请返利集中管理。</p></div></div>
+                    <div class="cap"><span class="cap-icon">S</span><div><h5>密钥不外露</h5><p>真实密钥不出现在终端用户侧。</p></div></div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="scheme scheme-c">
+          <div class="scheme-inner">
+            <header class="meta">
+              <div>
+                <h2>C. 稳重品牌橙</h2>
+                <p>#B45309 视觉更沉稳，适合控制台、支付和密钥管理类产品。</p>
+              </div>
+              <div class="swatches" aria-label="C 方案颜色">
+                <span class="swatch" style="--dot: #b45309">primary #B45309</span>
+                <span class="swatch" style="--dot: #92400e">hover #92400E</span>
+                <span class="swatch" style="--dot: #ffead5">soft #FFEAD5</span>
+                <span class="swatch" style="--dot: #ffffff">foreground #FFFFFF</span>
+                <span class="swatch" style="--dot: #713f12">border/text #713F12</span>
+              </div>
+              <div class="ratios">
+                <span class="ratio">primary/foreground 5.02:1</span>
+                <span class="ratio">hover/foreground 7.09:1</span>
+                <span class="ratio">soft/deep text 7.42:1</span>
+              </div>
+            </header>
+            <div class="mock">
+              <div class="mock-header">
+                <a href="#" class="brand" aria-label="EZAPI 首页">
+                  <img src="../public/duck-64.webp" alt="" />
+                  <span>EZAPI</span>
+                </a>
+                <div class="nav-actions">
+                  <a class="btn btn-secondary" href="#">登录</a>
+                  <a class="btn btn-primary" href="#">注册</a>
+                </div>
+              </div>
+              <div class="mock-main">
+                <div class="hero-copy">
+                  <span class="badge">不懂技术也能轻松调用AI</span>
+                  <h3><span>管令牌、看用量、</span><span>随时充值</span></h3>
+                  <p>更深的品牌橙减少刺激感，适合把信任感放在第一位的首页。</p>
+                  <div class="cta-row">
+                    <a class="btn btn-primary" href="#">免费注册，马上试用 →</a>
+                    <a class="btn btn-secondary" href="#">进入控制台</a>
+                  </div>
+                  <div class="metric-row">
+                    <div class="metric"><strong>3 min</strong><span>创建令牌</span></div>
+                    <div class="metric"><strong>透明</strong><span>用量账单</span></div>
+                    <div class="metric"><strong>稳定</strong><span>密钥托管</span></div>
+                  </div>
+                </div>
+                <aside class="preview">
+                  <div class="preview-head">
+                    <div class="mark"><img src="../public/duck-64.webp" alt="" /></div>
+                    <div><h4>系统状态</h4><span class="status">所有服务运行正常</span></div>
+                  </div>
+                  <div class="caps">
+                    <div class="cap"><span class="cap-icon">K</span><div><h5>注册就能用</h5><p>注册、创建令牌和调用路径更直接。</p></div></div>
+                    <div class="cap"><span class="cap-icon">¥</span><div><h5>充值 &amp; 赚奖励</h5><p>支付入口更克制，降低页面噪音。</p></div></div>
+                    <div class="cap"><span class="cap-icon">S</span><div><h5>密钥不外露</h5><p>突出安全感和服务可信度。</p></div></div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="scheme scheme-d">
+          <div class="scheme-inner">
+            <header class="meta">
+              <div>
+                <h2>D. 浅橙面板 + 深色主按钮</h2>
+                <p>整体更轻，浅橙承载面板与图标，关键动作使用深色按钮。</p>
+              </div>
+              <div class="swatches" aria-label="D 方案颜色">
+                <span class="swatch" style="--dot: #111827">primary #111827</span>
+                <span class="swatch" style="--dot: #374151">hover #374151</span>
+                <span class="swatch" style="--dot: #fff3e8">soft #FFF3E8</span>
+                <span class="swatch" style="--dot: #ffffff">foreground #FFFFFF</span>
+                <span class="swatch" style="--dot: #9a3412">text/border #9A3412</span>
+              </div>
+              <div class="ratios">
+                <span class="ratio">primary/foreground 17.74:1</span>
+                <span class="ratio">hover/foreground 10.31:1</span>
+                <span class="ratio">soft/deep text 6.69:1</span>
+              </div>
+            </header>
+            <div class="mock">
+              <div class="mock-header">
+                <a href="#" class="brand" aria-label="EZAPI 首页">
+                  <img src="../public/duck-64.webp" alt="" />
+                  <span>EZAPI</span>
+                </a>
+                <div class="nav-actions">
+                  <a class="btn btn-secondary" href="#">登录</a>
+                  <a class="btn btn-primary" href="#">注册</a>
+                </div>
+              </div>
+              <div class="mock-main">
+                <div class="hero-copy">
+                  <span class="badge">不懂技术也能轻松调用AI</span>
+                  <h3><span>管令牌、看用量、</span><span>随时充值</span></h3>
+                  <p>适合偏 SaaS 控制台的气质，橙色用于引导和分层，不抢正文可读性。</p>
+                  <div class="cta-row">
+                    <a class="btn btn-primary" href="#">免费注册，马上试用 →</a>
+                    <a class="btn btn-secondary" href="#">进入控制台</a>
+                  </div>
+                  <div class="metric-row">
+                    <div class="metric"><strong>3 min</strong><span>完成注册</span></div>
+                    <div class="metric"><strong>AA</strong><span>按钮可读</span></div>
+                    <div class="metric"><strong>轻量</strong><span>视觉负担低</span></div>
+                  </div>
+                </div>
+                <aside class="preview">
+                  <div class="preview-head">
+                    <div class="mark"><img src="../public/duck-64.webp" alt="" /></div>
+                    <div><h4>系统状态</h4><span class="status">所有服务运行正常</span></div>
+                  </div>
+                  <div class="caps">
+                    <div class="cap"><span class="cap-icon">K</span><div><h5>注册就能用</h5><p>浅橙只做辅助面，主动作保持高对比。</p></div></div>
+                    <div class="cap"><span class="cap-icon">¥</span><div><h5>充值 &amp; 赚奖励</h5><p>支付相关内容不会显得过重。</p></div></div>
+                    <div class="cap"><span class="cap-icon">S</span><div><h5>密钥不外露</h5><p>深色按钮加强可信和稳定感。</p></div></div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

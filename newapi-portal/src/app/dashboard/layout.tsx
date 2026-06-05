@@ -22,12 +22,12 @@ export default async function DashboardLayout({
 
   return (
     <>
-      <div className="min-h-screen overflow-x-hidden bg-slate-50/50 selection:bg-primary selection:text-primary-foreground">
-        <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-100 bg-white/80 shadow-sm shadow-slate-200/40 backdrop-blur-md md:block">
-          <div className="flex h-16 items-center gap-3 border-b border-slate-100/80 px-5">
+      <div className="min-h-screen overflow-x-hidden bg-background selection:bg-primary selection:text-primary-foreground">
+        <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-border bg-card/80 shadow-sm shadow-primary/10 backdrop-blur-md md:block">
+          <div className="flex h-16 items-center gap-3 border-b border-border px-5">
             <DuckLogo />
             <div>
-              <div className="text-sm font-semibold tracking-tight text-slate-800">
+              <div className="text-sm font-semibold tracking-tight text-foreground">
                 EZAPI 控制台
               </div>
               <div className="text-xs text-muted-subtle">Console</div>
@@ -39,14 +39,14 @@ export default async function DashboardLayout({
         </aside>
 
         <div className="md:pl-64">
-          <div className="sticky top-0 z-20 border-b border-slate-100/80 bg-white/85 shadow-sm shadow-slate-200/30 backdrop-blur-md md:border-b">
+          <div className="sticky top-0 z-20 border-b border-border bg-card/85 shadow-sm shadow-primary/10 backdrop-blur-md md:border-b">
             <header className="flex h-16 items-center justify-between px-4 md:px-6">
               <Link
                 href="/"
                 className="flex items-center gap-2 rounded-xl outline-none transition-[background-color,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hidden"
               >
                 <DuckLogo className="h-7 w-7" />
-                <span className="text-sm font-semibold text-slate-800">
+                <span className="text-sm font-semibold text-foreground">
                   控制台
                 </span>
               </Link>
@@ -65,7 +65,7 @@ export default async function DashboardLayout({
                 <UserMenu email={user.email} />
               </div>
             </header>
-            <div className="border-t border-slate-100/80 bg-white/70 backdrop-blur-md md:hidden">
+            <div className="border-t border-border bg-card/70 backdrop-blur-md md:hidden">
               <DashboardNav />
             </div>
           </div>

@@ -479,7 +479,7 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
 function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   return (
     <div className="flex flex-col items-center gap-6 py-12 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-primary/10 text-primary shadow-sm">
+      <span className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-primary/10 text-accent shadow-sm">
         <Terminal className="h-7 w-7" />
       </span>
       <div className="space-y-1">
@@ -595,7 +595,7 @@ function ModelDropdown({
             onSelect={() => onSelect(m.id)}
             className={cn(
               "font-mono text-xs",
-              m.id === activeModel && "text-orange-600",
+              m.id === activeModel && "text-foreground",
             )}
           >
             {m.id}

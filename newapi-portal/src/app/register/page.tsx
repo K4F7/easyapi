@@ -259,7 +259,7 @@ function RegisterForm() {
               aria-label={showPassword ? "隐藏密码" : "显示密码"}
               aria-pressed={showPassword}
               onClick={() => setShowPassword((v) => !v)}
-              className="rounded-md p-1 text-slate-400 transition-colors duration-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded-md p-1 text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" />
@@ -291,7 +291,7 @@ function RegisterForm() {
               aria-label={showPassword ? "隐藏密码" : "显示密码"}
               aria-pressed={showPassword}
               onClick={() => setShowPassword((v) => !v)}
-              className="rounded-md p-1 text-slate-400 transition-colors duration-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded-md p-1 text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" />
@@ -311,12 +311,12 @@ function RegisterForm() {
         <div className="space-y-1.5">
           <Label
             htmlFor="email"
-            className="text-xs font-semibold text-slate-700"
+            className="text-xs font-semibold text-foreground"
           >
             邮箱
           </Label>
           <div className="relative">
-            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="email"
               type="email"
@@ -325,7 +325,7 @@ function RegisterForm() {
               value={email}
               aria-invalid={!!fieldErrors.email}
               className={cn(
-                "h-11 border-slate-200 bg-slate-50/70 pl-9 pr-[7.5rem] focus-visible:border-primary focus-visible:ring-primary/20",
+                "h-11 border-border bg-background/70 pl-9 pr-[7.5rem] focus-visible:border-primary focus-visible:ring-ring",
                 fieldErrors.email &&
                   "border-destructive focus-visible:ring-destructive",
               )}
@@ -340,7 +340,7 @@ function RegisterForm() {
               type="button"
               disabled={sendDisabled}
               onClick={handleSendVerificationCode}
-              className="absolute right-2 top-1/2 min-w-20 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-semibold text-primary transition-colors duration-200 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              className="absolute right-2 top-1/2 min-w-20 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-semibold text-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             >
               {sendingCode ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -375,7 +375,7 @@ function RegisterForm() {
           id="inviteCode"
           label={
             <>
-              邀请码 <span className="font-normal text-slate-500">(可选)</span>
+              邀请码 <span className="font-normal text-muted-foreground">(可选)</span>
             </>
           }
           icon={Ticket}
@@ -385,7 +385,7 @@ function RegisterForm() {
         />
 
         <Button
-          className="h-11 w-full rounded-2xl text-base font-semibold shadow-sm shadow-orange-200/50 transition-[background-color,box-shadow,transform] duration-200 hover:shadow-md hover:shadow-orange-200/60"
+          className="h-11 w-full rounded-2xl text-base font-semibold shadow-sm shadow-primary/20 transition-[background-color,box-shadow,transform] duration-200 hover:shadow-md hover:shadow-primary/25"
           type="submit"
           disabled={loading}
         >
@@ -399,10 +399,10 @@ function RegisterForm() {
           )}
         </Button>
 
-        <p className="pt-1 text-center text-sm text-slate-500">
+        <p className="pt-1 text-center text-sm text-muted-foreground">
           已有账户？{" "}
           <Link
-            className="rounded-md font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            className="rounded-md font-semibold text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href="/login"
           >
             登录
@@ -440,11 +440,11 @@ function AuthInput({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-xs font-semibold text-slate-700">
+      <Label htmlFor={id} className="text-xs font-semibold text-foreground">
         {label}
       </Label>
       <div className="relative">
-        <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           id={id}
           type={type}
@@ -454,7 +454,7 @@ function AuthInput({
           value={value}
           aria-invalid={!!error}
           className={cn(
-            "h-11 border-slate-200 bg-slate-50/70 pl-9 focus-visible:border-primary focus-visible:ring-primary/20",
+            "h-11 border-border bg-background/70 pl-9 focus-visible:border-primary focus-visible:ring-ring",
             trailing && "pr-10",
             error && "border-destructive focus-visible:ring-destructive",
           )}
