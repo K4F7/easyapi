@@ -80,7 +80,7 @@ export default function HomePage() {
               whileHover={{ scale: 1.05, rotate: 5 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
             >
-              <DuckLogo size={36} />
+              <DuckLogo size={36} priority />
             </motion.div>
             <span className="text-xl font-bold tracking-tight text-slate-800">EZAPI</span>
           </Link>
@@ -88,7 +88,7 @@ export default function HomePage() {
             <Button asChild variant="ghost" className="hidden md:flex rounded-xl hover:bg-slate-100 text-slate-600">
               <Link href="/login">登录</Link>
             </Button>
-            <Button asChild className="rounded-xl shadow-sm hover:shadow-md transition-all">
+            <Button asChild className="rounded-xl shadow-sm transition-shadow hover:shadow-md">
               <Link href="/register">注册</Link>
             </Button>
           </div>
@@ -125,13 +125,13 @@ export default function HomePage() {
               </motion.div>
               
               <motion.div variants={itemVariants} className="mt-10 flex flex-wrap gap-4">
-                <Button asChild size="lg" className="h-14 px-8 rounded-2xl text-base shadow-sm hover:shadow-md transition-all">
+                <Button asChild size="lg" className="h-14 px-8 rounded-2xl text-base shadow-sm transition-shadow hover:shadow-md">
                   <Link href="/register">
                     免费注册，马上试用
                     <ArrowRight className="h-5 w-5 ml-2" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="h-14 px-8 rounded-2xl text-base border-slate-200 text-slate-700 hover:bg-slate-50 transition-all">
+                <Button asChild variant="outline" size="lg" className="h-14 px-8 rounded-2xl text-base border-slate-200 text-slate-700 transition-colors hover:bg-slate-50">
                   <Link href="/dashboard">进入控制台</Link>
                 </Button>
               </motion.div>
@@ -150,7 +150,7 @@ export default function HomePage() {
               >
                 <div className="flex items-center gap-5 mb-8 pb-6 border-b border-slate-100">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-slate-50 bg-white p-1.5 shadow-sm">
-                    <BrandMark compact className="h-full w-full" />
+                    <BrandMark compact priority className="h-full w-full" />
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-slate-800">系统状态</h2>
@@ -174,7 +174,7 @@ export default function HomePage() {
                       whileHover={{ scale: 1.02 }}
                       className="group cursor-default"
                     >
-                      <Card className="border-0 shadow-sm hover:shadow-md transition-all bg-white rounded-2xl overflow-hidden">
+                      <Card className="border-0 bg-white shadow-sm transition-shadow hover:shadow-md rounded-2xl overflow-hidden">
                         <CardContent className="flex items-center gap-4 p-4">
                           <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${item.color} transition-colors`}>
                             <item.icon className="h-6 w-6" strokeWidth={2} />

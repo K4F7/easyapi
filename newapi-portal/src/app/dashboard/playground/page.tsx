@@ -42,7 +42,7 @@ function PlaygroundContent() {
       <div
         role="tablist"
         aria-label="试玩模式"
-        className="mb-4 inline-flex h-10 shrink-0 items-center self-center sm:self-start rounded-full bg-muted/60 p-1 text-muted-foreground backdrop-blur-sm"
+        className="mb-4 inline-flex h-10 shrink-0 items-center self-center rounded-full border border-border/60 bg-background/80 p-1 text-muted-foreground shadow-sm backdrop-blur-sm sm:self-start"
       >
         {TABS.map((tab) => {
           const active = tab.key === activeTab;
@@ -54,14 +54,14 @@ function PlaygroundContent() {
               aria-selected={active}
               onClick={() => selectTab(tab.key)}
               className={cn(
-                "relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring z-10",
+                "relative z-10 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-[color,background-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 active ? "text-primary" : "hover:text-foreground",
               )}
             >
               {active && (
                 <motion.div
                   layoutId="playground-tab-indicator"
-                  className="absolute inset-0 -z-10 rounded-full bg-background shadow-sm border border-border/50"
+                  className="absolute inset-0 -z-10 rounded-full border border-primary/20 bg-primary/10 shadow-sm"
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}
@@ -75,7 +75,7 @@ function PlaygroundContent() {
       {loading ? (
         <PlaygroundPanelSkeleton />
       ) : error ? (
-        <div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card px-6 py-10 text-center text-sm text-destructive">
+        <div className="flex flex-1 items-center justify-center rounded-2xl border border-border/60 bg-background/80 px-6 py-10 text-center text-sm text-destructive shadow-sm backdrop-blur-sm">
           {error}
         </div>
       ) : activeTab === "chat" ? (
@@ -105,5 +105,5 @@ function PlaygroundPageSkeleton() {
 }
 
 function PlaygroundPanelSkeleton() {
-  return <Skeleton className="min-h-0 flex-1 rounded-xl" />;
+  return <Skeleton className="min-h-0 flex-1 rounded-2xl" />;
 }

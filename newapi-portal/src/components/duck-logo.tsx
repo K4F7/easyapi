@@ -3,10 +3,15 @@ import { cn } from "@/lib/utils";
 
 type DuckLogoProps = {
   className?: string;
+  priority?: boolean;
   size?: number;
 };
 
-export function DuckLogo({ className, size = 32 }: DuckLogoProps) {
+export function DuckLogo({
+  className,
+  priority = false,
+  size = 32,
+}: DuckLogoProps) {
   const sizedByClass = /\b(h-|w-|size-)/.test(className ?? "");
 
   return (
@@ -24,6 +29,7 @@ export function DuckLogo({ className, size = 32 }: DuckLogoProps) {
         width={size}
         height={size}
         className="h-full w-full object-contain"
+        priority={priority}
         unoptimized
       />
     </div>

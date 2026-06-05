@@ -369,7 +369,7 @@ const TopNBars = React.forwardRef<HTMLDivElement, TopNBarsProps>(
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full transition-all"
+                  className="h-full rounded-full transition-[width,background-color]"
                   style={{ width: `${pct}%`, backgroundColor: fill }}
                 />
               </div>

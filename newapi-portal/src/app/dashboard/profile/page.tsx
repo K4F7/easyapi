@@ -6,6 +6,13 @@ import { Loader2, Mail, Lock, ShieldCheck, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -111,36 +118,34 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl page-transition">
-      {/* Editorial Header */}
-      <div className="mb-16 mt-8 space-y-4">
-        <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl">
-          个人资料
-        </h1>
-        <p className="text-lg text-muted-subtle max-w-xl leading-relaxed">
-          管理您的账户安全设置、绑定的邮箱地址以及登录凭证。
+    <div className="mx-auto w-full max-w-6xl space-y-6 page-transition">
+      <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur">
+        <h1 className="text-2xl font-semibold tracking-normal">个人资料</h1>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+          管理账户安全设置、绑定邮箱地址以及登录凭证。
         </p>
       </div>
 
-      <div className="grid gap-16 md:grid-cols-2">
-        {/* Email Section */}
-        <section className="space-y-8">
-          <div className="flex items-center gap-3 border-b border-divider pb-4">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
+          <CardHeader className="flex-row items-center gap-3 space-y-0">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Mail className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold tracking-tight">邮箱设置</h2>
-              <p className="text-sm text-muted-subtle">当前绑定的邮箱地址</p>
+              <CardTitle>邮箱设置</CardTitle>
+              <CardDescription>当前绑定的邮箱地址</CardDescription>
             </div>
-          </div>
+          </CardHeader>
 
-          <div className="rounded-2xl bg-card p-6 shadow-subtle ring-1 ring-border/50">
+          <CardContent>
             <div className="mb-6">
-              <Label className="text-xs font-medium uppercase tracking-widest text-muted-subtle">
+              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 当前邮箱
               </Label>
-              <div className="mt-2 text-lg font-medium">{user?.email}</div>
+              <div className="mt-2 truncate text-lg font-medium" title={user?.email}>
+                {user?.email}
+              </div>
             </div>
 
             <form onSubmit={handleEmailChange} className="space-y-4">
@@ -166,22 +171,21 @@ export default function ProfilePage() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        {/* Password Section */}
-        <section className="space-y-8">
-          <div className="flex items-center gap-3 border-b border-divider pb-4">
+        <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
+          <CardHeader className="flex-row items-center gap-3 space-y-0">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold tracking-tight">安全设置</h2>
-              <p className="text-sm text-muted-subtle">更改您的登录密码</p>
+              <CardTitle>安全设置</CardTitle>
+              <CardDescription>更改登录密码</CardDescription>
             </div>
-          </div>
+          </CardHeader>
 
-          <div className="rounded-2xl bg-card p-6 shadow-subtle ring-1 ring-border/50">
+          <CardContent>
             <form onSubmit={handlePasswordChange} className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">当前密码</Label>
@@ -195,7 +199,7 @@ export default function ProfilePage() {
                     required
                     className="h-12 bg-background/50 pl-10 text-base"
                   />
-                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-muted-subtle" />
+                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
                 </div>
               </div>
 
@@ -212,7 +216,7 @@ export default function ProfilePage() {
                     minLength={8}
                     className="h-12 bg-background/50 pl-10 text-base"
                   />
-                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-muted-subtle" />
+                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
                 </div>
               </div>
 
@@ -229,7 +233,7 @@ export default function ProfilePage() {
                     minLength={8}
                     className="h-12 bg-background/50 pl-10 text-base"
                   />
-                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-muted-subtle" />
+                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
                 </div>
               </div>
 
@@ -243,8 +247,8 @@ export default function ProfilePage() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

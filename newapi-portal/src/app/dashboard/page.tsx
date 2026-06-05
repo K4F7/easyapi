@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowRight,
   Activity,
@@ -118,7 +118,7 @@ export default function DashboardPage() {
   const [checkingIn, setCheckingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadSummary() {
+  const loadSummary = useCallback(async () => {
     setError(null);
     setLoading(true);
 
@@ -135,7 +135,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [applyConfig, refresh]);
 
   async function handleCheckin() {
     setCheckingIn(true);
@@ -155,7 +155,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void loadSummary();
-  }, []);
+  }, [loadSummary]);
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -210,20 +210,20 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur sm:flex sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">概览</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             一眼看清你的账户：余额还剩多少、今天用了多少、令牌有几个。
           </p>
         </div>
-        <Badge variant={ready ? "success" : "warning"}>
+        <Badge className="mt-3 shrink-0 sm:mt-0" variant={ready ? "success" : "warning"}>
           {ready ? "服务已就绪" : "服务绑定处理中"}
         </Badge>
       </div>
 
       {!ready ? (
-        <Card className="border-warning/40 bg-warning-soft/40">
+        <Card className="border-warning/40 bg-warning-soft/40 shadow-soft">
           <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-3">
               <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning-foreground" />
@@ -246,6 +246,7 @@ export default function DashboardPage() {
       {/* 余额 + 主操作（最强 CTA 留给日用动作：充值 / 新建令牌） */}
       <Card
         className={cn(
+          "border-border/60 bg-white/80 shadow-soft backdrop-blur",
           balanceLevel === "critical" && "border-error/40 bg-error-soft/30",
           balanceLevel === "low" && "border-warning/40 bg-warning-soft/30",
         )}
@@ -314,7 +315,7 @@ export default function DashboardPage() {
       </Card>
 
       {/* API 接入信息：地址可复制，密钥引导去令牌页（概览不下发完整密钥） */}
-      <Card>
+      <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">接入信息</CardTitle>
           <CardDescription>复制 API 地址，到令牌页取你的密钥。</CardDescription>
@@ -429,7 +430,7 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 rounded-md border border-divider bg-muted/50 p-3">
+            <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 p-3">
               <Gift className="h-5 w-5 text-muted-foreground" />
               <div className="min-w-0">
                 <div className="text-sm font-medium">
@@ -456,7 +457,7 @@ export default function DashboardPage() {
               onClick={handleCheckin}
             >
               {checkingIn
-                ? "签到中..."
+                ? "签到中…"
                 : summary.checkin.quotaPending
                   ? "重试发放"
                   : summary.checkin.checkedInToday
@@ -492,7 +493,7 @@ function MetricCard({
       href={href}
       className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <Card className="h-full transition-colors group-hover:bg-muted/50">
+      <Card className="h-full border-border/60 bg-white/80 shadow-soft backdrop-blur transition-[background-color,box-shadow] group-hover:bg-white group-hover:shadow-md">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardDescription>{title}</CardDescription>
           <Icon className="h-4 w-4 text-muted-foreground" />
@@ -527,41 +528,6 @@ function MetricCard({
   );
 }
 
-function EmptyMetricCard({
-  href,
-  title,
-  cta,
-  icon: Icon,
-}: {
-  href: string;
-  title: string;
-  cta: string;
-  icon: typeof Coins;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-    >
-      <Card className="h-full border-dashed transition-colors group-hover:bg-muted/50">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardDescription>{title}</CardDescription>
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-semibold tabular-nums text-muted-foreground">
-            0
-          </div>
-          <div className="mt-1 flex items-center gap-1 text-xs font-medium text-primary">
-            {cta}
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
 function QuickLink({
   href,
   title,
@@ -574,7 +540,7 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="group rounded-md border border-divider bg-card p-4 transition-colors hover:bg-muted"
+      className="group rounded-2xl border border-border/60 bg-white/80 p-4 shadow-soft transition-[background-color,box-shadow] hover:bg-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-medium">{title}</div>
