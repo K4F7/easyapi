@@ -121,13 +121,11 @@ jobs:
           GHCR_PULL_USER: ${{ github.repository_owner }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
           IMAGE_PLAYGROUND_INTERNAL_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL }}
-          IMAGE_PLAYGROUND_ALLOWED_ORIGIN: ${{ vars.STAGING_IMAGE_PLAYGROUND_ALLOWED_ORIGIN }}
-          IMAGE_PLAYGROUND_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
         with:
           host: ${{ secrets.STAGING_SSH_HOST }}
           username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
-          envs: PORTAL_IMAGE,GHCR_PULL_USER,GHCR_PULL_TOKEN,IMAGE_PLAYGROUND_INTERNAL_URL,IMAGE_PLAYGROUND_ALLOWED_ORIGIN,IMAGE_PLAYGROUND_URL
+          envs: PORTAL_IMAGE,GHCR_PULL_USER,GHCR_PULL_TOKEN,IMAGE_PLAYGROUND_INTERNAL_URL
           script_path: scripts/deploy-portal-staging.sh
 
       - name: Wait for public health check

@@ -100,17 +100,14 @@
 
 | Variable | 用途 | 示例 |
 |----------|------|------|
-| `STAGING_IMAGE_PLAYGROUND_INTERNAL_URL` | **Scheme 4**：生图 Playground 容器内网上游；Portal 在 `/playground/embed/` 同源反代 | `http://image-playground:8080` |
+| `STAGING_IMAGE_PLAYGROUND_INTERNAL_URL` | **Scheme 4**：生图 Playground 容器内网上游；Portal 在 `/playground/embed/` 同源反代 | `http://image-playground-test` |
 | `STAGING_PUBLIC_NEWAPI_BASE_URL` | 前端可见的 NewAPI 公网地址；Docker build 时写入 `NEXT_PUBLIC_NEWAPI_BASE_URL` | `https://api.easyapi.work` |
-| `STAGING_IMAGE_PLAYGROUND_ALLOWED_ORIGIN`（可选） | 跨域 Playground 调用图像 API 的 CORS allowlist；Scheme 4 同源嵌入通常可留空 | `https://image.easyapi.work` |
-| `STAGING_IMAGE_PLAYGROUND_URL`（可选） | 跨域 iframe 回退；build 时写入 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL` | `https://image.easyapi.work` |
 
 **Scheme 4（同源嵌入）要点：**
 
-- iframe 优先使用 Portal 本域 `/playground/embed/?...`，由 `IMAGE_PLAYGROUND_INTERNAL_URL` 反代到内网 Playground 容器；**无需**公网 `https://image.easyapi.work/`。
+- iframe 只使用 Portal 本域 `/playground/embed/?...`，由 `IMAGE_PLAYGROUND_INTERNAL_URL` 反代到内网 Playground 容器；**无需**公网 `https://image.easyapi.work/`。
 - `IMAGE_PLAYGROUND_INTERNAL_URL` 是 Portal **运行时**变量；修改后只需 recreate `portal-test`，无需重建镜像。
 - `NEXT_PUBLIC_NEWAPI_BASE_URL` 仍在 build 时内联；修改后须重建镜像。
-- 未配置 `IMAGE_PLAYGROUND_INTERNAL_URL` 时，若仍设置了 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`，Portal 可回退到跨域 iframe（迁移期兼容）。
 - GHA Deploy 会把 `IMAGE_PLAYGROUND_INTERNAL_URL` 传给部署脚本；compose 须写入 `portal-test.environment`。
 
 查看运行状态：
@@ -130,9 +127,7 @@ portal-test:
   image: ${PORTAL_IMAGE:-ghcr.io/k4f7/easyapi/newapi-portal:test-latest}
   environment:
     # 其他 DATABASE_URL / AUTH_SECRET / NEWAPI_* 等既有变量保持不变。
-    IMAGE_PLAYGROUND_INTERNAL_URL: ${IMAGE_PLAYGROUND_INTERNAL_URL:-http://image-playground:8080}
-    IMAGE_PLAYGROUND_ALLOWED_ORIGIN: ${IMAGE_PLAYGROUND_ALLOWED_ORIGIN:-}
-    IMAGE_PLAYGROUND_URL: ${IMAGE_PLAYGROUND_URL:-}
+    IMAGE_PLAYGROUND_INTERNAL_URL: ${IMAGE_PLAYGROUND_INTERNAL_URL:-http://image-playground-test}
 ```
 
 部署时 CI 与手动脚本都会 `export PORTAL_IMAGE=...` 再执行 `docker compose up`。`IMAGE_PLAYGROUND_INTERNAL_URL` 须为 `portal-test` 容器在同 compose 网络内可访问的地址；Playground 服务无需再暴露公网反代。
@@ -186,13 +181,12 @@ Portal 提供两个兼容代理入口：
 
 `/v1/images/generations` 是为 iframe 中 OpenAI-compatible 客户端保留的兼容代理，**不是公开 OpenAI API**。它只接受 Portal 签发的短期 image session token，或同源已有登录 session + body `tokenId` 的兼容请求。
 
-上线后的 iframe 认证流程（Scheme 4 同源优先）：
+上线后的 iframe 认证流程：
 
 1. 登录用户进入 `/dashboard/playground?tab=image`；前端查询 `/api/playground/images/embed-config`。
-2. 若 `IMAGE_PLAYGROUND_INTERNAL_URL` 已配置，iframe `src` 为同源 `/playground/embed/?tokenId=...&apiUrl=<portal>`（**不**在 URL 中携带签名 token）；依赖 Portal session cookie + 同源 API 调用。
-3. 若仅配置 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`（迁移回退），前端签发 `portal-image-session-v1.*` 并写入 iframe 查询参数。
-4. iframe 调用 Portal 图像代理（`/v1/images/generations` 或 `/api/playground/images/generations`）时，同源模式可用 session + `tokenId`；跨域模式须携带签名 token。
-5. Portal 验签/校验后按绑定用户与 token id 在服务端注入真实 NewAPI key；真实 key 不进入浏览器。
+2. `IMAGE_PLAYGROUND_INTERNAL_URL` 已配置时，iframe `src` 为同源 `/playground/embed/?tokenId=...&apiUrl=<portal>`（**不**在 URL 中携带签名 token）；依赖 Portal session cookie + 同源 API 调用。
+3. iframe 调用 Portal 图像代理（`/v1/images/generations` 或 `/api/playground/images/generations`）时，使用同源 session + `tokenId`。
+4. Portal 校验后按绑定用户与 token id 在服务端注入真实 NewAPI key；真实 key 不进入浏览器。
 
 `/playground/embed` 受 middleware 保护：需登录 session 或 URL 中的 `portal-image-session-v1.*`；禁止无 referer 的顶层文档导航。
 
@@ -209,10 +203,7 @@ Portal 提供两个兼容代理入口：
 
 ```bash
 export PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:dev-latest   # 或 test-latest
-export IMAGE_PLAYGROUND_INTERNAL_URL=http://image-playground:8080
-# 跨域 iframe 回退（可选，与 openresty frame-ancestors 配合）：
-# export IMAGE_PLAYGROUND_ALLOWED_ORIGIN=https://image.easyapi.work
-# export IMAGE_PLAYGROUND_URL=https://image.easyapi.work
+export IMAGE_PLAYGROUND_INTERNAL_URL=http://image-playground-test
 ssh root@45.142.115.128 'bash -s' < scripts/deploy-portal-staging.sh
 ```
 
@@ -404,16 +395,7 @@ curl -I "https://test.easyapi.work/playground/embed/"
 
 未配置 `IMAGE_PLAYGROUND_INTERNAL_URL` 时期望 `503`；配置正确且上游健康时期望 `200`（或上游状态码）。
 
-Scheme 4 下图像 API 为同源调用，通常无需跨域 CORS preflight。若使用跨域 iframe 回退（`NEXT_PUBLIC_IMAGE_PLAYGROUND_URL=https://image.easyapi.work`），可额外检查：
-
-```bash
-curl -i -X OPTIONS "https://test.easyapi.work/v1/images/generations" \
-  -H "Origin: https://image.easyapi.work" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: authorization,content-type"
-```
-
-期望响应包含 `access-control-allow-origin: https://image.easyapi.work`。若无此头，检查 compose 是否注入 `IMAGE_PLAYGROUND_ALLOWED_ORIGIN`。
+Scheme 4 下图像 API 为同源调用，无需跨域 CORS preflight；外部 playground origin 不应获得 `Access-Control-Allow-Origin`。
 
 ---
 

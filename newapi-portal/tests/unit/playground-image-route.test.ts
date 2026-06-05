@@ -140,8 +140,6 @@ describe("POST playground image session", () => {
     vi.clearAllMocks();
     process.env.AUTH_SECRET = "unit-test-auth-secret-at-least-32-chars";
     process.env.IMAGE_PLAYGROUND_INTERNAL_URL = "http://image-playground:8080";
-    process.env.IMAGE_PLAYGROUND_ALLOWED_ORIGIN =
-      "https://playground.example.test";
     mockRequireUser.mockResolvedValue({
       id: "portal-user-1",
       email: "user@example.com",
@@ -248,9 +246,6 @@ describe("POST playground image generations", () => {
     vi.clearAllMocks();
     process.env.AUTH_SECRET = "unit-test-auth-secret-at-least-32-chars";
     delete process.env.IMAGE_PLAYGROUND_INTERNAL_URL;
-    delete process.env.IMAGE_PLAYGROUND_ALLOWED_ORIGIN;
-    delete process.env.IMAGE_PLAYGROUND_URL;
-    delete process.env.NEXT_PUBLIC_IMAGE_PLAYGROUND_URL;
     mockRequireUser.mockResolvedValue({
       id: "portal-user-1",
       email: "user@example.com",
@@ -276,14 +271,12 @@ describe("POST playground image generations", () => {
     );
   });
 
-  it("accepts a signed image session token without requiring iframe cookies", async () => {
-    process.env.IMAGE_PLAYGROUND_ALLOWED_ORIGIN =
-      "https://playground.example.test";
+  it("accepts a same-origin signed image session token without requiring iframe cookies", async () => {
     const sessionToken = signPlaygroundImageSessionToken({
       userId: "portal-user-1",
       tokenId: 303,
       portalOrigin: "https://portal.example.test",
-      playgroundOrigin: "https://playground.example.test",
+      playgroundOrigin: "https://portal.example.test",
     });
 
     const response = await handleImageGeneration(
@@ -293,13 +286,13 @@ describe("POST playground image generations", () => {
           prompt: "draw with a signed session",
           playgroundSessionToken: sessionToken,
         },
-        { Origin: "https://playground.example.test" },
+        { Origin: "https://portal.example.test" },
       ),
     );
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
-      "https://playground.example.test",
+      "https://portal.example.test",
     );
     expect(mockRequireUser).not.toHaveBeenCalled();
     expect(mockGetPortalUserForApi).toHaveBeenCalledWith("portal-user-1");
@@ -315,39 +308,22 @@ describe("POST playground image generations", () => {
     );
   });
 
-  it("uses runtime CORS allowlist before build-time public iframe URL", async () => {
-    process.env.IMAGE_PLAYGROUND_ALLOWED_ORIGIN =
-      "https://runtime-playground.example.test";
-    process.env.NEXT_PUBLIC_IMAGE_PLAYGROUND_URL =
-      "https://build-playground.example.test";
-    const sessionToken = signPlaygroundImageSessionToken({
-      userId: "portal-user-1",
-      tokenId: 101,
-      portalOrigin: "https://portal.example.test",
-      playgroundOrigin: "https://runtime-playground.example.test",
-    });
-
-    const response = await handleImageGeneration(
-      jsonRequest(
-        "https://portal.example.test/v1/images/generations",
-        {
-          prompt: "draw cors",
-          playgroundSessionToken: sessionToken,
+  it("does not use legacy iframe configuration for cross-origin CORS", () => {
+    const response = handleImageGenerationOptions(
+      new Request("https://portal.example.test/v1/images/generations", {
+        method: "OPTIONS",
+        headers: {
+          Origin: "https://build-playground.example.test",
+          "Access-Control-Request-Method": "POST",
         },
-        { Origin: "https://runtime-playground.example.test" },
-      ),
+      }),
     );
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
-      "https://runtime-playground.example.test",
-    );
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
   });
 
-  it("answers CORS preflight from the runtime playground allowlist", () => {
-    process.env.IMAGE_PLAYGROUND_ALLOWED_ORIGIN =
-      "https://playground.example.test";
-
+  it("does not answer CORS preflight from external playground origins", () => {
     const response = handleImageGenerationOptions(
       new Request("https://portal.example.test/v1/images/generations", {
         method: "OPTIONS",
@@ -360,9 +336,7 @@ describe("POST playground image generations", () => {
     );
 
     expect(response.status).toBe(204);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
-      "https://playground.example.test",
-    );
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
     expect(response.headers.get("Access-Control-Allow-Methods")).toContain(
       "POST",
     );
@@ -372,9 +346,6 @@ describe("POST playground image generations", () => {
   });
 
   it("rejects cross-origin tokenId compatibility requests without a signed image session token", async () => {
-    process.env.IMAGE_PLAYGROUND_ALLOWED_ORIGIN =
-      "https://playground.example.test";
-
     const response = await handleImageGeneration(
       jsonRequest(
         "https://portal.example.test/v1/images/generations",
@@ -388,9 +359,7 @@ describe("POST playground image generations", () => {
     const body = await parseResponse(response);
 
     expect(response.status).toBe(401);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
-      "https://playground.example.test",
-    );
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
     expect(body.error?.code).toBe("IMAGE_SESSION_TOKEN_REQUIRED");
     expect(mockRequireUser).not.toHaveBeenCalled();
     expect(mockResolvePlaygroundKey).not.toHaveBeenCalled();
@@ -443,8 +412,6 @@ describe("POST playground image generations", () => {
   });
 
   it("rejects a signed image session token bound to a different playground origin", async () => {
-    process.env.IMAGE_PLAYGROUND_ALLOWED_ORIGIN =
-      "https://playground.example.test";
     const sessionToken = signPlaygroundImageSessionToken({
       userId: "portal-user-1",
       tokenId: 303,

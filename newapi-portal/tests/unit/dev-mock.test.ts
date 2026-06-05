@@ -358,8 +358,6 @@ describe("dev mock API routes", () => {
 
     setDevMockEnv(undefined, "production");
     vi.stubEnv("IMAGE_PLAYGROUND_INTERNAL_URL", undefined);
-    vi.stubEnv("IMAGE_PLAYGROUND_URL", undefined);
-    vi.stubEnv("NEXT_PUBLIC_IMAGE_PLAYGROUND_URL", undefined);
 
     const response = await GET();
     const body = await readJson(response);
