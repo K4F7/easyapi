@@ -14,7 +14,7 @@ const password = E2E_PASSWORD;
 test.describe("Register page", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/register");
-    await expect(page.getByRole("heading", { name: "注册" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "免费创建账户" })).toBeVisible();
   });
 
   test("shows email, passwords, verification code, and invite code fields", async ({
@@ -149,27 +149,26 @@ test.describe("Billing referral", () => {
       { timeout: 60_000 },
     );
 
-    const inviteLine = page.locator(".font-mono.truncate").first();
-    await expect(inviteLine).not.toHaveText("加载中...", { timeout: 60_000 });
-    await expect(inviteLine).toContainText(/inviteCode=/, { timeout: 15_000 });
-    const inviteUrl = (await inviteLine.innerText()).trim();
+    const inviteLine = page.getByLabel("邀请链接");
+    await expect(inviteLine).not.toHaveValue("加载中…", { timeout: 60_000 });
+    await expect(inviteLine).toHaveValue(/inviteCode=/, { timeout: 15_000 });
+    const inviteUrl = (await inviteLine.inputValue()).trim();
     expect(inviteUrl).toMatch(/\/register\?inviteCode=[A-Za-z0-9]+/);
     expect(inviteUrl).not.toMatch(/[?&]aff=/);
 
     await expect(page.getByText("累计已发奖励")).toBeVisible();
-    await expect(page.getByText("待确认邀请")).toBeVisible();
+    await expect(page.getByText("待确认")).toBeVisible();
     await expect(page.getByText("成功邀请")).toBeVisible();
 
     const pendingBlock = page
-      .getByText("待确认邀请", { exact: true })
+      .getByText("待确认", { exact: true })
       .locator("..")
       .locator("..");
     await expect(pendingBlock).toContainText("人");
     await expect(pendingBlock).not.toContainText("¥");
 
-    await expect(page.getByText("分享链接")).toBeVisible();
-    await expect(page.getByText("好友注册")).toBeVisible();
-    await expect(page.getByText("奖励到账")).toBeVisible();
+    await expect(page.getByLabel("邀请链接")).toBeVisible();
+    await expect(page.getByText("邀请与兑换")).toBeVisible();
 
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.getByRole("button", { name: "复制" }).click();
@@ -181,7 +180,7 @@ test.describe("Billing referral", () => {
       : new URL(inviteUrl, "https://test.easyapi.work").toString();
     await registerPage.goto(registerTarget);
     await expect(
-      registerPage.getByRole("heading", { name: "注册" }),
+      registerPage.getByRole("heading", { name: "免费创建账户" }),
     ).toBeVisible();
 
     const code = new URL(inviteUrl).searchParams.get("inviteCode");

@@ -52,7 +52,7 @@ test.describe("NewAPI Portal smoke", () => {
   }) => {
     await page.goto("/register");
 
-    await expect(page.getByRole("heading", { name: "注册" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "免费创建账户" })).toBeVisible();
     await expect(page.getByLabel("用户名")).toBeVisible();
     await expect(page.getByLabel("密码", { exact: true })).toBeVisible();
     await expect(page.getByLabel("确认密码")).toBeVisible();
