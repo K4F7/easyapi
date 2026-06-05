@@ -75,6 +75,8 @@ type ModelsResponse = {
   fallback: boolean;
 };
 
+type ModelLoadState = "idle" | "loading" | "ready" | "empty" | "error";
+
 const PROMPT_SUGGESTIONS = [
   "解释一下 RESTful API 设计原则",
   "帮我写一个 Express 错误处理中间件",
@@ -96,6 +98,8 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [models, setModels] = useState<{ id: string }[]>([]);
+  const [modelLoadState, setModelLoadState] = useState<ModelLoadState>("idle");
+  const [modelLoadError, setModelLoadError] = useState<string | null>(null);
   const [activeModel, setActiveModel] = useState<string | null>(model);
   const [pillsExpanded, setPillsExpanded] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
@@ -112,16 +116,21 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
     if (tokenId === null) {
       setModels([]);
       setActiveModel(null);
+      setModelLoadState("idle");
+      setModelLoadError(null);
       return;
     }
     let cancelled = false;
     void (async () => {
+      setModelLoadState("loading");
+      setModelLoadError(null);
       try {
         const data = await apiFetch<ModelsResponse>(
           `/api/playground/models?tokenId=${tokenId}`,
         );
         if (cancelled) return;
         setModels(data.models);
+        setModelLoadState(data.models.length > 0 ? "ready" : "empty");
         setActiveModel((prev) => {
           const hasModel = (id: string | null) =>
             id !== null && data.models.some((item) => item.id === id);
@@ -129,10 +138,14 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
           if (hasModel(prev)) return prev;
           return data.models[0]?.id ?? null;
         });
-      } catch {
+      } catch (loadError) {
         if (!cancelled) {
           setModels([]);
           setActiveModel(null);
+          setModelLoadState("error");
+          setModelLoadError(
+            loadError instanceof Error ? loadError.message : "模型加载失败",
+          );
         }
       }
     })();
@@ -169,7 +182,7 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
   const runCompletion = useCallback(
     async (history: ChatMessage[]) => {
       if (tokenId === null || !activeModel) {
-        setError("请先选择令牌与模型");
+        setError(modelStatusMessage(modelLoadState, modelLoadError));
         return;
       }
 
@@ -244,7 +257,7 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
         abortRef.current = null;
       }
     },
-    [tokenId, activeModel],
+    [tokenId, activeModel, modelLoadState, modelLoadError],
   );
 
   function handleSend() {
@@ -406,6 +419,8 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
             <ModelDropdown
               models={models}
               activeModel={activeModel}
+              modelLoadState={modelLoadState}
+              modelLoadError={modelLoadError}
               onSelect={setActiveModel}
             />
             {isStreaming ? (
@@ -426,7 +441,7 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
                 className="h-9 w-9 shrink-0 rounded-full bg-primary"
                 aria-label="发送"
                 onClick={handleSend}
-                disabled={tokenId === null || !input.trim()}
+                disabled={tokenId === null || !activeModel || !input.trim()}
               >
                 <ArrowUp className="h-4 w-4" />
               </Button>
@@ -541,14 +556,22 @@ function QuickPills({
 function ModelDropdown({
   models,
   activeModel,
+  modelLoadState,
+  modelLoadError,
   onSelect,
 }: {
   models: { id: string }[];
   activeModel: string | null;
+  modelLoadState: ModelLoadState;
+  modelLoadError: string | null;
   onSelect: (id: string) => void;
 }) {
   if (models.length === 0) {
-    return null;
+    return (
+      <span className="max-w-[180px] shrink-0 truncate px-2 text-xs text-muted-foreground">
+        {modelStatusMessage(modelLoadState, modelLoadError)}
+      </span>
+    );
   }
   return (
     <DropdownMenu>
@@ -581,6 +604,22 @@ function ModelDropdown({
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+function modelStatusMessage(
+  modelLoadState: ModelLoadState,
+  modelLoadError: string | null,
+): string {
+  if (modelLoadState === "loading") {
+    return "模型加载中";
+  }
+  if (modelLoadState === "empty") {
+    return "没有可用模型";
+  }
+  if (modelLoadState === "error") {
+    return modelLoadError ?? "模型加载失败";
+  }
+  return "请先选择令牌与模型";
 }
 
 function MessageBubble({
