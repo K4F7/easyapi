@@ -52,10 +52,11 @@ test.describe("NewAPI Portal smoke", () => {
   }) => {
     await page.goto("/register");
 
-    await expect(page.getByRole("heading", { name: "创建账户" })).toBeVisible();
-    await expect(page.getByLabel("邮箱地址")).toBeVisible();
-    await expect(page.getByLabel("登录密码")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "注册" })).toBeVisible();
+    await expect(page.getByLabel("用户名")).toBeVisible();
+    await expect(page.getByLabel("密码", { exact: true })).toBeVisible();
     await expect(page.getByLabel("确认密码")).toBeVisible();
+    await expect(page.getByLabel("邮箱")).toBeVisible();
     await expect(page.getByLabel("验证码")).toBeVisible();
     await expect(page.getByLabel(/邀请码/)).toBeVisible();
     await expect(page.getByText(/服务条款|隐私政策|我同意/)).toHaveCount(0);
@@ -63,12 +64,12 @@ test.describe("NewAPI Portal smoke", () => {
     await expect(
       page.getByRole("button", { name: "获取验证码" }),
     ).toBeDisabled();
-    await page.getByLabel("邮箱地址").fill("user@example.com");
+    await page.getByLabel("邮箱").fill("user@example.com");
     await expect(
       page.getByRole("button", { name: "获取验证码" }),
     ).toBeEnabled();
     await expect(page.getByLabel(/turnstile/i)).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "完成注册" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "注册", exact: true })).toBeEnabled();
 
     await page.route("**/api/auth/verification", async (route) => {
       await route.fulfill({
@@ -97,12 +98,14 @@ test.describe("NewAPI Portal smoke", () => {
       });
     });
 
-    await page.getByLabel("登录密码").fill("MyPassword8!");
+    await page.getByLabel("用户名").fill("testuser");
+    await page.getByLabel("密码", { exact: true }).fill("MyPassword8!");
     await page.getByLabel("确认密码").fill("MyPassword8!");
     await page.getByLabel("验证码").fill("654321");
-    await page.getByRole("button", { name: "完成注册" }).click();
+    await page.getByRole("button", { name: "注册", exact: true }).click();
     expect(registerRequests).toEqual([
       expect.objectContaining({
+        username: "testuser",
         email: "user@example.com",
         password: "MyPassword8!",
         inviteCode: "ABC123",
@@ -111,7 +114,7 @@ test.describe("NewAPI Portal smoke", () => {
     ]);
     expect(registerRequests[0]).not.toHaveProperty("turnstile");
     expect(registerRequests[0]).not.toHaveProperty("acceptedTerms");
-    await expect(page.getByRole("link", { name: "直接登录" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "登录" })).toHaveAttribute(
       "href",
       "/login",
     );
