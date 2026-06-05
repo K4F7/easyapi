@@ -174,15 +174,21 @@ jobs:
           identifier="${E2E_PORTAL_IDENTIFIER:-scr@easyapi.work}"
           identifier="${identifier%@*}"
           password="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
-          response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
-            -H "Content-Type: application/json" \
-            -d "{\"identifier\":\"${identifier}\",\"password\":\"${password}\"}")
+          for attempt in $(seq 1 12); do
+            response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
+              -H "Content-Type: application/json" \
+              -d "{\"identifier\":\"${identifier}\",\"password\":\"${password}\"}") && \
+              echo "$response" | grep -q '"ok"[[:space:]]*:[[:space:]]*true' && {
+                echo "$response"
+                echo "Screenshot test user login OK"
+                exit 0
+              }
+            echo "Waiting for screenshot test user login ($attempt/12) ..."
+            sleep 5
+          done
           echo "$response"
-          echo "$response" | grep -q '"ok"[[:space:]]*:[[:space:]]*true' || {
-            echo "Screenshot test user login verification failed"
-            exit 1
-          }
-          echo "Screenshot test user login OK"
+          echo "Screenshot test user login verification failed"
+          exit 1
 
       - name: Collect portal logs on failure
         if: failure()
@@ -234,17 +240,21 @@ jobs:
           identifier="${E2E_PORTAL_IDENTIFIER:-scr@easyapi.work}"
           identifier="${identifier%@*}"
           password="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
-          response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
-            -H "Content-Type: application/json" \
-            -d "{\"identifier\":\"${identifier}\",\"password\":\"${password}\"}") || {
-            echo "Staging login preflight failed (curl or HTTP error)"
-            exit 1
-          }
+          for attempt in $(seq 1 12); do
+            response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
+              -H "Content-Type: application/json" \
+              -d "{\"identifier\":\"${identifier}\",\"password\":\"${password}\"}") && \
+              echo "$response" | grep -q '"ok"[[:space:]]*:[[:space:]]*true' && {
+                echo "$response"
+                echo "Staging login preflight OK"
+                exit 0
+              }
+            echo "Waiting for staging login preflight ($attempt/12) ..."
+            sleep 5
+          done
           echo "$response"
-          echo "$response" | grep -q '"ok"[[:space:]]*:[[:space:]]*true' || {
-            echo "Staging login preflight: account not ready for Playwright"
-            exit 1
-          }
+          echo "Staging login preflight: account not ready for Playwright"
+          exit 1
 
       - name: Run portal E2E (UI, smoke, playground, register/billing)
         env:
