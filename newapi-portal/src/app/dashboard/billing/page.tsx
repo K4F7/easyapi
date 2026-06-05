@@ -7,36 +7,26 @@ import {
   Copy,
   ArrowRightLeft,
   CreditCard,
+  Sparkles,
+  Zap,
+  CheckCircle2,
+  Clock,
+  AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 
-import { EmptyState, ErrorState } from "@/components/page-state";
-import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { EmptyState } from "@/components/page-state";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { apiFetch, apiPost } from "@/lib/client/api";
-import { formatCurrencyCny, formatDateTime, statusText, formatCount } from "@/lib/client/format";
+import { formatCurrencyCny, formatDateTime, statusText } from "@/lib/client/format";
 import { useQuotaFormat } from "@/hooks/use-quota-format";
 import type { QuotaDisplayConfig } from "@/lib/quota/display-config.shared";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // --- Types from Billing ---
 type Order = {
@@ -101,37 +91,46 @@ type ReferralData = {
 };
 
 const PAY_METHODS = [
-  { value: "alipay", label: "支付宝" },
-  { value: "wechat", label: "微信" },
+  { value: "alipay", label: "支付宝", icon: <Wallet className="w-5 h-5" />, color: "#1677FF" },
+  { value: "wechat", label: "微信", icon: <Wallet className="w-5 h-5" />, color: "#09B83E" },
 ] as const;
 
-const AMOUNT_PRESETS = [10, 50, 100, 200] as const;
+const AMOUNT_PRESETS = [10, 50, 100, 200, 500] as const;
 
-const ACCENT = "#FF9800";
-const ACCENT_SOFT = "#FFF6E5";
-const ACCENT_MUTED = "#FCD399";
+const ACCENT = "#FF9500";
 
-const PANEL_CARD =
-  "rounded-[24px] border border-border/50 bg-card shadow-sm p-6 md:p-8";
+// Animation Variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
 
 function isPresetAmount(value: number): value is (typeof AMOUNT_PRESETS)[number] {
   return (AMOUNT_PRESETS as readonly number[]).includes(value);
 }
 
 export default function CombinedBillingReferralPage() {
-  const { formatQuota, quotaPerCny, config: quotaConfig, applyConfig, refresh } =
-    useQuotaFormat();
+  const { formatQuota, quotaPerCny, config: quotaConfig, applyConfig, refresh } = useQuotaFormat();
   
   // Billing States
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [balance, setBalance] = useState<BalanceSummary["newApi"] | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(true);
-  const [amount, setAmount] = useState("10");
+  const [amount, setAmount] = useState("50");
   const [payType, setPayType] = useState<string>(PAY_METHODS[0].value);
   const [creating, setCreating] = useState(false);
   const [redeemCode, setRedeemCode] = useState("");
   const [redeeming, setRedeeming] = useState(false);
+  const [activeTab, setActiveTab] = useState<"billing" | "referral">("billing");
 
   // Referral States
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
@@ -167,10 +166,7 @@ export default function CombinedBillingReferralPage() {
 
   const quota = balance?.self?.quota;
   const usedQuota = balance?.self?.used_quota;
-  const remaining =
-    typeof quota === "number" && typeof usedQuota === "number"
-      ? Math.max(quota - usedQuota, 0)
-      : quota;
+  const remaining = typeof quota === "number" && typeof usedQuota === "number" ? Math.max(quota - usedQuota, 0) : quota;
 
   const quotaPreview = amountValue !== null ? Math.round(amountValue * derivedRate.rate) : null;
 
@@ -184,9 +180,7 @@ export default function CombinedBillingReferralPage() {
       apiFetch<BalanceSummary>("/api/dashboard/summary")
         .then((d) => {
           setBalance(d.newApi);
-          if (d.quotaConfig) {
-            applyConfig(d.quotaConfig);
-          }
+          if (d.quotaConfig) applyConfig(d.quotaConfig);
         })
         .catch(() => {}),
       apiFetch<ReferralData>("/api/referral").then(d => setReferralData(d)).catch(() => {}),
@@ -200,7 +194,6 @@ export default function CombinedBillingReferralPage() {
 
   useEffect(() => {
     loadData();
-    
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("payment") === "return") {
@@ -267,477 +260,463 @@ export default function CombinedBillingReferralPage() {
   const rewardedInvites = referralData?.invitedCount.rewarded || 0;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 page-transition">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">财务与奖励</h1>
-          <p className="mt-1 text-muted-foreground">
-            管理您的账户余额、充值记录与邀请收益。
-          </p>
+    <div className="mx-auto w-full max-w-7xl space-y-12 pb-20">
+      {/* Header Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-[2rem] bg-zinc-950 p-8 md:p-12 text-zinc-50"
+      >
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-orange-500 via-transparent to-transparent" />
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-orange-500/20 blur-[80px]" />
+        
+        <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">资产中心</h1>
+            <p className="text-lg text-zinc-400 max-w-xl">
+              管理您的 API 额度、充值记录与邀请收益。透明、高效的财务总览。
+            </p>
+          </div>
+          <div className="flex gap-3">
+             <Button variant="outline" className="rounded-full border-zinc-800 bg-zinc-900/50 text-zinc-300 hover:bg-zinc-800 hover:text-white backdrop-blur-md">
+               <Clock className="w-4 h-4 mr-2" />
+               账单明细
+             </Button>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
-      <section className="space-y-6 rounded-[28px] bg-muted/35 p-4 md:p-6">
-        {/* Top: Balance & Referral — light panels matching recharge cards */}
-        <div className="grid gap-6 xl:grid-cols-2 items-stretch">
-          <Card className={cn(PANEL_CARD, "flex flex-col")}>
-            <div className="mb-6 flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-white"
-                  style={{ backgroundColor: ACCENT }}
-                >
-                  <Wallet className="h-4 w-4" />
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid gap-8 lg:grid-cols-12"
+      >
+        {/* Left Column: Balances & Stats (7 cols) */}
+        <div className="lg:col-span-7 space-y-8">
+          
+          {/* Main Balance Card */}
+          <motion.div variants={itemVariants} className="group relative overflow-hidden rounded-[2rem] border border-orange-200/50 bg-white p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all hover:shadow-[0_8px_30px_rgb(255,149,0,0.1)]">
+            <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-orange-50 to-transparent opacity-50" />
+            
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-500/20">
+                    <Wallet className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">可用额度</h2>
+                    <p className="text-sm text-slate-500 font-medium">实时计算</p>
+                  </div>
                 </div>
-                <h2 className="text-lg font-bold text-foreground">当前可用额度</h2>
+                <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-600 px-3 py-1 text-xs font-bold tracking-widest uppercase">
+                  <span className="relative flex h-2 w-2 mr-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                  </span>
+                  Live
+                </Badge>
               </div>
-              <Badge
-                variant="outline"
-                className="shrink-0 border-[#FF9800]/30 font-mono text-[11px] tracking-wider"
-                style={{ backgroundColor: ACCENT_SOFT, color: ACCENT }}
-              >
-                LIVE
-              </Badge>
-            </div>
 
-            <div className="mb-6">
-              <div className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+              <div className="mb-10">
                 {balanceLoading ? (
-                  <Skeleton className="h-12 w-48" />
+                  <Skeleton className="h-16 w-64 rounded-xl" />
                 ) : (
-                  formatQuota(remaining)
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-6xl font-black tracking-tighter text-slate-900 tabular-nums">
+                      {formatQuota(remaining).replace(/[^0-9.,]/g, '')}
+                    </span>
+                    <span className="text-2xl font-bold text-slate-400">
+                      {formatQuota(remaining).replace(/[0-9.,]/g, '')}
+                    </span>
+                  </div>
                 )}
               </div>
-              <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                可用额度
-                <span
-                  className="inline-block h-1.5 w-1.5 animate-pulse rounded-full"
-                  style={{ backgroundColor: ACCENT }}
-                />
-              </div>
-            </div>
 
-            <div className="mt-auto grid grid-cols-2 gap-3 border-t border-border/50 pt-5">
-              <div className="rounded-xl border border-border/60 bg-background/80 px-4 py-3">
-                <div className="mb-1 text-sm text-muted-foreground">历史消耗</div>
-                <div className="text-xl font-medium text-foreground">
-                  {balanceLoading ? (
-                    <Skeleton className="h-7 w-24" />
-                  ) : (
-                    formatQuota(usedQuota)
-                  )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-2xl bg-slate-50 p-5 transition-colors group-hover:bg-orange-50/50">
+                  <div className="text-sm font-medium text-slate-500 mb-2">历史总消耗</div>
+                  <div className="text-2xl font-bold text-slate-900 tabular-nums">
+                    {balanceLoading ? <Skeleton className="h-8 w-24" /> : formatQuota(usedQuota)}
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-background/80 px-4 py-3">
-                <div className="mb-1 text-sm text-muted-foreground">请求次数</div>
-                <div className="text-xl font-medium text-foreground">
-                  {ordersLoading ? (
-                    <Skeleton className="h-7 w-16" />
-                  ) : (
-                    orders.length
-                  )}
+                <div className="rounded-2xl bg-slate-50 p-5 transition-colors group-hover:bg-orange-50/50">
+                  <div className="text-sm font-medium text-slate-500 mb-2">充值次数</div>
+                  <div className="text-2xl font-bold text-slate-900 tabular-nums">
+                    {ordersLoading ? <Skeleton className="h-8 w-16" /> : orders.length}
+                  </div>
                 </div>
               </div>
             </div>
-          </Card>
+          </motion.div>
 
-          <Card className={cn(PANEL_CARD, "flex flex-col")}>
-            <div className="mb-6 flex items-start justify-between gap-3">
+          {/* Referral Stats Card */}
+          <motion.div variants={itemVariants} className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-white"
-                  style={{ backgroundColor: ACCENT }}
-                >
-                  <Gift className="h-4 w-4" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
+                  <Gift className="h-5 w-5" />
                 </div>
-                <h2 className="text-lg font-bold text-foreground">邀请奖励</h2>
+                <h2 className="text-xl font-bold text-slate-900">邀请收益</h2>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 shrink-0 rounded-full border-border/60 bg-background text-xs font-medium hover:bg-muted"
-              >
-                <ArrowRightLeft className="mr-1.5 h-3 w-3" />
-                划转收益
+              <Button variant="ghost" className="rounded-full font-semibold hover:bg-slate-100">
+                <ArrowRightLeft className="mr-2 h-4 w-4" />
+                划转
               </Button>
             </div>
 
-            <div className="mb-6">
-              <div className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-                {referralLoading ? (
-                  <Skeleton className="h-12 w-40" />
-                ) : (
-                  formatQuota(rewardTotal)
-                )}
+            <div className="grid sm:grid-cols-3 gap-6 mb-8">
+              <div>
+                <div className="text-sm font-medium text-slate-500 mb-1">累计奖励</div>
+                <div className="text-3xl font-black text-orange-500 tabular-nums">
+                  {referralLoading ? <Skeleton className="h-9 w-24" /> : formatQuota(rewardTotal)}
+                </div>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">累计已发奖励</p>
+              <div>
+                <div className="text-sm font-medium text-slate-500 mb-1">成功邀请</div>
+                <div className="text-3xl font-bold text-slate-900 tabular-nums">
+                  {referralLoading ? <Skeleton className="h-9 w-16" /> : `${rewardedInvites} 人`}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-slate-500 mb-1">待确认</div>
+                <div className="text-3xl font-bold text-slate-900 tabular-nums">
+                  {referralLoading ? <Skeleton className="h-9 w-16" /> : `${pendingInvites} 人`}
+                </div>
+              </div>
             </div>
 
-            <div className="mt-auto space-y-6">
-              <div className="grid grid-cols-2 gap-3 border-t border-border/50 pt-5">
-                <div className="rounded-xl border border-border/60 bg-background/80 px-4 py-3">
-                  <div className="mb-1 text-sm text-muted-foreground">待确认邀请</div>
-                  <div className="text-xl font-medium text-foreground">
-                    {referralLoading ? (
-                      <Skeleton className="h-7 w-24" />
-                    ) : (
-                      <>
-                        {pendingInvites}
-                        <span className="ml-1 text-sm font-normal text-muted-foreground">人</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-background/80 px-4 py-3">
-                  <div className="mb-1 text-sm text-muted-foreground">成功邀请</div>
-                  <div className="text-xl font-medium text-foreground">
-                    {referralLoading ? (
-                      <Skeleton className="h-7 w-16" />
-                    ) : (
-                      <>
-                        {rewardedInvites}
-                        <span className="ml-1 text-sm font-normal text-muted-foreground">人</span>
-                      </>
-                    )}
-                  </div>
-                </div>
+            <div className="rounded-2xl bg-slate-50 p-2 flex items-center gap-2 border border-slate-100">
+              <div className="flex-1 truncate px-4 font-mono text-sm text-slate-600 select-all">
+                {referralLoading ? "加载中..." : inviteUrl}
               </div>
-
-              <div className="grid gap-2 sm:grid-cols-3">
-                {[
-                  { title: "分享链接", desc: "把专属邀请链接发给好友" },
-                  { title: "好友注册", desc: "好友用邀请码完成注册" },
-                  { title: "奖励到账", desc: "系统结算后额度自动发放" },
-                ].map((step, index) => (
-                  <div
-                    key={step.title}
-                    className="rounded-xl border border-border/60 bg-background/80 p-3"
-                  >
-                    <div
-                      className="mb-2 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white"
-                      style={{ backgroundColor: ACCENT }}
-                    >
-                      {index + 1}
-                    </div>
-                    <div className="text-sm font-medium text-foreground">{step.title}</div>
-                    <div className="mt-1 text-xs leading-5 text-muted-foreground">{step.desc}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background p-1.5 pl-4">
-                <div className="min-w-0 flex-1 truncate font-mono text-sm text-muted-foreground select-all">
-                  {referralLoading ? "加载中..." : inviteUrl}
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => copyToClipboard(inviteUrl, "邀请链接已复制")}
-                  className="h-9 shrink-0 rounded-full px-4 shadow-none"
-                >
-                  <Copy className="mr-1.5 h-3.5 w-3.5" />
-                  复制
-                </Button>
-              </div>
+              <Button
+                onClick={() => copyToClipboard(inviteUrl, "邀请链接已复制")}
+                className="rounded-xl bg-slate-900 text-white hover:bg-slate-800 shadow-none font-bold px-6"
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                复制链接
+              </Button>
             </div>
-          </Card>
+          </motion.div>
+
         </div>
 
-        {/* Recharge & Redeem */}
-        <div className="grid gap-6 xl:grid-cols-2 items-start">
-        <Card className={PANEL_CARD}>
-          <div className="mb-8">
-            <h2 className="text-lg font-bold text-foreground mb-1.5">易支付充值</h2>
-            <p className="text-sm text-muted-foreground">选择金额与支付方式，确认后跳转支付网关。</p>
-          </div>
+        {/* Right Column: Actions (5 cols) */}
+        <div className="lg:col-span-5 space-y-8">
+          
+          {/* Recharge Card */}
+          <motion.div variants={itemVariants} className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-orange-500" />
+                快速充值
+              </h2>
+            </div>
 
-          <div className="space-y-8">
-            {/* Amount Selection */}
-            <div>
-              <Label className="text-sm font-bold text-foreground mb-3 block">充值金额（CNY）</Label>
-              <div className="flex flex-wrap gap-2.5 mb-3">
-                {AMOUNT_PRESETS.map(val => (
-                  <button 
-                    key={val}
-                    type="button"
-                    onClick={() => setAmount(String(val))}
-                    className={cn(
-                      "h-9 px-5 rounded-full border text-sm font-medium transition-colors",
-                      amountValue === val 
-                        ? "text-white" 
-                        : "bg-background text-foreground border-border hover:border-border/80"
-                    )}
-                    style={
-                      amountValue === val
-                        ? { backgroundColor: ACCENT, borderColor: ACCENT }
-                        : undefined
-                    }
-                  >
-                    ¥{val}
-                  </button>
-                ))}
-                <div className="relative">
-                  <Input 
-                    className={cn(
-                      "h-9 w-24 rounded-full text-sm font-medium text-center transition-colors focus-visible:ring-[#FF9800] focus-visible:border-[#FF9800] focus-visible:ring-offset-0",
-                      amountValue !== null && !isPresetAmount(amountValue)
-                        ? "bg-[#FF9800] text-white border-[#FF9800] placeholder:text-white/70"
-                        : "bg-background text-foreground border-border hover:border-border/80"
-                    )}
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    type="number"
-                    min="1"
-                    placeholder="自定义"
-                  />
+            <div className="space-y-8">
+              {/* Amount Selection */}
+              <div>
+                <Label className="text-sm font-bold text-slate-700 mb-4 block">选择金额 (CNY)</Label>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {AMOUNT_PRESETS.map(val => (
+                    <button 
+                      key={val}
+                      type="button"
+                      onClick={() => setAmount(String(val))}
+                      className={cn(
+                        "relative h-14 rounded-2xl border-2 text-lg font-bold transition-all duration-200 overflow-hidden",
+                        amountValue === val 
+                          ? "border-orange-500 bg-orange-50 text-orange-600" 
+                          : "border-slate-200 bg-white text-slate-600 hover:border-orange-200 hover:bg-orange-50/30"
+                      )}
+                    >
+                      {amountValue === val && (
+                        <motion.div 
+                          layoutId="amount-active" 
+                          className="absolute inset-0 bg-orange-100/50" 
+                          initial={false}
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                      <span className="relative z-10">¥{val}</span>
+                    </button>
+                  ))}
+                  <div className="relative h-14 col-span-3 sm:col-span-1">
+                    <Input 
+                      className={cn(
+                        "h-full w-full rounded-2xl border-2 text-center text-lg font-bold transition-all focus-visible:ring-0",
+                        amountValue !== null && !isPresetAmount(amountValue)
+                          ? "border-orange-500 bg-orange-50 text-orange-600"
+                          : "border-slate-200 bg-white text-slate-600 focus-visible:border-orange-500"
+                      )}
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      type="number"
+                      min="1"
+                      placeholder="自定义"
+                    />
+                  </div>
+                </div>
+                
+                <AnimatePresence mode="wait">
+                  {amountValue !== null && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="flex items-center justify-between rounded-xl bg-slate-50 p-4 text-sm"
+                    >
+                      <span className="font-medium text-slate-500">预计获得额度</span>
+                      <span className="font-bold text-orange-600 flex items-center gap-1">
+                        <Sparkles className="w-4 h-4" />
+                        {formatQuota(quotaPreview || 0)}
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Payment Method */}
+              <div>
+                <Label className="text-sm font-bold text-slate-700 mb-4 block">支付方式</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {PAY_METHODS.map((method) => (
+                    <button 
+                      key={method.value}
+                      type="button"
+                      onClick={() => setPayType(method.value)}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-3 p-4 rounded-2xl border-2 transition-all",
+                        payType === method.value 
+                          ? "border-slate-900 bg-slate-900 text-white" 
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      )}
+                    >
+                      <div className={cn(
+                        "p-2 rounded-full",
+                        payType === method.value ? "bg-white/20" : "bg-slate-100"
+                      )}>
+                        {method.icon}
+                      </div>
+                      <span className="font-bold text-sm">{method.label}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground">
-                ¥{amountValue || 0} → 约 {formatQuota(quotaPreview || 0)} 额度 <span className="text-muted-foreground/60">（预估，以实际到账为准）</span>
-              </div>
+
+              {/* Pay Button */}
+              <Button 
+                className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl shadow-orange-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
+                style={{ backgroundColor: ACCENT }}
+                onClick={submitOrder}
+                disabled={creating || !amountValue}
+              >
+                {creating ? "创建订单中..." : `确认支付 ¥${amountValue || 0}`}
+              </Button>
             </div>
+          </motion.div>
 
-            {/* Payment Method */}
-            <div>
-              <Label className="text-sm font-bold text-foreground mb-3 block">支付方式</Label>
-              <div className="space-y-3">
-                <button 
-                  type="button"
-                  onClick={() => setPayType('alipay')}
-                  className={cn(
-                    "w-full flex items-center justify-between p-3.5 rounded-xl border transition-all",
-                    payType === 'alipay' 
-                      ? "border-[#FF9800]" 
-                      : "bg-background border-border hover:border-border/80"
-                  )}
-                  style={
-                    payType === "alipay"
-                      ? { backgroundColor: ACCENT_SOFT, borderColor: ACCENT }
-                      : undefined
-                  }
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-white"
-                      style={{ backgroundColor: ACCENT }}
-                    >
-                      <Wallet className="w-4 h-4" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-bold text-foreground text-sm">支付宝</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">扫码 / 跳转支付</div>
-                    </div>
-                  </div>
-                  <div className={cn(
-                    "w-4 h-4 rounded-full border flex items-center justify-center",
-                    payType === "alipay" ? "border-[#FF9800]" : "border-muted-foreground/30"
-                  )}
-                  >
-                    {payType === "alipay" && (
-                      <div
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: ACCENT }}
-                      />
-                    )}
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Pay Button */}
-            <Button 
-              className={cn(
-                "w-full h-11 rounded-full text-sm font-bold shadow-none text-white transition-colors disabled:opacity-100",
-                amountValue && !creating
-                  ? "hover:opacity-90"
-                  : "cursor-not-allowed"
-              )}
-              style={{
-                backgroundColor:
-                  amountValue && !creating ? ACCENT : ACCENT_MUTED,
-              }}
-              onClick={submitOrder}
-              disabled={creating || !amountValue}
-            >
-              <CreditCard className="w-4 h-4 mr-2" />
-              去支付 ¥{amountValue || 0}
-            </Button>
-          </div>
-        </Card>
-
-        <Card className={PANEL_CARD}>
-          <div className="mb-8">
-            <h2 className="text-lg font-bold text-foreground mb-1.5">兑换码</h2>
-            <p className="text-sm text-muted-foreground">兑换成功后额度将自动到账。</p>
-          </div>
-
-          <div className="space-y-8">
-            <div>
-              <Label className="text-sm font-bold text-foreground mb-3 block">兑换码</Label>
+          {/* Redeem Card */}
+          <motion.div variants={itemVariants} className="rounded-[2rem] border border-slate-200 bg-slate-50 p-8">
+            <h2 className="text-lg font-bold text-slate-900 mb-4">兑换码</h2>
+            <div className="flex gap-2">
               <Input 
-                className="h-11 rounded-full bg-background border-border px-5 text-sm focus-visible:ring-[#FF9800] focus-visible:border-[#FF9800] focus-visible:ring-offset-0" 
-                placeholder="请输入兑换码"
+                className="h-12 rounded-xl border-slate-300 bg-white px-4 font-mono text-sm focus-visible:ring-orange-500 focus-visible:border-orange-500" 
+                placeholder="输入兑换码"
                 value={redeemCode}
                 onChange={e => setRedeemCode(e.target.value)}
               />
+              <Button 
+                className="h-12 rounded-xl bg-slate-900 font-bold hover:bg-slate-800 px-6"
+                onClick={handleRedeem} 
+                disabled={redeeming || !redeemCode}
+              >
+                兑换
+              </Button>
             </div>
+          </motion.div>
 
-            <Button 
-              className={cn(
-                "w-full h-11 rounded-full text-sm font-bold shadow-none text-white transition-colors disabled:opacity-100",
-                redeemCode && !redeeming 
-                  ? "bg-[#FF9800] hover:bg-[#FF9800]/90" 
-                  : "bg-[#FCD399] hover:bg-[#FCD399] cursor-not-allowed"
-              )}
-              onClick={handleRedeem} 
-              disabled={redeeming || !redeemCode}
-            >
-              <Gift className="w-4 h-4 mr-2" />
-              立即兑换
-            </Button>
-
-            <p className="text-xs text-muted-foreground">
-              兑换成功后额度会即时加入上方「当前可用额度」。
-            </p>
-          </div>
-        </Card>
         </div>
-      </section>
+      </motion.div>
 
-      <Card className="rounded-3xl border-border/40 shadow-soft overflow-hidden">
-        <Tabs defaultValue="billing" className="w-full">
-          <CardHeader className="pb-0 border-b border-border/40 bg-muted/10">
-            <TabsList className="bg-transparent h-auto p-0 border-b-0 space-x-8">
-              <TabsTrigger 
-                value="billing" 
-                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground rounded-none px-2 py-4 text-sm font-semibold transition-colors"
+      {/* History Section */}
+      <motion.div 
+        variants={itemVariants} 
+        initial="hidden"
+        animate="show"
+        className="rounded-[2rem] border border-slate-200 bg-white overflow-hidden shadow-sm"
+      >
+        <div className="flex border-b border-slate-100">
+          <button
+            onClick={() => setActiveTab("billing")}
+            className={cn(
+              "flex-1 py-5 text-center text-sm font-bold transition-colors relative",
+              activeTab === "billing" ? "text-orange-600" : "text-slate-500 hover:text-slate-900"
+            )}
+          >
+            充值记录
+            {activeTab === "billing" && (
+              <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("referral")}
+            className={cn(
+              "flex-1 py-5 text-center text-sm font-bold transition-colors relative",
+              activeTab === "referral" ? "text-orange-600" : "text-slate-500 hover:text-slate-900"
+            )}
+          >
+            奖励记录
+            {activeTab === "referral" && (
+              <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />
+            )}
+          </button>
+        </div>
+
+        <div className="p-0">
+          <AnimatePresence mode="wait">
+            {activeTab === "billing" ? (
+              <motion.div
+                key="billing"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-x-auto"
               >
-                充值记录
-              </TabsTrigger>
-              <TabsTrigger 
-                value="referral"
-                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground rounded-none px-2 py-4 text-sm font-semibold transition-colors"
-              >
-                奖励记录
-              </TabsTrigger>
-            </TabsList>
-          </CardHeader>
-          <CardContent className="p-0">
-            <TabsContent value="billing" className="m-0">
-              <div className="overflow-x-auto">
                 {ordersLoading ? (
-                  <div className="p-6 space-y-4">
-                    <Skeleton className="h-12 w-full bg-muted/50" />
-                    <Skeleton className="h-12 w-full bg-muted/50" />
-                    <Skeleton className="h-12 w-full bg-muted/50" />
+                  <div className="p-8 space-y-4">
+                    <Skeleton className="h-12 w-full rounded-xl" />
+                    <Skeleton className="h-12 w-full rounded-xl" />
                   </div>
                 ) : orders.length === 0 ? (
-                  <div className="p-12">
+                  <div className="p-16">
                     <EmptyState title="暂无充值记录" description="发起充值后，订单会出现在这里。" />
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader className="bg-muted/20">
-                      <TableRow className="hover:bg-transparent border-border/40">
-                        <TableHead className="h-12 font-semibold">时间</TableHead>
-                        <TableHead className="h-12 font-semibold">金额</TableHead>
-                        <TableHead className="h-12 font-semibold">支付方式</TableHead>
-                        <TableHead className="h-12 font-semibold">状态</TableHead>
-                        <TableHead className="h-12 font-semibold text-right">额度变化</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50/50 text-slate-500 font-medium">
+                      <tr>
+                        <th className="px-6 py-4 font-medium">时间</th>
+                        <th className="px-6 py-4 font-medium">金额</th>
+                        <th className="px-6 py-4 font-medium">方式</th>
+                        <th className="px-6 py-4 font-medium">状态</th>
+                        <th className="px-6 py-4 font-medium text-right">额度变化</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
                       {orders.map((order) => (
-                        <TableRow key={order.id} className="border-border/40 hover:bg-muted/20 transition-colors">
-                          <TableCell className="text-muted-foreground font-mono text-sm py-4">
+                        <tr key={order.id} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-6 py-4 font-mono text-slate-500">
                             {formatDateTime(order.createdAt)}
-                          </TableCell>
-                          <TableCell className="font-mono font-medium py-4">
+                          </td>
+                          <td className="px-6 py-4 font-mono font-bold text-slate-900">
                             {formatCurrencyCny(order.amountCents)}
-                          </TableCell>
-                          <TableCell className="py-4">
-                            <span className="inline-flex items-center gap-1.5 text-sm">
-                              {order.provider?.includes('alipay') || order.provider?.includes('epay') ? (
-                                <><span className="w-2 h-2 rounded-full bg-[#1677FF]" /> 支付宝</>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center gap-2 font-medium text-slate-700">
+                              {order.provider?.includes('alipay') ? (
+                                <div className="w-6 h-6 rounded-full bg-[#1677FF]/10 flex items-center justify-center text-[#1677FF]"><Wallet className="w-3 h-3" /></div>
+                              ) : order.provider?.includes('wechat') ? (
+                                <div className="w-6 h-6 rounded-full bg-[#09B83E]/10 flex items-center justify-center text-[#09B83E]"><Wallet className="w-3 h-3" /></div>
                               ) : (
-                                <><span className="w-2 h-2 rounded-full bg-muted-foreground" /> {order.provider || '—'}</>
+                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><CreditCard className="w-3 h-3" /></div>
                               )}
+                              {order.provider?.includes('alipay') ? '支付宝' : order.provider?.includes('wechat') ? '微信' : order.provider || '—'}
                             </span>
-                          </TableCell>
-                          <TableCell className="py-4">
-                            <Badge 
-                              variant={order.status.toUpperCase() === 'PAID' ? 'success' : order.status.toUpperCase() === 'PENDING' ? 'warning' : 'error'}
-                              className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5"
-                            >
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className={cn(
+                              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
+                              order.status.toUpperCase() === 'PAID' ? "bg-emerald-50 text-emerald-600" :
+                              order.status.toUpperCase() === 'PENDING' ? "bg-amber-50 text-amber-600" :
+                              "bg-red-50 text-red-600"
+                            )}>
+                              {order.status.toUpperCase() === 'PAID' ? <CheckCircle2 className="w-3 h-3" /> :
+                               order.status.toUpperCase() === 'PENDING' ? <Clock className="w-3 h-3" /> :
+                               <AlertCircle className="w-3 h-3" />}
                               {statusText(order.status)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right text-success font-mono font-medium py-4">
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right font-mono font-bold text-emerald-600">
                             {order.quotaAmount !== null ? `+${formatQuota(order.quotaAmount)}` : "—"}
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </tbody>
+                  </table>
                 )}
-              </div>
-            </TabsContent>
-            <TabsContent value="referral" className="m-0">
-              <div className="overflow-x-auto">
+              </motion.div>
+            ) : (
+              <motion.div
+                key="referral"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-x-auto"
+              >
                 {referralLoading ? (
-                  <div className="p-6 space-y-4">
-                    <Skeleton className="h-12 w-full bg-muted/50" />
-                    <Skeleton className="h-12 w-full bg-muted/50" />
+                  <div className="p-8 space-y-4">
+                    <Skeleton className="h-12 w-full rounded-xl" />
+                    <Skeleton className="h-12 w-full rounded-xl" />
                   </div>
                 ) : !referralData?.rewards.length ? (
-                  <div className="p-12">
+                  <div className="p-16">
                     <EmptyState title="暂无奖励" description="好友注册成功后，你的奖励记录会显示在这里。" />
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader className="bg-muted/20">
-                      <TableRow className="hover:bg-transparent border-border/40">
-                        <TableHead className="h-12 font-semibold">时间</TableHead>
-                        <TableHead className="h-12 font-semibold">来源</TableHead>
-                        <TableHead className="h-12 font-semibold">状态</TableHead>
-                        <TableHead className="h-12 font-semibold text-right">奖励金额</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50/50 text-slate-500 font-medium">
+                      <tr>
+                        <th className="px-6 py-4 font-medium">时间</th>
+                        <th className="px-6 py-4 font-medium">来源</th>
+                        <th className="px-6 py-4 font-medium">状态</th>
+                        <th className="px-6 py-4 font-medium text-right">奖励金额</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
                       {referralData.rewards.map((reward) => (
-                        <TableRow key={reward.id} className="border-border/40 hover:bg-muted/20 transition-colors">
-                          <TableCell className="text-muted-foreground font-mono text-sm py-4">
+                        <tr key={reward.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4 font-mono text-slate-500">
                             {formatDateTime(reward.createdAt)}
-                          </TableCell>
-                          <TableCell className="font-medium py-4">
-                            <span className="inline-flex items-center gap-1.5 text-sm">
-                              <Gift className="w-3.5 h-3.5 text-primary" />
+                          </td>
+                          <td className="px-6 py-4 font-medium text-slate-700">
+                            <span className="inline-flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-orange-50 flex items-center justify-center text-orange-500">
+                                <Gift className="w-3 h-3" />
+                              </div>
                               {reward.metadata?.referredUserId ? `好友 #${(reward.metadata.referredUserId || reward.referralId || '').slice(-6)}` : (reward.reason === 'referral_reward' ? '邀请好友' : reward.reason)}
                             </span>
-                          </TableCell>
-                          <TableCell className="py-4">
-                            <Badge 
-                              variant={reward.metadata?.quotaApplied !== false ? "success" : "warning"}
-                              className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5"
-                            >
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className={cn(
+                              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
+                              reward.metadata?.quotaApplied !== false ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                            )}>
+                              {reward.metadata?.quotaApplied !== false ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                               {reward.metadata?.quotaApplied !== false ? "已发放" : "待结算"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right text-primary font-mono font-medium py-4">
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right font-mono font-bold text-orange-500">
                             +{formatQuota(reward.amount)}
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </tbody>
+                  </table>
                 )}
-              </div>
-            </TabsContent>
-          </CardContent>
-        </Tabs>
-      </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
     </div>
   );
 }
+
 
 
 
