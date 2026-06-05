@@ -1,10 +1,19 @@
 import { expect, test } from "@playwright/test";
 
+import {
+  attachPageDiagnostics,
+  assertNoClientErrors,
+  ensureDashboardSession,
+} from "./helpers";
+import { AUTH_ROUTES, routeLocator } from "./routes";
+
 const identifier = process.env.E2E_PORTAL_IDENTIFIER;
 const password = process.env.E2E_PORTAL_PASSWORD;
 
 test.describe("NewAPI Portal smoke", () => {
-  test("health endpoint reports the portal service as OK", async ({ request }) => {
+  test("health endpoint reports the portal service as OK", async ({
+    request,
+  }) => {
     const response = await request.get("/api/health");
     const payload = await response.json();
 
@@ -22,14 +31,13 @@ test.describe("NewAPI Portal smoke", () => {
   }) => {
     await page.goto("/login");
 
-    await expect(page.getByRole("heading", { name: "登录" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "欢迎回来" })).toBeVisible();
     await expect(page.getByLabel("邮箱或用户名")).toBeVisible();
-    await expect(page.getByLabel("密码")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "密码" })).toBeVisible();
     await expect(page.getByRole("button", { name: "登录" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "注册" })).toHaveAttribute(
-      "href",
-      "/register",
-    );
+    await expect(
+      page.getByRole("link", { name: "免费创建账户" }),
+    ).toHaveAttribute("href", "/register");
 
     await expect(
       page.getByRole("button", { name: /github|oauth|google/i }),
@@ -44,19 +52,23 @@ test.describe("NewAPI Portal smoke", () => {
   }) => {
     await page.goto("/register");
 
-    await expect(page.getByRole("heading", { name: "注册" })).toBeVisible();
-    await expect(page.getByLabel("邮箱", { exact: true })).toBeVisible();
-    await expect(page.getByLabel("密码", { exact: true })).toBeVisible();
-    await expect(page.getByLabel("邀请码（可选）")).toBeVisible();
-    await expect(page.getByLabel("邀请码（可选）")).toHaveValue("");
+    await expect(page.getByRole("heading", { name: "创建账户" })).toBeVisible();
+    await expect(page.getByLabel("邮箱地址")).toBeVisible();
+    await expect(page.getByLabel("登录密码")).toBeVisible();
+    await expect(page.getByLabel("确认密码")).toBeVisible();
+    await expect(page.getByLabel("验证码")).toBeVisible();
+    await expect(page.getByLabel(/邀请码/)).toBeVisible();
+    await expect(page.getByText(/服务条款|隐私政策|我同意/)).toHaveCount(0);
     await page.goto("/register?inviteCode=ABC123");
-    await expect(page.getByLabel("邀请码（可选）")).toHaveValue("");
-    await expect(page.getByLabel("邮箱验证码")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "发送邮箱验证码" })).toBeDisabled();
-    await page.getByLabel("邮箱", { exact: true }).fill("user@example.com");
-    await expect(page.getByRole("button", { name: "发送邮箱验证码" })).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "获取验证码" }),
+    ).toBeDisabled();
+    await page.getByLabel("邮箱地址").fill("user@example.com");
+    await expect(
+      page.getByRole("button", { name: "获取验证码" }),
+    ).toBeEnabled();
     await expect(page.getByLabel(/turnstile/i)).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "免费注册" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "完成注册" })).toBeEnabled();
 
     await page.route("**/api/auth/verification", async (route) => {
       await route.fulfill({
@@ -68,11 +80,9 @@ test.describe("NewAPI Portal smoke", () => {
         }),
       });
     });
-    await page.getByRole("button", { name: "发送邮箱验证码" }).click();
-    await expect(page.getByLabel("邮箱验证码")).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /60s 后重发|重新发送/ }),
-    ).toBeVisible();
+    await page.getByRole("button", { name: "获取验证码" }).click();
+    await expect(page.getByText(/验证码已发送/)).toBeVisible();
+    await expect(page.getByRole("button", { name: /^\d+s$/ })).toBeVisible();
 
     const registerRequests: Array<Record<string, unknown>> = [];
     await page.route("**/api/auth/register", async (route) => {
@@ -87,21 +97,21 @@ test.describe("NewAPI Portal smoke", () => {
       });
     });
 
-    await page.getByLabel("密码", { exact: true }).fill("Password123!");
-    await page.getByLabel("确认密码").fill("Password123!");
-    await page.getByLabel("邮箱验证码").fill("654321");
-    await page.getByLabel(/我已阅读并同意/).check();
-    await page.getByRole("button", { name: "免费注册" }).click();
+    await page.getByLabel("登录密码").fill("MyPassword8!");
+    await page.getByLabel("确认密码").fill("MyPassword8!");
+    await page.getByLabel("验证码").fill("654321");
+    await page.getByRole("button", { name: "完成注册" }).click();
     expect(registerRequests).toEqual([
       expect.objectContaining({
         email: "user@example.com",
-        password: "Password123!",
+        password: "MyPassword8!",
         inviteCode: "ABC123",
         verificationCode: "654321",
       }),
     ]);
     expect(registerRequests[0]).not.toHaveProperty("turnstile");
-    await expect(page.getByRole("link", { name: "登录" })).toHaveAttribute(
+    expect(registerRequests[0]).not.toHaveProperty("acceptedTerms");
+    await expect(page.getByRole("link", { name: "直接登录" })).toHaveAttribute(
       "href",
       "/login",
     );
@@ -118,7 +128,7 @@ test.describe("NewAPI Portal smoke", () => {
     await page.goto("/dashboard");
 
     await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole("heading", { name: "登录" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "欢迎回来" })).toBeVisible();
   });
 
   test("configured upstream account can log in and use protected portal pages", async ({
@@ -130,30 +140,20 @@ test.describe("NewAPI Portal smoke", () => {
     );
 
     const failedResponses: string[] = [];
+    const notFoundResponses: string[] = [];
     const browserErrors: string[] = [];
 
-    page.on("response", (response) => {
-      if (response.status() >= 500) {
-        failedResponses.push(`${response.status()} ${response.url()}`);
-      }
-    });
-    page.on("pageerror", (error) => browserErrors.push(error.message));
-    page.on("console", (message) => {
-      if (message.type() === "error") {
-        browserErrors.push(message.text());
-      }
-    });
+    attachPageDiagnostics(
+      page,
+      failedResponses,
+      notFoundResponses,
+      browserErrors,
+    );
 
-    await page.goto("/login");
-    await page.getByLabel("邮箱或用户名").fill(identifier!);
-    await page.getByLabel("密码").fill(password!);
-    await page.getByRole("button", { name: "登录" }).click();
-
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await ensureDashboardSession(page);
     await expect(page.getByText("客户控制台")).toBeVisible();
     await expect(page.getByRole("heading", { name: "概览" })).toBeVisible();
     await expect(page.getByText("概览加载失败")).toHaveCount(0);
-    await expect(page.getByText(/NewAPI 已绑定|NewAPI 绑定处理中/)).toBeVisible();
 
     const me = await page.request.get("/api/auth/me");
     const mePayload = await me.json();
@@ -187,15 +187,23 @@ test.describe("NewAPI Portal smoke", () => {
     expect(logs.status()).toBeLessThan(500);
     expect(logs.ok()).toBeTruthy();
 
-    await page.goto("/dashboard/tokens");
-    await expect(page.getByRole("heading", { name: "Tokens" })).toBeVisible();
-    await expect(page.getByText("Token 列表加载失败")).toHaveCount(0);
+    for (const route of AUTH_ROUTES) {
+      if (route.path === "/dashboard") {
+        continue;
+      }
+      await page.goto(route.path);
+      await expect(routeLocator(page, route.marker)).toBeVisible();
+      if (route.errorTexts?.length) {
+        for (const text of route.errorTexts) {
+          await expect(page.getByText(text)).toHaveCount(0);
+        }
+      }
+    }
 
-    await page.goto("/dashboard/usage");
-    await expect(page.getByRole("heading", { name: "用量" })).toBeVisible();
-    await expect(page.getByText("用量加载失败")).toHaveCount(0);
-
-    expect(failedResponses).toEqual([]);
-    expect(browserErrors).toEqual([]);
+    await assertNoClientErrors(
+      failedResponses,
+      notFoundResponses,
+      browserErrors,
+    );
   });
 });
