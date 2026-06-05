@@ -13,6 +13,7 @@ export function DuckLogo({
   size = 32,
 }: DuckLogoProps) {
   const sizedByClass = /\b(h-|w-|size-)/.test(className ?? "");
+  const src = size <= 64 ? "/duck-64.webp" : "/duck.webp";
 
   return (
     <div
@@ -24,13 +25,12 @@ export function DuckLogo({
       style={sizedByClass ? undefined : { width: size, height: size }}
     >
       <Image
-        src="/duck.webp"
+        src={src}
         alt=""
         width={size}
         height={size}
         className="h-full w-full object-contain"
         priority={priority}
-        unoptimized
       />
     </div>
   );

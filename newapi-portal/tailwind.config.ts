@@ -12,21 +12,26 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: [
-          '"Noto Sans SC"',
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
           '"PingFang SC"',
           '"Microsoft YaHei"',
           '"Hiragino Sans GB"',
           "sans-serif",
         ],
         display: [
-          '"Noto Sans SC"',
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
           '"PingFang SC"',
           '"Microsoft YaHei"',
           '"Hiragino Sans GB"',
           "sans-serif",
         ],
         mono: [
-          '"JetBrains Mono"',
           '"SF Mono"',
           "Consolas",
           '"Liberation Mono"',
