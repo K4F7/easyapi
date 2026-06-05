@@ -7,7 +7,7 @@ import { proxyImagePlaygroundRequest } from "@/lib/playground/image-playground-p
 export const runtime = "nodejs";
 
 type RouteContext = {
-  params: Promise<{ path?: string[] }>;
+  params: Promise<{ path: string[] }>;
 };
 
 async function handle(request: Request, context: RouteContext) {

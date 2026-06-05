@@ -121,7 +121,14 @@ function StatItem({
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
       <div className="mt-0.5 truncate text-lg font-semibold tabular-nums">
-        {loading ? <Skeleton className="h-7 w-20" /> : value}
+        {loading ? (
+          <span
+            aria-hidden="true"
+            className="inline-block h-7 w-20 animate-pulse rounded-md bg-muted align-middle"
+          />
+        ) : (
+          value
+        )}
       </div>
     </div>
   );
@@ -143,10 +150,8 @@ export default function CombinedBillingReferralPage() {
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
   const [referralLoading, setReferralLoading] = useState(true);
   const [origin, setOrigin] = useState("");
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     if (typeof window !== "undefined") {
       setOrigin(window.location.origin);
     }
@@ -273,30 +278,9 @@ export default function CombinedBillingReferralPage() {
   const pendingInvites = referralData?.invitedCount.pending || 0;
   const rewardedInvites = referralData?.invitedCount.rewarded || 0;
 
-  if (!mounted) {
-    return (
-      <div className="mx-auto w-full max-w-6xl space-y-6">
-        <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="mt-3 h-4 w-64" />
-        </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Skeleton className="h-80 rounded-2xl" />
-          <Skeleton className="h-80 rounded-2xl" />
-        </div>
-        <Skeleton className="h-72 rounded-2xl" />
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur">
-        <h1 className="text-2xl font-semibold tracking-normal">财务与奖励</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          管理账户余额、充值记录与邀请收益。
-        </p>
-      </div>
+      <h1 className="text-2xl font-semibold tracking-normal">财务与奖励</h1>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">

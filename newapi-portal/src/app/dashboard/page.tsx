@@ -210,14 +210,9 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur sm:flex sm:items-start sm:justify-between sm:gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-normal">概览</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            一眼看清你的账户：余额还剩多少、今天用了多少、令牌有几个。
-          </p>
-        </div>
-        <Badge className="mt-3 shrink-0 sm:mt-0" variant={ready ? "success" : "warning"}>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-normal">概览</h1>
+        <Badge className="shrink-0" variant={ready ? "success" : "warning"}>
           {ready ? "服务已就绪" : "服务绑定处理中"}
         </Badge>
       </div>

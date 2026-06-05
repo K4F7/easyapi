@@ -185,15 +185,10 @@ export default function TokensPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="rounded-3xl border border-border/50 bg-white/70 p-5 shadow-soft backdrop-blur sm:flex sm:items-start sm:justify-between sm:gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-normal">令牌</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            管理你的 API 访问令牌。密钥只在创建成功时完整显示一次，请及时复制保存。
-          </p>
-        </div>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-normal">令牌</h1>
         {tokens.length > 0 ? (
-          <Button className="mt-3 shrink-0 sm:mt-0" onClick={() => setCreateOpen(true)}>
+          <Button className="shrink-0" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             创建令牌
           </Button>
