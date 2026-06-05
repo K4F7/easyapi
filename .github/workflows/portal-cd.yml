@@ -71,7 +71,6 @@ jobs:
           push: true
           tags: ${{ steps.image.outputs.tags }}
           build-args: |
-            NEXT_PUBLIC_IMAGE_PLAYGROUND_URL=${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
             NEXT_PUBLIC_NEWAPI_BASE_URL=${{ vars.STAGING_PUBLIC_NEWAPI_BASE_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -121,13 +120,14 @@ jobs:
           PORTAL_IMAGE: ${{ needs.build.outputs.image }}
           GHCR_PULL_USER: ${{ github.repository_owner }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
-          IMAGE_PLAYGROUND_ALLOWED_ORIGIN: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
+          IMAGE_PLAYGROUND_INTERNAL_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL }}
+          IMAGE_PLAYGROUND_ALLOWED_ORIGIN: ${{ vars.STAGING_IMAGE_PLAYGROUND_ALLOWED_ORIGIN }}
           IMAGE_PLAYGROUND_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
         with:
           host: ${{ secrets.STAGING_SSH_HOST }}
           username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
-          envs: PORTAL_IMAGE,GHCR_PULL_USER,GHCR_PULL_TOKEN,IMAGE_PLAYGROUND_ALLOWED_ORIGIN,IMAGE_PLAYGROUND_URL
+          envs: PORTAL_IMAGE,GHCR_PULL_USER,GHCR_PULL_TOKEN,IMAGE_PLAYGROUND_INTERNAL_URL,IMAGE_PLAYGROUND_ALLOWED_ORIGIN,IMAGE_PLAYGROUND_URL
           script_path: scripts/deploy-portal-staging.sh
 
       - name: Wait for public health check
@@ -248,9 +248,9 @@ jobs:
           E2E_BASE_URL: https://test.easyapi.work
           E2E_PORTAL_IDENTIFIER: ${{ secrets.E2E_PORTAL_IDENTIFIER }}
           E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
-          EXPECT_IMAGE_PLAYGROUND: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL != '' && 'true' || 'false' }}
-          NEXT_PUBLIC_IMAGE_PLAYGROUND_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
-          STAGING_IMAGE_PLAYGROUND_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_URL }}
+          EXPECT_IMAGE_PLAYGROUND: ${{ vars.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL != '' && 'true' || 'false' }}
+          IMAGE_PLAYGROUND_INTERNAL_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL }}
+          STAGING_IMAGE_PLAYGROUND_INTERNAL_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL }}
         run: |
           export E2E_PORTAL_IDENTIFIER="${E2E_PORTAL_IDENTIFIER:-scr@easyapi.work}"
           export E2E_PORTAL_PASSWORD="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"

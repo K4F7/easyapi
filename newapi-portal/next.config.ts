@@ -20,6 +20,40 @@ const staticAssetExtensions = [
   "otf",
 ];
 
+function buildFrameSrcDirective(): string {
+  const sources = new Set(["'self'"]);
+  const playgroundUrl = process.env.NEXT_PUBLIC_IMAGE_PLAYGROUND_URL?.trim();
+
+  if (playgroundUrl) {
+    try {
+      sources.add(new URL(playgroundUrl).origin);
+    } catch {
+      // Ignore invalid build-time playground URL.
+    }
+  }
+
+  return [...sources].join(" ");
+}
+
+const securityHeaders = [
+  {
+    key: "X-Frame-Options",
+    value: "SAMEORIGIN",
+  },
+  {
+    key: "Referrer-Policy",
+    value: "strict-origin-when-cross-origin",
+  },
+  {
+    key: "X-Content-Type-Options",
+    value: "nosniff",
+  },
+  {
+    key: "Content-Security-Policy",
+    value: `frame-ancestors 'self'; frame-src ${buildFrameSrcDirective()}`,
+  },
+];
+
 const nextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
   reactStrictMode: true,
@@ -34,6 +68,10 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      {
+        source: "/:path*",
+        headers: securityHeaders,
+      },
       {
         source: "/_next/static/:path*",
         headers: [
