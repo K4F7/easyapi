@@ -16,6 +16,15 @@ export async function resolvePlaygroundKey(
   auth: NewApiAuth,
   tokenId: number,
 ): Promise<string> {
+  await assertPlaygroundTokenAccess(auth, tokenId);
+
+  return revealTokenKey(auth, tokenId);
+}
+
+export async function assertPlaygroundTokenAccess(
+  auth: NewApiAuth,
+  tokenId: number,
+): Promise<void> {
   const token = await getToken(auth, tokenId);
 
   if (!token || typeof token.id !== "number") {
@@ -28,8 +37,6 @@ export async function resolvePlaygroundKey(
   ) {
     throw new PlaygroundError("无权使用该令牌", 403);
   }
-
-  return revealTokenKey(auth, tokenId);
 }
 
 export class PlaygroundError extends Error {
@@ -62,6 +69,30 @@ export async function streamChatCompletion(
       Authorization: `Bearer ${key}`,
     },
     body: JSON.stringify({ ...body, stream: true }),
+    signal,
+    cache: "no-store",
+  });
+}
+
+/**
+ * 透传上游 OpenAI 兼容 `/v1/images/generations`。
+ *
+ * 调用方必须先通过 `resolvePlaygroundKey` 校验令牌归属并解析真实 key。
+ * 这里仅负责把真实 key 注入上游 Authorization，不返回 / 记录该 key。
+ */
+export async function createImageGeneration(
+  baseUrl: string,
+  key: string,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Response> {
+  return fetch(`${baseUrl}/v1/images/generations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify(body),
     signal,
     cache: "no-store",
   });

@@ -4,10 +4,10 @@
  * ImagePanel —— Playground「生图」面板。
  *
  * 复用开源 gpt_image_playground（独立部署的 Vite SPA），通过 iframe 嵌入。
- * iframe 基址来自 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`，未配置时显示「即将上线」空态。
+ * iframe 基址来自 `NEXT_PUBLIC_IMAGE_PLAYGROUND_URL`，未配置时显示配置提示。
  *
- * 安全约束：URL 只拼 `apiUrl`（本域同源代理基址）与 `model`，**绝不**带任何密钥。
- * 真实密钥将由服务端代理（同源 `apiUrl` 背后）注入（Phase B）。
+ * 安全约束：URL 只拼 `tokenId` / 短期 image session token 与本域代理基址，**绝不**带真实密钥。
+ * 真实密钥由服务端代理按签名 token 绑定的用户 + token 归属校验后注入。
  */
 
 import { useEffect, useState } from "react";
@@ -23,31 +23,80 @@ export type ImagePanelProps = {
   model: string | null;
 };
 
-/** 生图 iframe 基址：独立部署的 gpt_image_playground 地址，留空则显示即将上线。 */
+/** 生图 iframe 基址：独立部署的 gpt_image_playground 地址，留空则显示配置提示。 */
 const IMAGE_PLAYGROUND_URL = process.env.NEXT_PUBLIC_IMAGE_PLAYGROUND_URL;
 
 export function ImagePanel({ tokenId, model }: ImagePanelProps) {
-  void tokenId;
   const [loaded, setLoaded] = useState(false);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     setLoaded(false);
-    if (!IMAGE_PLAYGROUND_URL) {
+    setSessionError(false);
+    if (!IMAGE_PLAYGROUND_URL || !tokenId) {
       setIframeSrc(null);
-      return;
+      return () => controller.abort();
+    }
+    const selectedTokenId = tokenId;
+
+    async function createIframeUrl() {
+      try {
+        const sessionToken = await createImageSessionToken(
+          selectedTokenId,
+          controller.signal,
+        );
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        const url = new URL(IMAGE_PLAYGROUND_URL!, window.location.origin);
+        const origin = window.location.origin;
+
+        // 兼容 OpenAI 风格 iframe：优先让其调用 `${apiUrl}/v1/images/generations`。
+        url.searchParams.set("apiUrl", origin);
+        url.searchParams.set("baseUrl", origin);
+        // 兼容支持直连 endpoint 的实现。
+        url.searchParams.set(
+          "imageApiUrl",
+          `${origin}/api/playground/images/generations`,
+        );
+        url.searchParams.set("tokenId", String(selectedTokenId));
+        url.searchParams.set("portalTokenId", String(selectedTokenId));
+        url.searchParams.set("playgroundSessionToken", sessionToken);
+        // 兼容只会读取 apiKey 并转成 Authorization Bearer 的实现；这不是 NewAPI 真实 key。
+        url.searchParams.set("apiKey", sessionToken);
+        if (model) {
+          url.searchParams.set("model", model);
+        }
+        setIframeSrc(url.toString());
+      } catch {
+        if (!controller.signal.aborted) {
+          setIframeSrc(null);
+          setSessionError(true);
+        }
+      }
     }
 
-    const url = new URL(IMAGE_PLAYGROUND_URL, window.location.origin);
-    // 指向本域的同源 API 代理（Phase B 实现，密钥服务端注入）。
-    url.searchParams.set("apiUrl", window.location.origin);
-    if (model) {
-      url.searchParams.set("model", model);
-    }
-    setIframeSrc(url.toString());
-  }, [model]);
+    void createIframeUrl();
+    return () => controller.abort();
+  }, [model, tokenId]);
 
   if (!iframeSrc) {
+    const title = sessionError
+      ? "生图会话初始化失败"
+      : IMAGE_PLAYGROUND_URL
+        ? "请选择试玩令牌"
+        : "生图 Playground 未配置";
+    const description = sessionError
+      ? "请刷新页面或重新选择令牌，真实密钥不会暴露给 iframe。"
+      : IMAGE_PLAYGROUND_URL
+        ? "选择一个令牌后即可打开生图 Playground，真实密钥只会在服务端代理中使用。"
+        : "配置 NEXT_PUBLIC_IMAGE_PLAYGROUND_URL 后即可嵌入独立的生图 Playground。";
+
     return (
       <Card>
         <CardContent className="flex min-h-[420px] flex-col items-center justify-center gap-3 p-6 text-center">
@@ -55,9 +104,9 @@ export function ImagePanel({ tokenId, model }: ImagePanelProps) {
             <ImageIcon className="h-6 w-6" />
           </span>
           <div className="space-y-1">
-            <p className="text-sm font-medium">生图功能即将上线</p>
+            <p className="text-sm font-medium">{title}</p>
             <p className="max-w-sm text-sm leading-6 text-muted-foreground">
-              文生图、参考图编辑等能力正在接入，敬请期待。
+              {description}
             </p>
           </div>
         </CardContent>
@@ -84,4 +133,37 @@ export function ImagePanel({ tokenId, model }: ImagePanelProps) {
       </CardContent>
     </Card>
   );
+}
+
+async function createImageSessionToken(
+  tokenId: number,
+  signal: AbortSignal,
+): Promise<string> {
+  const response = await fetch("/api/playground/images/session", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({ tokenId }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create playground image session");
+  }
+
+  const payload = (await response.json()) as {
+    ok?: boolean;
+    data?: {
+      token?: unknown;
+    };
+  };
+  const token = payload.data?.token;
+
+  if (payload.ok !== true || typeof token !== "string") {
+    throw new Error("Invalid playground image session response");
+  }
+
+  return token;
 }
