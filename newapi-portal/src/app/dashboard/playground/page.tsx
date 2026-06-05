@@ -17,16 +17,19 @@ function isTab(value: string | null): value is PlaygroundTab {
   return value === "chat" || value === "image";
 }
 
-const TABS: { key: PlaygroundTab; label: string; icon: typeof MessageSquare }[] =
-  [
-    { key: "chat", label: "对话", icon: MessageSquare },
-    { key: "image", label: "生图", icon: ImageIcon },
-  ];
+const TABS: {
+  key: PlaygroundTab;
+  label: string;
+  icon: typeof MessageSquare;
+}[] = [
+  { key: "chat", label: "对话", icon: MessageSquare },
+  { key: "image", label: "生图", icon: ImageIcon },
+];
 
 function PlaygroundContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { tokenId, error, loading } = usePlaygroundToken();
+  const { chatTokenId, imageTokenId, error, loading } = usePlaygroundToken();
 
   const tabParam = searchParams.get("tab");
   const activeTab: PlaygroundTab = isTab(tabParam) ? tabParam : "chat";
@@ -79,9 +82,13 @@ function PlaygroundContent() {
           {error}
         </div>
       ) : activeTab === "chat" ? (
-        <ChatPanel tokenId={tokenId} model={null} className="flex-1" />
+        <ChatPanel tokenId={chatTokenId} model={null} className="flex-1" />
       ) : (
-        <ImagePanel tokenId={tokenId} model={null} className="flex-1 min-h-0" />
+        <ImagePanel
+          tokenId={imageTokenId}
+          model={null}
+          className="flex-1 min-h-0"
+        />
       )}
     </div>
   );

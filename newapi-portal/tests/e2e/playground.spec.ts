@@ -17,7 +17,8 @@ const MODELS_A = {
   fallback: false,
 };
 
-const PLAYGROUND_TOKEN_ID = 101;
+const PLAYGROUND_CHAT_TOKEN_ID = 101;
+const PLAYGROUND_IMAGE_TOKEN_ID = 202;
 
 const imagePlaygroundReadySignal = (page: Page) =>
   page
@@ -34,7 +35,10 @@ const shouldExpectImagePlayground = () =>
 
 async function mockPlaygroundToken(
   page: Page,
-  tokenId = PLAYGROUND_TOKEN_ID,
+  tokenIds = {
+    chatTokenId: PLAYGROUND_CHAT_TOKEN_ID,
+    imageTokenId: PLAYGROUND_IMAGE_TOKEN_ID,
+  },
   options?: { status?: number },
 ) {
   await page.route("**/api/playground/token**", async (route) => {
@@ -44,7 +48,13 @@ async function mockPlaygroundToken(
       contentType: "application/json",
       body:
         status === 200
-          ? JSON.stringify({ ok: true, data: { tokenId } })
+          ? JSON.stringify({
+              ok: true,
+              data: {
+                ...tokenIds,
+                tokenId: tokenIds.chatTokenId,
+              },
+            })
           : JSON.stringify({
               ok: false,
               error: { message: "操练场初始化失败" },
@@ -55,6 +65,10 @@ async function mockPlaygroundToken(
 
 async function mockModels(page: Page) {
   await page.route("**/api/playground/models?*", async (route) => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get("tokenId")).toBe(
+      String(PLAYGROUND_CHAT_TOKEN_ID),
+    );
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -87,7 +101,7 @@ async function mockImageSession(page: Page) {
       unknown
     >;
     expect(body).toEqual(
-      expect.objectContaining({ tokenId: PLAYGROUND_TOKEN_ID }),
+      expect.objectContaining({ tokenId: PLAYGROUND_IMAGE_TOKEN_ID }),
     );
 
     await route.fulfill({
@@ -115,7 +129,7 @@ async function mockChatStream(page: Page, options?: { totalTokens?: number }) {
     expect(JSON.stringify(body)).not.toMatch(/sk-[a-zA-Z0-9]{8,}/);
     expect(body).toEqual(
       expect.objectContaining({
-        tokenId: expect.any(Number),
+        tokenId: PLAYGROUND_CHAT_TOKEN_ID,
         model: expect.any(String),
         messages: expect.any(Array),
       }),
@@ -240,10 +254,10 @@ test.describe("Playground", () => {
       `${new URL(page.url()).origin}/api/playground/images/generations`,
     );
     expect(iframeUrl.searchParams.get("tokenId")).toBe(
-      String(PLAYGROUND_TOKEN_ID),
+      String(PLAYGROUND_IMAGE_TOKEN_ID),
     );
     expect(iframeUrl.searchParams.get("portalTokenId")).toBe(
-      String(PLAYGROUND_TOKEN_ID),
+      String(PLAYGROUND_IMAGE_TOKEN_ID),
     );
     if (shouldExpectImagePlayground()) {
       expect(iframeUrl.searchParams.get("apiKey")).toBeNull();
@@ -262,7 +276,14 @@ test.describe("Playground", () => {
   test("playground token provisioning failure shows error", async ({
     page,
   }) => {
-    await mockPlaygroundToken(page, PLAYGROUND_TOKEN_ID, { status: 500 });
+    await mockPlaygroundToken(
+      page,
+      {
+        chatTokenId: PLAYGROUND_CHAT_TOKEN_ID,
+        imageTokenId: PLAYGROUND_IMAGE_TOKEN_ID,
+      },
+      { status: 500 },
+    );
     await page.goto("/dashboard/playground");
     await expect(page.getByText("操练场初始化失败")).toBeVisible();
     await expect(page.getByRole("button", { name: /E2E Token/ })).toHaveCount(

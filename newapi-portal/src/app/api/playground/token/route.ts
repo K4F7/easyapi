@@ -1,7 +1,7 @@
 import { jsonError, jsonOk, requireUser } from "@/lib/auth";
 import { getUserNewApiAuth, handleApiError } from "@/lib/api/bff";
 import { isDevMockEnabled, mockPlaygroundTokenResponse } from "@/lib/dev-mock";
-import { ensurePlaygroundTokenId } from "@/lib/playground/ensure-token";
+import { ensurePlaygroundTokenIds } from "@/lib/playground/ensure-token";
 
 export const runtime = "nodejs";
 
@@ -24,9 +24,11 @@ export async function GET() {
       );
     }
 
-    const tokenId = await ensurePlaygroundTokenId(authResult.auth);
+    const { chatTokenId, imageTokenId } = await ensurePlaygroundTokenIds(
+      authResult.auth,
+    );
 
-    return jsonOk({ tokenId });
+    return jsonOk({ chatTokenId, imageTokenId, tokenId: chatTokenId });
   } catch (error) {
     return handleApiError(error, "Failed to resolve playground token");
   }

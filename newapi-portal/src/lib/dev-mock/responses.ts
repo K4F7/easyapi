@@ -287,7 +287,8 @@ export function mockQuotaConfigResponse() {
 }
 
 export function mockPlaygroundTokenResponse() {
-  return jsonOk({ tokenId: getMockState().tokens[0]?.id ?? 101 });
+  const tokenId = getMockState().tokens[0]?.id ?? 101;
+  return jsonOk({ chatTokenId: tokenId, imageTokenId: tokenId, tokenId });
 }
 
 export function mockPlaygroundModelsResponse() {
