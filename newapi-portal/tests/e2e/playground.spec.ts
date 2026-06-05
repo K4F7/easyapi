@@ -27,6 +27,8 @@ const imagePlaygroundReadySignal = (page: Page) =>
 
 const shouldExpectImagePlayground = () =>
   process.env.EXPECT_IMAGE_PLAYGROUND === "true" ||
+  Boolean(process.env.IMAGE_PLAYGROUND_INTERNAL_URL?.trim()) ||
+  Boolean(process.env.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL?.trim()) ||
   Boolean(process.env.NEXT_PUBLIC_IMAGE_PLAYGROUND_URL?.trim()) ||
   Boolean(process.env.STAGING_IMAGE_PLAYGROUND_URL?.trim());
 
@@ -61,13 +63,32 @@ async function mockModels(page: Page) {
   });
 }
 
+async function mockImageEmbedConfig(
+  page: Page,
+  options?: { configured?: boolean },
+) {
+  const configured = options?.configured ?? shouldExpectImagePlayground();
+  await page.route("**/api/playground/images/embed-config**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        data: { configured },
+      }),
+    });
+  });
+}
+
 async function mockImageSession(page: Page) {
   await page.route("**/api/playground/images/session**", async (route) => {
     const body = JSON.parse(route.request().postData() ?? "{}") as Record<
       string,
       unknown
     >;
-    expect(body).toEqual({ tokenId: PLAYGROUND_TOKEN_ID });
+    expect(body).toEqual(
+      expect.objectContaining({ tokenId: PLAYGROUND_TOKEN_ID }),
+    );
 
     await route.fulfill({
       status: 200,
@@ -153,6 +174,7 @@ test.describe("Playground", () => {
   }) => {
     await mockPlaygroundToken(page);
     await mockModels(page);
+    await mockImageEmbedConfig(page);
     await mockImageSession(page);
 
     const loadEvents: number[] = [];
@@ -182,6 +204,7 @@ test.describe("Playground", () => {
     page,
   }) => {
     await mockPlaygroundToken(page);
+    await mockImageEmbedConfig(page);
     await mockImageSession(page);
     await page.goto("/dashboard/playground?tab=image");
     await expect(imagePlaygroundReadySignal(page)).toBeVisible();
@@ -203,6 +226,10 @@ test.describe("Playground", () => {
     expect(src).toBeTruthy();
 
     const iframeUrl = new URL(src!);
+    if (shouldExpectImagePlayground()) {
+      expect(iframeUrl.pathname).toMatch(/\/playground\/embed\/?$/);
+      expect(iframeUrl.origin).toBe(new URL(page.url()).origin);
+    }
     expect(iframeUrl.searchParams.get("apiUrl")).toBe(
       new URL(page.url()).origin,
     );
@@ -218,12 +245,17 @@ test.describe("Playground", () => {
     expect(iframeUrl.searchParams.get("portalTokenId")).toBe(
       String(PLAYGROUND_TOKEN_ID),
     );
-    expect(iframeUrl.searchParams.get("apiKey")).toMatch(
-      /^portal-image-session-v1\./,
-    );
-    expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBe(
-      iframeUrl.searchParams.get("apiKey"),
-    );
+    if (shouldExpectImagePlayground()) {
+      expect(iframeUrl.searchParams.get("apiKey")).toBeNull();
+      expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBeNull();
+    } else {
+      expect(iframeUrl.searchParams.get("apiKey")).toMatch(
+        /^portal-image-session-v1\./,
+      );
+      expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBe(
+        iframeUrl.searchParams.get("apiKey"),
+      );
+    }
     expect(src).not.toMatch(/sk-[a-zA-Z0-9]{8,}|portal-token-101/);
   });
 
@@ -351,6 +383,7 @@ test.describe("Playground", () => {
     );
 
     await openPlaygroundChat(page);
+    await mockImageEmbedConfig(page);
     await mockImageSession(page);
     await page.reload();
     await expect(
@@ -376,7 +409,11 @@ async function expectImageIframeDoesNotExposeRealKey(page: Page) {
 
   const src = await iframe.first().getAttribute("src");
   expect(src).toBeTruthy();
-  expect(src).toMatch(/portal-image-session-v1\./);
+  if (src!.includes("/playground/embed")) {
+    expect(src).not.toMatch(/portal-image-session-v1\./);
+  } else {
+    expect(src).toMatch(/portal-image-session-v1\./);
+  }
   expect(src).not.toMatch(
     /sk-[a-zA-Z0-9]{8,}|portal-token-\d+|api[_-]?key=sk-/i,
   );

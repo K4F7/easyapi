@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { motion } from "framer-motion";
 import { MessageSquare, ImageIcon } from "lucide-react";
 
 import { ChatPanel } from "@/components/playground/chat-panel";
