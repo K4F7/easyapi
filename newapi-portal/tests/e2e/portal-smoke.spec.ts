@@ -10,6 +10,29 @@ import { AUTH_ROUTES, routeLocator } from "./routes";
 const identifier = process.env.E2E_PORTAL_IDENTIFIER;
 const password = process.env.E2E_PORTAL_PASSWORD;
 
+async function mockPlaygroundSmokeApis(page: import("@playwright/test").Page) {
+  await page.route("**/api/playground/token**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, data: { tokenId: 101 } }),
+    });
+  });
+  await page.route("**/api/playground/models?*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        data: {
+          models: [{ id: "gpt-test-model" }],
+          fallback: false,
+        },
+      }),
+    });
+  });
+}
+
 test.describe("NewAPI Portal smoke", () => {
   test("health endpoint reports the portal service as OK", async ({
     request,
@@ -52,7 +75,9 @@ test.describe("NewAPI Portal smoke", () => {
   }) => {
     await page.goto("/register");
 
-    await expect(page.getByRole("heading", { name: "免费创建账户" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "免费创建账户" }),
+    ).toBeVisible();
     await expect(page.getByLabel("用户名")).toBeVisible();
     await expect(page.getByLabel("密码", { exact: true })).toBeVisible();
     await expect(page.getByLabel("确认密码")).toBeVisible();
@@ -193,6 +218,9 @@ test.describe("NewAPI Portal smoke", () => {
     for (const route of AUTH_ROUTES) {
       if (route.path === "/dashboard") {
         continue;
+      }
+      if (route.path === "/dashboard/playground") {
+        await mockPlaygroundSmokeApis(page);
       }
       await page.goto(route.path);
       await expect(routeLocator(page, route.marker)).toBeVisible();

@@ -14,7 +14,9 @@ const password = E2E_PASSWORD;
 test.describe("Register page", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/register");
-    await expect(page.getByRole("heading", { name: "免费创建账户" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "免费创建账户" }),
+    ).toBeVisible();
   });
 
   test("shows email, passwords, verification code, and invite code fields", async ({
@@ -149,10 +151,10 @@ test.describe("Billing referral", () => {
       { timeout: 60_000 },
     );
 
-    const inviteLine = page.getByLabel("邀请链接");
-    await expect(inviteLine).not.toHaveValue("加载中…", { timeout: 60_000 });
-    await expect(inviteLine).toHaveValue(/inviteCode=/, { timeout: 15_000 });
-    const inviteUrl = (await inviteLine.inputValue()).trim();
+    const inviteInput = page.getByLabel("邀请链接");
+    await expect(inviteInput).not.toHaveValue("加载中…", { timeout: 60_000 });
+    await expect(inviteInput).toHaveValue(/inviteCode=/, { timeout: 15_000 });
+    const inviteUrl = (await inviteInput.inputValue()).trim();
     expect(inviteUrl).toMatch(/\/register\?inviteCode=[A-Za-z0-9]+/);
     expect(inviteUrl).not.toMatch(/[?&]aff=/);
 
