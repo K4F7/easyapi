@@ -42,7 +42,7 @@ export function DashboardNav() {
             className={cn(
               "flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-muted-foreground outline-none transition-[background-color,color,box-shadow] duration-200 hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:gap-3",
               active &&
-                "bg-primary/10 text-primary shadow-sm shadow-primary/10 hover:bg-primary/10 hover:text-primary",
+                "bg-primary/10 text-foreground shadow-sm shadow-primary/10 hover:bg-primary/10 hover:text-foreground",
             )}
             aria-current={active ? "page" : undefined}
           >

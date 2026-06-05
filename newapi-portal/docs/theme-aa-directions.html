@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>亮橙达 AA 方向对比</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f9fafb;
+      --ink: #111827;
+      --muted: #4b5563;
+      --line: #e5e7eb;
+      --line-strong: #d1d5db;
+      --shadow: 0 18px 46px rgba(17, 24, 39, 0.10);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--page);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    button,
+    a.button {
+      min-height: 40px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 14px;
+      font: inherit;
+      font-weight: 750;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, border-color 140ms ease;
+    }
+
+    button:hover,
+    a.button:hover {
+      transform: translateY(-1px);
+    }
+
+    :focus-visible {
+      outline: 3px solid #2563eb;
+      outline-offset: 3px;
+    }
+
+    .page {
+      width: min(1560px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 36px;
+    }
+
+    .intro {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      align-items: end;
+      padding: 0 0 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .intro h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .intro p {
+      max-width: 900px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .fail-note {
+      align-self: stretch;
+      width: min(380px, 100%);
+      border: 1px solid #fed7aa;
+      border-left: 5px solid #ea580c;
+      border-radius: var(--radius);
+      background: #fff7ed;
+      padding: 14px 16px;
+      color: #7c2d12;
+      font-weight: 700;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      padding-top: 22px;
+    }
+
+    .direction {
+      --primary: #fb923c;
+      --primary-text: #111827;
+      --primary-hover: #f97316;
+      --accent: #ea580c;
+      --soft: #fff3e8;
+      --soft-text: #7c2d12;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: clip;
+    }
+
+    .direction.two {
+      --primary: #c2410c;
+      --primary-text: #ffffff;
+      --primary-hover: #9a3412;
+      --accent: #f97316;
+      --soft: #fff3e8;
+      --soft-text: #7c2d12;
+    }
+
+    .direction.three {
+      --primary: #fb923c;
+      --primary-text: #111827;
+      --primary-hover: #f97316;
+      --accent: #c2410c;
+      --soft: #fff3e8;
+      --soft-text: #7c2d12;
+    }
+
+    .direction.four {
+      --primary: #111827;
+      --primary-text: #ffffff;
+      --primary-hover: #1f2937;
+      --accent: #ea580c;
+      --soft: #fff7ed;
+      --soft-text: #9a3412;
+    }
+
+    .direction-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+      padding: 18px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.96)),
+        linear-gradient(135deg, var(--soft), #ffffff 62%);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .direction h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .direction-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .tag {
+      border: 1px solid rgba(234, 88, 12, 0.35);
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--soft-text);
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .sample {
+      padding: 18px;
+      background: #f3f4f6;
+    }
+
+    .chrome {
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-width: 0;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 850;
+    }
+
+    .brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--soft);
+      border: 1px solid rgba(234, 88, 12, 0.22);
+    }
+
+    .brand span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      gap: 12px;
+      color: #374151;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(260px, 0.95fr);
+      gap: 18px;
+      padding: 20px;
+      background:
+        linear-gradient(180deg, #ffffff, #fafafa),
+        radial-gradient(circle at 18% 0%, var(--soft), transparent 42%);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid rgba(234, 88, 12, 0.28);
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--soft-text);
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .hero h3 {
+      max-width: 520px;
+      margin: 13px 0 0;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      max-width: 540px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .primary {
+      background: var(--primary);
+      color: var(--primary-text);
+      box-shadow: 0 9px 18px color-mix(in srgb, var(--primary) 28%, transparent);
+    }
+
+    .primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .secondary {
+      border-color: #d1d5db;
+      background: #ffffff;
+      color: #111827;
+    }
+
+    .secondary:hover {
+      border-color: var(--accent);
+      background: var(--soft);
+      color: #111827;
+    }
+
+    .split-primary {
+      padding-right: 0;
+      overflow: hidden;
+    }
+
+    .split-primary .stripe {
+      align-self: stretch;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      margin-left: 2px;
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .stat,
+    .capability,
+    .preview {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .stat {
+      padding: 11px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .capabilities {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .capability {
+      padding: 12px;
+    }
+
+    .capability b {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .capability p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      background: var(--soft);
+      color: var(--soft-text);
+      border: 1px solid rgba(234, 88, 12, 0.25);
+      font-weight: 900;
+    }
+
+    .preview {
+      min-width: 0;
+      padding: 14px;
+      background:
+        linear-gradient(180deg, #ffffff, #f9fafb);
+    }
+
+    .panel-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-title {
+      font-weight: 850;
+      font-size: 13px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--soft-text);
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .bars {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .bar {
+      height: 10px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      width: var(--w);
+      border-radius: inherit;
+      background: var(--accent);
+    }
+
+    .table {
+      margin-top: 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 8px 0;
+      border-top: 1px solid var(--line);
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .status {
+      color: var(--soft-text);
+      background: var(--soft);
+      border-radius: 999px;
+      padding: 3px 7px;
+      white-space: nowrap;
+    }
+
+    .contrast {
+      display: grid;
+      gap: 8px;
+      padding: 14px 18px 18px;
+      border-top: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .contrast-title {
+      color: #374151;
+      font-size: 12px;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    .contrast-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .contrast-chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f9fafb;
+      color: #374151;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .contrast-chip.pass {
+      border-color: rgba(22, 101, 52, 0.25);
+      background: #f0fdf4;
+      color: #166534;
+    }
+
+    @media (max-width: 1180px) {
+      .matrix {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(100% - 20px, 1560px);
+        padding-top: 18px;
+      }
+
+      .intro,
+      .direction-head,
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .fail-note {
+        width: 100%;
+      }
+
+      .nav {
+        display: none;
+      }
+
+      .sample {
+        padding: 12px;
+      }
+
+      .hero {
+        padding: 15px;
+      }
+
+      .stats,
+      .capabilities {
+        grid-template-columns: 1fr;
+      }
+
+      .actions a.button,
+      .actions button {
+        flex: 1 1 180px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <h1 id="page-title">亮橙达 AA 方向对比</h1>
+        <p>亮橙 + 白字不达 WCAG AA 普通文本；可行路径是深色文字、深橙白字、双色结构、浅橙底深色字。下方 4 个方向使用同一套主界面样张，便于比较按钮、强调色和信息层级。</p>
+      </div>
+      <aside class="fail-note" aria-label="关键限制">
+        避免把 #FB923C 直接作为白字按钮背景；普通字号正文和按钮文字需要更高对比。
+      </aside>
+    </section>
+
+    <section class="matrix" aria-label="4 个 AA 配色方向">
+      <article class="direction one">
+        <div class="direction-head">
+          <div>
+            <h2>1. 亮橙按钮 + 深色文字</h2>
+            <p>保留明亮品牌感，把按钮文字改为近黑，hover 使用稍深橙。</p>
+          </div>
+          <span class="tag">High brand brightness</span>
+        </div>
+        <div class="sample">
+          <div class="chrome">
+            <header class="app-header">
+              <div class="brand"><img src="../public/duck-64.webp" alt=""><span>EZAPI Portal</span></div>
+              <nav class="nav" aria-label="样张导航"><span>Dashboard</span><span>Models</span><span>Billing</span></nav>
+            </header>
+            <section class="hero">
+              <div>
+                <span class="eyebrow"><span class="dot"></span>API workspace</span>
+                <h3>用统一控制台管理模型、额度和团队访问。</h3>
+                <p>适合希望继续使用亮橙主按钮的界面，文字、图标和辅助层级用中性色压住饱和度。</p>
+                <div class="actions">
+                  <a class="button primary" href="#">创建 API Key</a>
+                  <a class="button secondary" href="#">查看文档</a>
+                </div>
+                <div class="stats">
+                  <div class="stat"><strong>98.9%</strong><span>请求成功率</span></div>
+                  <div class="stat"><strong>42ms</strong><span>边缘延迟</span></div>
+                  <div class="stat"><strong>18</strong><span>在线模型</span></div>
+                </div>
+                <div class="capabilities">
+                  <div class="capability"><span class="icon">A</span><b>权限分组</b><p>成员、密钥和预算按项目隔离。</p></div>
+                  <div class="capability"><span class="icon">R</span><b>实时路由</b><p>自动切换可用供应商与模型。</p></div>
+                </div>
+              </div>
+              <aside class="preview" aria-label="产品预览面板">
+                <div class="panel-top"><span class="panel-title">Usage overview</span><span class="pill">Healthy</span></div>
+                <div class="bars"><div class="bar"><span style="--w: 78%"></span></div><div class="bar"><span style="--w: 52%"></span></div><div class="bar"><span style="--w: 64%"></span></div></div>
+                <div class="table"><div class="row"><span>gpt route</span><span class="status">live</span></div><div class="row"><span>quota guard</span><span class="status">on</span></div><div class="row"><span>audit log</span><span class="status">ready</span></div></div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        <div class="contrast">
+          <span class="contrast-title">关键对比</span>
+          <div class="contrast-list">
+            <span class="contrast-chip pass">#FB923C + #111827 = 7.84:1</span>
+            <span class="contrast-chip pass">#F97316 + #111827 = 6.33:1</span>
+            <span class="contrast-chip">soft: #FFF3E8 / #FFF7ED</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="direction two">
+        <div class="direction-head">
+          <div>
+            <h2>2. 白字按钮 + 深橙背景</h2>
+            <p>保留白字按钮习惯，但主按钮背景下沉到深橙，亮橙只做品牌强调。</p>
+          </div>
+          <span class="tag">Classic white CTA</span>
+        </div>
+        <div class="sample">
+          <div class="chrome">
+            <header class="app-header">
+              <div class="brand"><img src="../public/duck-64.webp" alt=""><span>EZAPI Portal</span></div>
+              <nav class="nav" aria-label="样张导航"><span>Dashboard</span><span>Models</span><span>Billing</span></nav>
+            </header>
+            <section class="hero">
+              <div>
+                <span class="eyebrow"><span class="dot"></span>API workspace</span>
+                <h3>深橙主操作承载白字，亮橙留给品牌信号。</h3>
+                <p>适合已经大量使用白字按钮的产品，迁移成本低，按钮语义直接。</p>
+                <div class="actions">
+                  <a class="button primary" href="#">创建 API Key</a>
+                  <a class="button secondary" href="#">查看文档</a>
+                </div>
+                <div class="stats">
+                  <div class="stat"><strong>98.9%</strong><span>请求成功率</span></div>
+                  <div class="stat"><strong>42ms</strong><span>边缘延迟</span></div>
+                  <div class="stat"><strong>18</strong><span>在线模型</span></div>
+                </div>
+                <div class="capabilities">
+                  <div class="capability"><span class="icon">A</span><b>权限分组</b><p>成员、密钥和预算按项目隔离。</p></div>
+                  <div class="capability"><span class="icon">R</span><b>实时路由</b><p>自动切换可用供应商与模型。</p></div>
+                </div>
+              </div>
+              <aside class="preview" aria-label="产品预览面板">
+                <div class="panel-top"><span class="panel-title">Usage overview</span><span class="pill">Healthy</span></div>
+                <div class="bars"><div class="bar"><span style="--w: 78%"></span></div><div class="bar"><span style="--w: 52%"></span></div><div class="bar"><span style="--w: 64%"></span></div></div>
+                <div class="table"><div class="row"><span>gpt route</span><span class="status">live</span></div><div class="row"><span>quota guard</span><span class="status">on</span></div><div class="row"><span>audit log</span><span class="status">ready</span></div></div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        <div class="contrast">
+          <span class="contrast-title">关键对比</span>
+          <div class="contrast-list">
+            <span class="contrast-chip pass">#C2410C + white = 5.18:1</span>
+            <span class="contrast-chip pass">#9A3412 + white = 7.31:1</span>
+            <span class="contrast-chip">accent: #F97316 / #FB923C</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="direction three">
+        <div class="direction-head">
+          <div>
+            <h2>3. 双色按钮 / 深色文字区 + 亮橙强调区</h2>
+            <p>文字仍放在亮橙 AA 区域，深橙条只承载图标或装饰。</p>
+          </div>
+          <span class="tag">Structured accent</span>
+        </div>
+        <div class="sample">
+          <div class="chrome">
+            <header class="app-header">
+              <div class="brand"><img src="../public/duck-64.webp" alt=""><span>EZAPI Portal</span></div>
+              <nav class="nav" aria-label="样张导航"><span>Dashboard</span><span>Models</span><span>Billing</span></nav>
+            </header>
+            <section class="hero">
+              <div>
+                <span class="eyebrow"><span class="dot"></span>API workspace</span>
+                <h3>将文字和装饰拆区，兼顾亮橙和 AA。</h3>
+                <p>适合想保持强烈亮橙按钮识别度，同时需要更有层次的图标、条纹和状态强调。</p>
+                <div class="actions">
+                  <a class="button primary split-primary" href="#">创建 API Key <span class="stripe" aria-hidden="true">→</span></a>
+                  <a class="button secondary" href="#">查看文档</a>
+                </div>
+                <div class="stats">
+                  <div class="stat"><strong>98.9%</strong><span>请求成功率</span></div>
+                  <div class="stat"><strong>42ms</strong><span>边缘延迟</span></div>
+                  <div class="stat"><strong>18</strong><span>在线模型</span></div>
+                </div>
+                <div class="capabilities">
+                  <div class="capability"><span class="icon">A</span><b>权限分组</b><p>成员、密钥和预算按项目隔离。</p></div>
+                  <div class="capability"><span class="icon">R</span><b>实时路由</b><p>自动切换可用供应商与模型。</p></div>
+                </div>
+              </div>
+              <aside class="preview" aria-label="产品预览面板">
+                <div class="panel-top"><span class="panel-title">Usage overview</span><span class="pill">Healthy</span></div>
+                <div class="bars"><div class="bar"><span style="--w: 78%"></span></div><div class="bar"><span style="--w: 52%"></span></div><div class="bar"><span style="--w: 64%"></span></div></div>
+                <div class="table"><div class="row"><span>gpt route</span><span class="status">live</span></div><div class="row"><span>quota guard</span><span class="status">on</span></div><div class="row"><span>audit log</span><span class="status">ready</span></div></div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        <div class="contrast">
+          <span class="contrast-title">关键对比</span>
+          <div class="contrast-list">
+            <span class="contrast-chip pass">亮橙文本区域 AA</span>
+            <span class="contrast-chip">强调区仅承载图标/装饰</span>
+            <span class="contrast-chip">accent: #C2410C / #EA580C</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="direction four">
+        <div class="direction-head">
+          <div>
+            <h2>4. 浅橙底 + 深橙文字</h2>
+            <p>把橙色放进浅底信息层，正文使用深橙；主操作可交给近黑或深橙按钮。</p>
+          </div>
+          <span class="tag">Soft surface</span>
+        </div>
+        <div class="sample">
+          <div class="chrome">
+            <header class="app-header">
+              <div class="brand"><img src="../public/duck-64.webp" alt=""><span>EZAPI Portal</span></div>
+              <nav class="nav" aria-label="样张导航"><span>Dashboard</span><span>Models</span><span>Billing</span></nav>
+            </header>
+            <section class="hero">
+              <div>
+                <span class="eyebrow"><span class="dot"></span>API workspace</span>
+                <h3>浅橙承托品牌氛围，深色按钮处理关键动作。</h3>
+                <p>适合偏产品化、信息密度高的控制台，橙色更多作为提示底色和状态层。</p>
+                <div class="actions">
+                  <a class="button primary" href="#">创建 API Key</a>
+                  <a class="button secondary" href="#">查看文档</a>
+                </div>
+                <div class="stats">
+                  <div class="stat"><strong>98.9%</strong><span>请求成功率</span></div>
+                  <div class="stat"><strong>42ms</strong><span>边缘延迟</span></div>
+                  <div class="stat"><strong>18</strong><span>在线模型</span></div>
+                </div>
+                <div class="capabilities">
+                  <div class="capability"><span class="icon">A</span><b>权限分组</b><p>成员、密钥和预算按项目隔离。</p></div>
+                  <div class="capability"><span class="icon">R</span><b>实时路由</b><p>自动切换可用供应商与模型。</p></div>
+                </div>
+              </div>
+              <aside class="preview" aria-label="产品预览面板">
+                <div class="panel-top"><span class="panel-title">Usage overview</span><span class="pill">Healthy</span></div>
+                <div class="bars"><div class="bar"><span style="--w: 78%"></span></div><div class="bar"><span style="--w: 52%"></span></div><div class="bar"><span style="--w: 64%"></span></div></div>
+                <div class="table"><div class="row"><span>gpt route</span><span class="status">live</span></div><div class="row"><span>quota guard</span><span class="status">on</span></div><div class="row"><span>audit log</span><span class="status">ready</span></div></div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        <div class="contrast">
+          <span class="contrast-title">关键对比</span>
+          <div class="contrast-list">
+            <span class="contrast-chip pass">#9A3412 on #FFF7ED = 6.88:1</span>
+            <span class="contrast-chip pass">#111827 + white 按钮达 AA</span>
+            <span class="contrast-chip">border/icon: #EA580C</span>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

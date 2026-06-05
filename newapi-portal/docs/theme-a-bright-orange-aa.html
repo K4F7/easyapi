@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>A-like 亮橙 AA 方案比较</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --page: #f8fafc;
+        --surface: #ffffff;
+        --surface-2: #f1f5f9;
+        --ink: #111827;
+        --muted: #475569;
+        --line: #d9e2ec;
+        --focus: #2563eb;
+        --shadow: 0 18px 45px rgba(15, 23, 42, 0.1);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-width: 0;
+        background: var(--page);
+      }
+
+      body {
+        margin: 0;
+        min-width: 0;
+        color: var(--ink);
+        background:
+          linear-gradient(180deg, rgba(255, 247, 237, 0.82), transparent 360px),
+          var(--page);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      img {
+        max-width: 100%;
+        display: block;
+      }
+
+      button,
+      a {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 3px;
+      }
+
+      .page {
+        width: min(1480px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 48px;
+      }
+
+      .intro {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 20px;
+        align-items: end;
+        margin-bottom: 18px;
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        color: #9a3412;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 860px;
+        font-size: clamp(28px, 4vw, 48px);
+        line-height: 1.05;
+        letter-spacing: 0;
+      }
+
+      .lead {
+        margin: 14px 0 0;
+        max-width: 930px;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .duck {
+        width: 58px;
+        height: 58px;
+        border: 1px solid rgba(154, 52, 18, 0.18);
+        border-radius: 8px;
+        background: #fff7ed;
+        padding: 8px;
+        box-shadow: 0 12px 30px rgba(154, 52, 18, 0.12);
+      }
+
+      .notice {
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        margin: 20px 0 24px;
+        padding: 14px 16px;
+        border: 1px solid #fed7aa;
+        border-radius: 8px;
+        background: #fff7ed;
+        color: #7c2d12;
+        line-height: 1.55;
+      }
+
+      .notice strong {
+        color: #111827;
+      }
+
+      .notice-icon {
+        display: grid;
+        width: 24px;
+        height: 24px;
+        place-items: center;
+        border-radius: 999px;
+        background: #9a3412;
+        color: white;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .comparison {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(255px, 1fr));
+        gap: 14px;
+        align-items: stretch;
+      }
+
+      .theme {
+        --primary: #f97316;
+        --primary-text: #111827;
+        --primary-hover: #ea580c;
+        --soft: #fff7ed;
+        --soft-2: #fff3e8;
+        --accent: var(--primary);
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .theme[data-theme="a2"] {
+        --primary: #fb923c;
+        --primary-text: #111827;
+        --primary-hover: #f97316;
+        --soft: #ffedd5;
+        --soft-2: #fff7ed;
+        --accent: #f97316;
+      }
+
+      .theme[data-theme="a3"] {
+        --primary: #cc4e00;
+        --primary-text: #ffffff;
+        --primary-hover: #b93b00;
+        --soft: #fff7ed;
+        --soft-2: #ffedd5;
+        --accent: #f97316;
+      }
+
+      .theme[data-theme="a4"] {
+        --primary: #c84a0a;
+        --primary-text: #ffffff;
+        --primary-hover: #b45309;
+        --soft: #fff7ed;
+        --soft-2: #ffedd5;
+        --accent: #ea580c;
+      }
+
+      .theme[data-theme="a5"] {
+        --primary: #c2410c;
+        --primary-text: #ffffff;
+        --primary-hover: #9a3412;
+        --soft: #fff7ed;
+        --soft-2: #ffedd5;
+        --accent: #f97316;
+      }
+
+      .theme-top {
+        padding: 14px 14px 12px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(180deg, var(--soft), #ffffff);
+      }
+
+      .theme-title {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .theme-title h2 {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      .swatch {
+        width: 34px;
+        height: 34px;
+        flex: 0 0 auto;
+        border: 1px solid rgba(15, 23, 42, 0.2);
+        border-radius: 8px;
+        background: var(--primary);
+      }
+
+      .codes {
+        display: grid;
+        gap: 6px;
+        margin-top: 12px;
+        color: #334155;
+        font-family:
+          "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .code-row {
+        display: flex;
+        min-width: 0;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .code-row span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .ratio {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .pill {
+        display: inline-flex;
+        min-height: 28px;
+        align-items: center;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 999px;
+        padding: 4px 9px;
+        background: white;
+        color: #1f2937;
+        font-size: 12px;
+        font-weight: 750;
+        line-height: 1.2;
+      }
+
+      .pill.warning {
+        border-color: #fdba74;
+        background: #fff7ed;
+        color: #7c2d12;
+      }
+
+      .mock {
+        display: flex;
+        min-height: 660px;
+        flex: 1;
+        flex-direction: column;
+        background: #ffffff;
+      }
+
+      .mock-header {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .brand {
+        display: flex;
+        min-width: 0;
+        gap: 8px;
+        align-items: center;
+        color: #111827;
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        flex: 0 0 auto;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--primary);
+        color: var(--primary-text);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .nav-dot {
+        display: flex;
+        gap: 5px;
+        flex: 0 0 auto;
+      }
+
+      .nav-dot span {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #cbd5e1;
+      }
+
+      .nav-dot span:first-child {
+        background: var(--accent);
+      }
+
+      .hero {
+        padding: 18px 14px 14px;
+        background:
+          linear-gradient(135deg, var(--soft), #ffffff 62%),
+          #ffffff;
+      }
+
+      .hero-kicker {
+        margin: 0 0 7px;
+        color: #7c2d12;
+        font-size: 11px;
+        font-weight: 850;
+      }
+
+      .hero h3 {
+        margin: 0;
+        color: #111827;
+        font-size: 22px;
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+
+      .hero p {
+        margin: 10px 0 0;
+        color: #475569;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .btn {
+        display: inline-flex;
+        min-height: 36px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 8px 11px;
+        color: #111827;
+        font-size: 12px;
+        font-weight: 850;
+        line-height: 1.15;
+        text-decoration: none;
+        transition:
+          background 140ms ease,
+          border-color 140ms ease,
+          transform 140ms ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .btn.primary {
+        background: var(--primary);
+        color: var(--primary-text);
+      }
+
+      .btn.primary:hover {
+        background: var(--primary-hover);
+      }
+
+      .btn.secondary {
+        border-color: #cbd5e1;
+        background: white;
+        color: #111827;
+      }
+
+      .btn.secondary:hover {
+        border-color: #94a3b8;
+        background: #f8fafc;
+      }
+
+      .content {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 850;
+      }
+
+      .section-title::after {
+        width: 52px;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--accent);
+        content: "";
+      }
+
+      .capabilities {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .cap-card {
+        min-width: 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        background: #ffffff;
+      }
+
+      .cap-icon {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        margin-bottom: 9px;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--soft);
+        color: #9a3412;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .cap-card h4 {
+        margin: 0;
+        color: #111827;
+        font-size: 13px;
+        line-height: 1.25;
+      }
+
+      .cap-card p {
+        margin: 6px 0 0;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .metric {
+        min-width: 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        background: var(--soft-2);
+      }
+
+      .metric strong {
+        display: block;
+        color: #111827;
+        font-size: 17px;
+        line-height: 1.1;
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 5px;
+        color: #475569;
+        font-size: 11px;
+        line-height: 1.25;
+      }
+
+      .preview {
+        overflow: hidden;
+        border: 1px solid #dbe4ee;
+        border-radius: 8px;
+        background: #f8fafc;
+      }
+
+      .preview-bar {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        padding: 9px 10px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #ffffff;
+      }
+
+      .preview-bar span {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: #cbd5e1;
+      }
+
+      .preview-bar span:first-child {
+        background: var(--primary);
+      }
+
+      .preview-body {
+        display: grid;
+        grid-template-columns: 70px minmax(0, 1fr);
+        min-height: 136px;
+      }
+
+      .preview-side {
+        padding: 10px;
+        background: #111827;
+      }
+
+      .side-line {
+        height: 8px;
+        margin-bottom: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.22);
+      }
+
+      .side-line.active {
+        width: 80%;
+        background: var(--primary);
+      }
+
+      .preview-main {
+        min-width: 0;
+        padding: 12px;
+      }
+
+      .chart {
+        display: grid;
+        height: 58px;
+        align-items: end;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+
+      .bar {
+        min-height: 12px;
+        border-radius: 6px 6px 0 0;
+        background: var(--primary);
+      }
+
+      .bar:nth-child(2) {
+        height: 74%;
+        background: #94a3b8;
+      }
+
+      .bar:nth-child(3) {
+        height: 44%;
+        background: var(--accent);
+      }
+
+      .bar:nth-child(4) {
+        height: 88%;
+        background: #475569;
+      }
+
+      .bar:nth-child(5) {
+        height: 62%;
+        background: var(--primary-hover);
+      }
+
+      .data-row {
+        display: grid;
+        grid-template-columns: 1fr 44px;
+        gap: 8px;
+        align-items: center;
+        margin-top: 7px;
+      }
+
+      .data-line {
+        height: 8px;
+        min-width: 0;
+        border-radius: 999px;
+        background: #dbe4ee;
+      }
+
+      .data-badge {
+        min-width: 0;
+        border-radius: 999px;
+        padding: 4px 6px;
+        background: var(--primary);
+        color: var(--primary-text);
+        font-size: 10px;
+        font-weight: 850;
+        line-height: 1;
+        text-align: center;
+      }
+
+      .verdict {
+        margin-top: auto;
+        padding: 12px 14px 14px;
+        border-top: 1px solid #e5e7eb;
+        background: #ffffff;
+        color: #334155;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .verdict strong {
+        color: #111827;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 18px;
+        color: #475569;
+        font-size: 13px;
+      }
+
+      .legend span {
+        border: 1px solid #dbe4ee;
+        border-radius: 999px;
+        padding: 6px 10px;
+        background: #ffffff;
+      }
+
+      @media (max-width: 1380px) {
+        .comparison {
+          grid-template-columns: repeat(3, minmax(255px, 1fr));
+        }
+      }
+
+      @media (max-width: 900px) {
+        .page {
+          width: min(100% - 24px, 720px);
+          padding-top: 20px;
+        }
+
+        .intro {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .duck {
+          width: 48px;
+          height: 48px;
+        }
+
+        .comparison {
+          grid-template-columns: 1fr;
+        }
+
+        .mock {
+          min-height: auto;
+        }
+      }
+
+      @media (max-width: 420px) {
+        .page {
+          width: min(100% - 18px, 420px);
+        }
+
+        .notice {
+          grid-template-columns: 1fr;
+        }
+
+        .capabilities,
+        .metrics {
+          grid-template-columns: 1fr;
+        }
+
+        .preview-body {
+          grid-template-columns: 58px minmax(0, 1fr);
+        }
+
+        .btn {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">AA color exploration</p>
+          <h1 id="page-title">A-like 亮橙主题的 5 套 AA 变体</h1>
+          <p class="lead">
+            这些方案都围绕 A 方案的明亮橙色气质展开，重点比较按钮文字、hover
+            态与主界面落地效果。每张卡都模拟 header、hero、CTA、能力卡片、指标卡片和产品预览面板，便于一屏或滚动快速比较。
+          </p>
+        </div>
+        <img class="duck" src="../public/duck-64.webp" alt="New API duck mark" />
+      </header>
+
+      <section class="notice" aria-label="亮橙 AA 使用说明">
+        <span class="notice-icon" aria-hidden="true">!</span>
+        <div>
+          <strong>结论：</strong>亮橙背景配白字通常不达 WCAG AA。保留亮橙按钮时应使用深色字；
+          如果按钮必须使用白字，则橙色背景需要明显加深，避免把 4.5:1 当作长期稳定的卡线方案。
+        </div>
+      </section>
+
+      <section class="comparison" aria-label="A-like 亮橙 AA 主题方案比较">
+        <article class="theme" data-theme="a1" aria-labelledby="a1-title">
+          <div class="theme-top">
+            <div class="theme-title">
+              <h2 id="a1-title">A1 亮橙深字</h2>
+              <span class="swatch" aria-label="主色 #F97316"></span>
+            </div>
+            <div class="codes" aria-label="A1 色值">
+              <div class="code-row"><span>bg</span><span>#F97316</span></div>
+              <div class="code-row"><span>text</span><span>#111827</span></div>
+              <div class="code-row"><span>hover</span><span>#EA580C</span></div>
+              <div class="code-row"><span>soft</span><span>#FFF7ED / #FFF3E8</span></div>
+            </div>
+            <div class="ratio">
+              <span class="pill">normal 6.33</span>
+              <span class="pill">hover 4.98</span>
+            </div>
+          </div>
+          <div class="mock">
+            <div class="mock-header">
+              <div class="brand"><span class="brand-mark">A1</span><span>EZAPI Portal</span></div>
+              <div class="nav-dot" aria-hidden="true"><span></span><span></span><span></span></div>
+            </div>
+            <div class="hero">
+              <p class="hero-kicker">BRIGHT ORANGE / DARK TEXT</p>
+              <h3>明亮、直接，适合保留 A 方案识别度</h3>
+              <p>主按钮有较强活力，深色文字让亮橙仍满足 AA，适合首屏 CTA 和关键操作。</p>
+              <div class="actions">
+                <a class="btn primary" href="#a1-title">开始接入</a>
+                <a class="btn secondary" href="#a1-title">查看文档</a>
+              </div>
+            </div>
+            <div class="content">
+              <div class="section-title">能力卡片</div>
+              <div class="capabilities">
+                <div class="cap-card"><div class="cap-icon">S</div><h4>高速聚合</h4><p>统一模型、额度与路由策略。</p></div>
+                <div class="cap-card"><div class="cap-icon">K</div><h4>密钥治理</h4><p>团队级权限和审计视图。</p></div>
+              </div>
+              <div class="section-title">指标卡片</div>
+              <div class="metrics">
+                <div class="metric"><strong>99.9%</strong><span>可用性</span></div>
+                <div class="metric"><strong>42ms</strong><span>P95 延迟</span></div>
+                <div class="metric"><strong>18K</strong><span>日请求</span></div>
+              </div>
+              <div class="section-title">产品预览</div>
+              <div class="preview" aria-label="A1 产品预览面板">
+                <div class="preview-bar"><span></span><span></span><span></span></div>
+                <div class="preview-body">
+                  <div class="preview-side"><div class="side-line active"></div><div class="side-line"></div><div class="side-line"></div></div>
+                  <div class="preview-main">
+                    <div class="chart"><div class="bar" style="height: 56%"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+                    <div class="data-row"><span class="data-line"></span><span class="data-badge">LIVE</span></div>
+                    <div class="data-row"><span class="data-line"></span><span class="data-badge">AA</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="verdict"><strong>定位：</strong>最接近原 A 方案的亮橙观感，按钮文字必须坚持深色。</p>
+          </div>
+        </article>
+
+        <article class="theme" data-theme="a2" aria-labelledby="a2-title">
+          <div class="theme-top">
+            <div class="theme-title">
+              <h2 id="a2-title">A2 柔亮橙深字</h2>
+              <span class="swatch" aria-label="主色 #FB923C"></span>
+            </div>
+            <div class="codes" aria-label="A2 色值">
+              <div class="code-row"><span>bg</span><span>#FB923C</span></div>
+              <div class="code-row"><span>text</span><span>#111827</span></div>
+              <div class="code-row"><span>hover</span><span>#F97316</span></div>
+              <div class="code-row"><span>soft</span><span>#FFEDD5</span></div>
+            </div>
+            <div class="ratio">
+              <span class="pill">normal 7.84</span>
+              <span class="pill">hover 6.33</span>
+            </div>
+          </div>
+          <div class="mock">
+            <div class="mock-header">
+              <div class="brand"><span class="brand-mark">A2</span><span>EZAPI Portal</span></div>
+              <div class="nav-dot" aria-hidden="true"><span></span><span></span><span></span></div>
+            </div>
+            <div class="hero">
+              <p class="hero-kicker">SOFT BRIGHT / DARK TEXT</p>
+              <h3>更轻、更友好，橙色面积可略放大</h3>
+              <p>主色亮度更高但深色文字余量更充足，适合产品页和轻量 SaaS 运营界面。</p>
+              <div class="actions">
+                <a class="btn primary" href="#a2-title">创建令牌</a>
+                <a class="btn secondary" href="#a2-title">用量分析</a>
+              </div>
+            </div>
+            <div class="content">
+              <div class="section-title">能力卡片</div>
+              <div class="capabilities">
+                <div class="cap-card"><div class="cap-icon">R</div><h4>智能路由</h4><p>按成本、延迟和质量分发。</p></div>
+                <div class="cap-card"><div class="cap-icon">B</div><h4>账单控制</h4><p>预算阈值和自动提醒。</p></div>
+              </div>
+              <div class="section-title">指标卡片</div>
+              <div class="metrics">
+                <div class="metric"><strong>68%</strong><span>成本节省</span></div>
+                <div class="metric"><strong>12</strong><span>模型源</span></div>
+                <div class="metric"><strong>4.9</strong><span>满意度</span></div>
+              </div>
+              <div class="section-title">产品预览</div>
+              <div class="preview" aria-label="A2 产品预览面板">
+                <div class="preview-bar"><span></span><span></span><span></span></div>
+                <div class="preview-body">
+                  <div class="preview-side"><div class="side-line active"></div><div class="side-line"></div><div class="side-line"></div></div>
+                  <div class="preview-main">
+                    <div class="chart"><div class="bar" style="height: 70%"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+                    <div class="data-row"><span class="data-line"></span><span class="data-badge">RUN</span></div>
+                    <div class="data-row"><span class="data-line"></span><span class="data-badge">OK</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="verdict"><strong>定位：</strong>AA 余量最好，观感偏轻快，适合希望减少压迫感的 A-like 方向。</p>
+          </div>
+        </article>
+
+        <article class="theme" data-theme="a3" aria-labelledby="a3-title">
+          <div class="theme-top">
+            <div class="theme-title">
+              <h2 id="a3-title">A3 深橙白字</h2>
+              <span class="swatch" aria-label="主色 #CC4E00"></span>
+            </div>
+            <div class="codes" aria-label="A3 色值">
+              <div class="code-row"><span>bg</span><span>#CC4E00</span></div>
+              <div class="code-row"><span>text</span><span>white</span></div>
+              <div class="code-row"><span>hover</span><span>#B93B00</span></div>
+              <div class="code-row"><span>soft</span><span>#FFF7ED / #FFEDD5</span></div>
+            </div>
+            <div class="ratio">
+              <span class="pill warning">normal 4.51</span>
+              <span class="pill">hover 5.69</span>
+              <span class="pill warning">临界，不推荐卡线</span>
+            </div>
+          </div>
+          <div class="mock">
+            <div class="mock-header">
+              <div class="brand"><span class="brand-mark">A3</span><span>EZAPI Portal</span></div>
+              <div class="nav-dot" aria-hidden="true"><span></span><span></span><span></span></div>
+            </div>
+            <div class="hero">
+              <p class="hero-kicker">DARK ORANGE / WHITE TEXT</p>
+              <h3>白字成立但余量很小，风险偏高</h3>
+              <p>主按钮已经不像亮橙，且 normal 态刚过线；渲染差异或品牌微调都可能破坏 AA。</p>
+              <div class="actions">
+                <a class="btn primary" href="#a3-title">部署网关</a>
+                <a class="btn secondary" href="#a3-title">检查状态</a>
+              </div>
+            </div>
+            <div class="content">
+              <div class="section-title">能力卡片</div>
+              <div class="capabilities">
+                <div class="cap-card"><div class="cap-icon">L</div><h4>日志检索</h4><p>请求链路和错误聚合。</p></div>
+                <div class="cap-card"><div class="cap-icon">Q</div><h4>质量评分</h4><p>按模型输出做分层监控。</p></div>
+              </div>
+              <div class="section-title">指标卡片</div>
+              <div class="metrics">
+                <div class="metric"><strong>4.51</strong><span>按钮 AA</span></div>
+                <div class="metric"><strong>5.69</strong><span>hover AA</span></div>
+                <div class="metric"><strong>Low</strong><span>余量</span></div>
+              </div>
+              <div class="section-title">产品预览</div>
+              <div class="preview" aria-label="A3 产品预览面板">
+                <div class="preview-bar"><span></span><span></span><span></span></div>
+                <div class="preview-body">
+                  <div class="preview-side"><div class="side-line active"></div><div class="side-line"></div><div class="side-line"></div></div>
+                  <div class="preview-main">
+                    <div class="chart"><div class="bar" style="height: 48%"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+                    <div class="data-row"><span class="data-line"></span><span class="data-badge">EDGE</span></div>
+                    <div class="data-row"><span class="data-line"></span><span class="data-badge">AA</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="verdict"><strong>定位：</strong>只用于说明白字门槛；不建议作为最终主题主按钮色。</p>
+          </div>
+        </article>
+
+        <article class="theme" data-theme="a4" aria-labelledby="a4-title">
+          <div class="theme-top">
+            <div class="theme-title">
+              <h2 id="a4-title">A4 稳健深橙白字</h2>
+              <span class="swatch" aria-label="主色 #C84A0A"></span>
+            </div>
+            <div class="codes" aria-label="A4 色值">
+              <div class="code-row"><span>bg</span><span>#C84A0A</span></div>
+              <div class="code-row"><span>text</span><span>white</span></div>
+              <div class="code-row"><span>hover</span><span>#B45309</span></div>
+              <div class="code-row"><span>soft</span><span>#FFF7ED / #FFEDD5</span></div>
+            </div>
+            <div class="ratio">
+              <span class="pill">normal 4.73</span>
+              <span class="pill">hover 5.02</span>
+            </div>
+          </div>
+          <div class="mock">
+            <div class="mock-header">
+              <div class="brand"><span class="brand-mark">A4</span><span>EZAPI Portal</span></div>
+              <div class="nav-dot" aria-hidden="true"><span></span><span></span><span></span></div>
+            </div>
+            <div class="hero">
+              <p class="hero-kicker">SAFER WHITE TEXT</p>
+              <h3>保留暖橙，白字按钮更稳定</h3>
+              <p>比 A3 更有余量，但整体已经转向深橙，适合需要白字 CTA 的严肃界面。</p>
+              <div class="actions">
+                <a class="btn primary" href="#a4-title">同步配置</a>
+                <a class="btn secondary" href="#a4-title">审计记录</a>
+              </div>
+            </div>
+            <div class="content">
+              <div class="section-title">能力卡片</div>
+              <div class="capabilities">
+                <div class="cap-card"><div class="cap-icon">A</div><h4>访问控制</h4><p>细粒度角色和项目隔离。</p></div>
+                <div class="cap-card"><div class="cap-icon">M</div><h4>模型管理</h4><p>供应商、别名和倍率配置。</p></div>
+              </div>
+              <div class="section-title">指标卡片</div>
+              <div class="metrics">
+                <div class="metric"><strong>4.73</strong><span>按钮 AA</span></div>
+                <div class="metric"><strong>5.02</strong><span>hover AA</span></div>
+                <div class="metric"><strong>Mid</strong><span>余量</span></div>
+              </div>
+              <div class="section-title">产品预览</div>
+              <div class="preview" aria-label="A4 产品预览面板">
+                <div class="preview-bar"><span></span><span></span><span></span></div>
+                <div class="preview-body">
+                  <div class="preview-side"><div class="side-line active"></div><div class="side-line"></div><div class="side-line"></div></div>
+                  <div class="preview-main">
+                    <div class="chart"><div class="bar" style="height: 82%"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+                    <div class="data-row"><span class="data-line"></span><span class="data-badge">SYNC</span></div>
+                    <div class="data-row"><span class="data-line"></span><span class="data-badge">AA</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="verdict"><strong>定位：</strong>白字按钮的保守可用方案，牺牲一部分亮橙感换取稳定性。</p>
+          </div>
+        </article>
+
+        <article class="theme" data-theme="a5" aria-labelledby="a5-title">
+          <div class="theme-top">
+            <div class="theme-title">
+              <h2 id="a5-title">A5 深橙主按钮</h2>
+              <span class="swatch" aria-label="主色 #C2410C"></span>
+            </div>
+            <div class="codes" aria-label="A5 色值">
+              <div class="code-row"><span>bg</span><span>#C2410C</span></div>
+              <div class="code-row"><span>text</span><span>white</span></div>
+              <div class="code-row"><span>accent</span><span>#F97316</span></div>
+              <div class="code-row"><span>hover</span><span>#9A3412</span></div>
+            </div>
+            <div class="ratio">
+              <span class="pill">normal 5.18</span>
+              <span class="pill">hover 7.31</span>
+            </div>
+          </div>
+          <div class="mock">
+            <div class="mock-header">
+              <div class="brand"><span class="brand-mark">A5</span><span>EZAPI Portal</span></div>
+              <div class="nav-dot" aria-hidden="true"><span></span><span></span><span></span></div>
+            </div>
+            <div class="hero">
+              <p class="hero-kicker">DARK CTA / BRIGHT ACCENT</p>
+              <h3>按钮稳，亮橙退到强调和状态</h3>
+              <p>白字 CTA 有更可靠余量，#F97316 用在图表、选中态和强调线，避免页面一片橙。</p>
+              <div class="actions">
+                <a class="btn primary" href="#a5-title">管理套餐</a>
+                <a class="btn secondary" href="#a5-title">查看报表</a>
+              </div>
+            </div>
+            <div class="content">
+              <div class="section-title">能力卡片</div>
+              <div class="capabilities">
+                <div class="cap-card"><div class="cap-icon">P</div><h4>套餐策略</h4><p>按用户、项目和调用量管控。</p></div>
+                <div class="cap-card"><div class="cap-icon">W</div><h4>Webhook</h4><p>异常、账单和额度事件推送。</p></div>
+              </div>
+              <div class="section-title">指标卡片</div>
+              <div class="metrics">
+                <div class="metric"><strong>5.18</strong><span>按钮 AA</span></div>
+                <div class="metric"><strong>7.31</strong><span>hover AA</span></div>
+                <div class="metric"><strong>High</strong><span>余量</span></div>
+              </div>
+              <div class="section-title">产品预览</div>
+              <div class="preview" aria-label="A5 产品预览面板">
+                <div class="preview-bar"><span></span><span></span><span></span></div>
+                <div class="preview-body">
+                  <div class="preview-side"><div class="side-line active"></div><div class="side-line"></div><div class="side-line"></div></div>
+                  <div class="preview-main">
+                    <div class="chart"><div class="bar" style="height: 64%"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+                    <div class="data-row"><span class="data-line"></span><span class="data-badge">PRO</span></div>
+                    <div class="data-row"><span class="data-line"></span><span class="data-badge">AA</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="verdict"><strong>定位：</strong>最适合必须白字按钮且要保留亮橙品牌强调的方案。</p>
+          </div>
+        </article>
+      </section>
+
+      <footer class="legend" aria-label="阅读提示">
+        <span>normal/hover 数字为指定按钮文字组合的对比度标注</span>
+        <span>亮橙作为背景时优先配 #111827</span>
+        <span>白字按钮优先选 A4 或 A5</span>
+      </footer>
+    </main>
+  </body>
+</html>

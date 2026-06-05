@@ -93,12 +93,12 @@ function LoginForm() {
           <div className="space-y-1">
             <Label
               htmlFor="identifier"
-              className="text-xs font-semibold text-slate-700"
+              className="text-xs font-semibold text-foreground"
             >
               邮箱或用户名
             </Label>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="identifier"
                 type="text"
@@ -107,7 +107,7 @@ function LoginForm() {
                 aria-invalid={identifierError ? true : undefined}
                 value={identifier}
                 className={cn(
-                  "h-11 border-slate-200 bg-slate-50/70 pl-9 focus-visible:border-primary focus-visible:ring-primary/20",
+                  "h-11 border-border bg-background/70 pl-9 focus-visible:border-primary focus-visible:ring-ring",
                   identifierError &&
                     "border-red-500/50 focus-visible:ring-red-500/20",
                 )}
@@ -128,26 +128,26 @@ function LoginForm() {
             <div className="flex items-center justify-between">
               <Label
                 htmlFor="password"
-                className="text-xs font-semibold text-slate-700"
+                className="text-xs font-semibold text-foreground"
               >
                 密码
               </Label>
               <Link
                 href="/forgot-password"
-                className="rounded-md text-[11px] font-medium text-slate-500 transition-colors duration-200 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                className="rounded-md text-[11px] font-medium text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 忘记密码？
               </Link>
             </div>
             <div className="relative">
-              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 placeholder="请输入密码"
                 className={cn(
-                  "h-11 border-slate-200 bg-slate-50/70 pl-9 pr-10 focus-visible:border-primary focus-visible:ring-primary/20",
+                  "h-11 border-border bg-background/70 pl-9 pr-10 focus-visible:border-primary focus-visible:ring-ring",
                   passwordError &&
                     "border-red-500/50 focus-visible:ring-red-500/20",
                 )}
@@ -163,7 +163,7 @@ function LoginForm() {
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "隐藏密码" : "显示密码"}
                 aria-pressed={showPassword}
-                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-xl text-slate-400 transition-colors duration-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-xl text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -181,19 +181,19 @@ function LoginForm() {
         </div>
 
         <div className="pt-1">
-          <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-slate-500">
+          <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground">
             <input
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-3.5 w-3.5 cursor-pointer rounded border-slate-300 text-primary focus:ring-2 focus:ring-primary/30 focus:ring-offset-2"
+              className="h-3.5 w-3.5 cursor-pointer rounded border-border text-primary focus:ring-2 focus:ring-ring focus:ring-offset-2"
             />
             保持登录状态
           </label>
         </div>
 
         <Button
-          className="group mt-2 h-11 w-full rounded-2xl font-semibold shadow-sm shadow-orange-200/50 transition-[background-color,box-shadow,transform] duration-200 hover:shadow-md hover:shadow-orange-200/60"
+          className="group mt-2 h-11 w-full rounded-2xl font-semibold shadow-sm shadow-primary/20 transition-[background-color,box-shadow,transform] duration-200 hover:shadow-md hover:shadow-primary/25"
           type="submit"
           disabled={loading}
         >
@@ -208,10 +208,10 @@ function LoginForm() {
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-[13px] text-slate-500">
+      <p className="mt-6 text-center text-[13px] text-muted-foreground">
         还没账户？{" "}
         <Link
-          className="rounded-md font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          className="rounded-md font-semibold text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           href="/register"
         >
           免费创建账户

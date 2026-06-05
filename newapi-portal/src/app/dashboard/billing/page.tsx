@@ -571,7 +571,7 @@ export default function CombinedBillingReferralPage() {
                               {reward.metadata?.quotaApplied !== false ? "已发放" : "待结算"}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right font-mono text-primary tabular-nums">
+                          <TableCell className="text-right font-mono text-foreground tabular-nums">
                             +{formatQuota(reward.amount)}
                           </TableCell>
                         </TableRow>

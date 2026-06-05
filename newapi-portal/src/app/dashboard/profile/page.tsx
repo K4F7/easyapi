@@ -124,7 +124,7 @@ export default function ProfilePage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
           <CardHeader className="flex-row items-center gap-3 space-y-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-accent">
               <Mail className="h-5 w-5" />
             </div>
             <div>
@@ -171,7 +171,7 @@ export default function ProfilePage() {
 
         <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
           <CardHeader className="flex-row items-center gap-3 space-y-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-accent">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>

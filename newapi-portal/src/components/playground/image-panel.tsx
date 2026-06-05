@@ -122,7 +122,7 @@ export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
     return (
       <Card className={cn("flex min-h-0 flex-col", className)}>
         <CardContent className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-primary/10 text-primary shadow-sm">
+          <span className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-primary/10 text-accent shadow-sm">
             <ImageIcon className="h-7 w-7" />
           </span>
           <div className="space-y-1">
