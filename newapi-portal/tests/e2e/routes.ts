@@ -25,7 +25,7 @@ export const PUBLIC_ROUTES: readonly PortalRoute[] = [
     marker: { heading: "管令牌、看用量、随时充值", level: 1 },
   },
   { slug: "login", path: "/login", marker: { heading: "欢迎回来" } },
-  { slug: "register", path: "/register", marker: { heading: "创建账户" } },
+  { slug: "register", path: "/register", marker: { heading: "注册" } },
   { slug: "forgot-password", path: "/forgot-password", marker: { heading: "找回密码" } },
 ] as const;
 

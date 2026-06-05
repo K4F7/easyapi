@@ -25,13 +25,14 @@ import {
 export const runtime = "nodejs";
 
 const registerSchema = z.object({
+  username: z.string().trim().min(2).max(64),
   email: z
     .string()
     .trim()
     .email()
     .max(320)
     .transform((value) => value.toLowerCase()),
-  password: z.string().min(8).max(128),
+  password: z.string().min(8).max(20),
   inviteCode: z
     .string()
     .trim()
@@ -79,6 +80,7 @@ export async function POST(request: Request) {
 
     try {
       await registerNewApiUser({
+        username: input.username,
         email: input.email,
         password: input.password,
         verificationCode: input.verificationCode,
@@ -97,7 +99,7 @@ export async function POST(request: Request) {
 
     try {
       newApiLogin = await loginNewApiWithPassword({
-        username: input.email,
+        username: input.username,
         password: input.password,
       });
     } catch (error) {

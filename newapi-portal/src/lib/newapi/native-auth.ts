@@ -27,6 +27,7 @@ export class NewApiNativeAuthError extends Error {
 }
 
 export async function registerNewApiUser(input: {
+  username: string;
   email: string;
   password: string;
   verificationCode?: string;
@@ -39,7 +40,7 @@ export async function registerNewApiUser(input: {
     cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      username: input.email,
+      username: input.username,
       password: input.password,
       email: input.email,
       verification_code: input.verificationCode,

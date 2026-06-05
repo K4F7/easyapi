@@ -4,21 +4,22 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, Suspense, type ReactNode } from "react";
 import {
-  ArrowRight,
+  Eye,
+  EyeOff,
   KeyRound,
   Loader2,
   LockKeyhole,
   Mail,
   Ticket,
+  User,
   type LucideIcon,
 } from "lucide-react";
 
-import { DuckLogo } from "@/components/duck-logo";
 import { PageTransition } from "@/components/page-transition";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { sanitizeAuthError } from "@/lib/client/auth-error";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RESEND_SECONDS = 60;
 
 type FieldErrors = {
+  username?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
@@ -35,9 +37,7 @@ type FieldErrors = {
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p className="mt-1 text-[11px] font-medium text-destructive/90 animate-in fade-in slide-in-from-top-1">
-      {message}
-    </p>
+    <p className="mt-1 text-xs text-destructive/90">{message}</p>
   );
 }
 
@@ -46,9 +46,11 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const refCode = searchParams.get("inviteCode") ?? searchParams.get("ref") ?? "";
 
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
 
@@ -126,18 +128,23 @@ function RegisterForm() {
 
   function validate(): boolean {
     const next: FieldErrors = {};
-    if (!email) next.email = "请输入邮箱";
-    else if (!emailValid) next.email = "请输入有效的邮箱地址";
 
-    if (!password) next.password = "请设置登录密码";
-    else if (password.length < 8) next.password = "密码至少 8 位";
+    if (!username.trim()) next.username = "请输入用户名";
+    else if (username.trim().length < 2) next.username = "用户名至少 2 个字符";
+
+    if (!password) next.password = "请输入密码";
+    else if (password.length < 8) next.password = "密码至少需要 8 位";
+    else if (password.length > 20) next.password = "密码最长 20 位";
 
     if (!confirmPassword) next.confirmPassword = "请再次输入密码";
     else if (confirmPassword !== password) {
       next.confirmPassword = "两次输入的密码不一致";
     }
 
-    if (!verificationCode.trim()) next.verificationCode = "请输入收到的验证码";
+    if (!email) next.email = "请输入邮箱";
+    else if (!emailValid) next.email = "请输入有效的邮箱地址";
+
+    if (!verificationCode.trim()) next.verificationCode = "请输入验证码";
 
     setFieldErrors(next);
     return Object.keys(next).length === 0;
@@ -153,11 +160,13 @@ function RegisterForm() {
     setLoading(true);
     try {
       const body: {
+        username: string;
         email: string;
         password: string;
         verificationCode: string;
         inviteCode?: string;
       } = {
+        username: username.trim(),
         email,
         password,
         verificationCode: verificationCode.trim(),
@@ -202,80 +211,265 @@ function RegisterForm() {
   const sendDisabled = sendingCode || cooldown > 0 || !emailValid;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-zinc-50/50 px-4 py-10 selection:bg-primary/20 dark:bg-zinc-950">
-      <PageTransition className="w-full max-w-[360px]">
-        <div className="mb-8 flex flex-col items-center justify-center gap-4">
-          <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-            <DuckLogo className="h-8 w-8" />
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <PageTransition className="w-full max-w-[400px]">
+        <h1 className="mb-8 text-center text-3xl font-bold tracking-tight text-foreground">
+          注册
+        </h1>
+
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+          {error ? (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          ) : null}
+          {notice ? (
+            <div className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+              {notice}
+            </div>
+          ) : null}
+
+          <AuthInput
+            id="username"
+            label="用户名"
+            icon={User}
+            placeholder="请输入用户名"
+            autoComplete="username"
+            value={username}
+            error={fieldErrors.username}
+            onChange={(value) => {
+              setUsername(value);
+              if (fieldErrors.username) {
+                setFieldErrors((p) => ({ ...p, username: undefined }));
+              }
+            }}
+          />
+
+          <AuthInput
+            id="password"
+            label="密码"
+            icon={LockKeyhole}
+            type={showPassword ? "text" : "password"}
+            placeholder="输入密码，最短 8 位，最长 20 位"
+            autoComplete="new-password"
+            value={password}
+            error={fieldErrors.password}
+            trailing={
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                onClick={() => setShowPassword((v) => !v)}
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            }
+            onChange={(value) => {
+              setPassword(value);
+              if (fieldErrors.password) {
+                setFieldErrors((p) => ({ ...p, password: undefined }));
+              }
+            }}
+          />
+
+          <AuthInput
+            id="confirmPassword"
+            label="确认密码"
+            icon={LockKeyhole}
+            type={showPassword ? "text" : "password"}
+            placeholder="确认密码"
+            autoComplete="new-password"
+            value={confirmPassword}
+            error={fieldErrors.confirmPassword}
+            trailing={
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                onClick={() => setShowPassword((v) => !v)}
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            }
+            onChange={(value) => {
+              setConfirmPassword(value);
+              if (fieldErrors.confirmPassword) {
+                setFieldErrors((p) => ({ ...p, confirmPassword: undefined }));
+              }
+            }}
+          />
+
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-sm font-medium text-foreground">
+              邮箱
+            </Label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="输入邮箱地址"
+                autoComplete="email"
+                value={email}
+                aria-invalid={!!fieldErrors.email}
+                className={cn(
+                  "h-11 rounded-xl pl-9 pr-[7.5rem]",
+                  fieldErrors.email &&
+                    "border-destructive focus-visible:ring-destructive",
+                )}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (fieldErrors.email) {
+                    setFieldErrors((p) => ({ ...p, email: undefined }));
+                  }
+                }}
+              />
+              <button
+                type="button"
+                disabled={sendDisabled}
+                onClick={handleSendVerificationCode}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-medium text-primary transition-colors hover:text-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {sendingCode ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : cooldown > 0 ? (
+                  `${cooldown}s`
+                ) : (
+                  "获取验证码"
+                )}
+              </button>
+            </div>
+            <FieldError message={fieldErrors.email} />
           </div>
-          <div className="space-y-1.5 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-              创建账户
-            </h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              设置密码并完成邮箱验证
-            </p>
+
+          <AuthInput
+            id="verificationCode"
+            label="验证码"
+            icon={KeyRound}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="输入验证码"
+            value={verificationCode}
+            error={fieldErrors.verificationCode}
+            onChange={(value) => {
+              setVerificationCode(value);
+              if (fieldErrors.verificationCode) {
+                setFieldErrors((p) => ({ ...p, verificationCode: undefined }));
+              }
+            }}
+          />
+
+          <AuthInput
+            id="inviteCode"
+            label={
+              <>
+                邀请码 <span className="font-normal text-muted-foreground">(可选)</span>
+              </>
+            }
+            icon={Ticket}
+            placeholder="如有邀请码可填写"
+            value={inviteCode}
+            onChange={(value) => setInviteCode(value.toUpperCase())}
+          />
+
+          <Button
+            className="h-11 w-full rounded-xl text-base"
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                注册中…
+              </>
+            ) : (
+              "注册"
+            )}
+          </Button>
+
+          <div className="relative flex items-center py-1">
+            <Separator className="flex-1" />
+            <span className="px-3 text-sm text-muted-foreground">或</span>
+            <Separator className="flex-1" />
           </div>
-        </div>
 
-        <Card className="overflow-hidden border-zinc-200/80 shadow-sm dark:border-zinc-800/80">
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              {error ? (
-                <div className="rounded-xl bg-red-50 p-3 text-[13px] text-red-600 ring-1 ring-inset ring-red-500/20 animate-in fade-in zoom-in-95 dark:bg-red-950/30 dark:text-red-400">
-                  {error}
-                </div>
-              ) : null}
-              {notice ? (
-                <div className="rounded-xl bg-emerald-50 p-3 text-[13px] text-emerald-600 ring-1 ring-inset ring-emerald-500/20 animate-in fade-in zoom-in-95 dark:bg-emerald-950/30 dark:text-emerald-400">
-                  {notice}
-                </div>
-              ) : null}
-
-              <div className="space-y-3">
-                <AuthInput id="email" label="邮箱地址" icon={Mail} type="email" placeholder="name@example.com" autoComplete="email" value={email} error={fieldErrors.email} onChange={(value) => { setEmail(value); if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined })); }} />
-                <AuthInput id="password" label="登录密码" icon={LockKeyhole} type="password" placeholder="至少 8 位" autoComplete="new-password" value={password} error={fieldErrors.password} onChange={(value) => { setPassword(value); if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined })); }} />
-                <AuthInput id="confirmPassword" label="确认密码" icon={LockKeyhole} type="password" placeholder="再次输入密码" autoComplete="new-password" value={confirmPassword} error={fieldErrors.confirmPassword} onChange={(value) => { setConfirmPassword(value); if (fieldErrors.confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: undefined })); }} />
-
-                <div className="space-y-1">
-                  <Label htmlFor="verificationCode" className="text-xs font-medium text-zinc-700 dark:text-zinc-300">验证码</Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                      <Input id="verificationCode" inputMode="numeric" autoComplete="one-time-code" placeholder="6位验证码" value={verificationCode} aria-invalid={!!fieldErrors.verificationCode} className={cn("h-11 border-zinc-200 bg-zinc-50/50 pl-9 focus-visible:ring-primary/20 dark:border-zinc-800 dark:bg-zinc-900/50", fieldErrors.verificationCode && "border-red-500/50 focus-visible:ring-red-500/20")} onChange={(e) => { setVerificationCode(e.target.value); if (fieldErrors.verificationCode) setFieldErrors((p) => ({ ...p, verificationCode: undefined })); }} />
-                    </div>
-                    <Button type="button" variant="secondary" className="h-11 min-w-[100px] shrink-0 bg-zinc-100 px-4 text-xs font-medium text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700" disabled={sendDisabled} onClick={handleSendVerificationCode}>
-                      {sendingCode ? "发送中…" : cooldown > 0 ? `${cooldown}s` : "获取验证码"}
-                    </Button>
-                  </div>
-                  <FieldError message={fieldErrors.verificationCode} />
-                </div>
-
-                <AuthInput id="inviteCode" label={<>邀请码 <span className="font-normal text-zinc-400">(可选)</span></>} icon={Ticket} placeholder="如有邀请码可填写" value={inviteCode} onChange={(value) => setInviteCode(value.toUpperCase())} />
-              </div>
-
-              <Button className="group mt-2 h-11 w-full bg-zinc-900 font-medium text-white transition-all hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white" type="submit" disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>完成注册<ArrowRight className="ml-2 h-4 w-4 opacity-70 transition-transform group-hover:translate-x-1" /></>}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <p className="mt-6 text-center text-[13px] text-zinc-500 dark:text-zinc-400">
-          已有账户？ <Link className="font-medium text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-100" href="/login">直接登录</Link>
-        </p>
+          <p className="text-center text-sm text-muted-foreground">
+            已有账户？{" "}
+            <Link
+              className="font-semibold text-primary underline-offset-4 hover:underline"
+              href="/login"
+            >
+              登录
+            </Link>
+          </p>
+        </form>
       </PageTransition>
     </main>
   );
 }
 
-function AuthInput({ id, label, icon: Icon, type = "text", placeholder, autoComplete, value, error, onChange }: { id: string; label: ReactNode; icon: LucideIcon; type?: string; placeholder: string; autoComplete?: string; value: string; error?: string; onChange: (value: string) => void; }) {
+function AuthInput({
+  id,
+  label,
+  icon: Icon,
+  type = "text",
+  placeholder,
+  autoComplete,
+  inputMode,
+  value,
+  error,
+  trailing,
+  onChange,
+}: {
+  id: string;
+  label: ReactNode;
+  icon: LucideIcon;
+  type?: string;
+  placeholder: string;
+  autoComplete?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  value: string;
+  error?: string;
+  trailing?: ReactNode;
+  onChange: (value: string) => void;
+}) {
   return (
-    <div className="space-y-1">
-      <Label htmlFor={id} className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{label}</Label>
+    <div className="space-y-1.5">
+      <Label htmlFor={id} className="text-sm font-medium text-foreground">
+        {label}
+      </Label>
       <div className="relative">
-        <Icon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-        <Input id={id} type={type} placeholder={placeholder} autoComplete={autoComplete} value={value} aria-invalid={!!error} className={cn("h-11 border-zinc-200 bg-zinc-50/50 pl-9 focus-visible:ring-primary/20 dark:border-zinc-800 dark:bg-zinc-900/50", error && "border-red-500/50 focus-visible:ring-red-500/20")} onChange={(e) => onChange(e.target.value)} />
+        <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          id={id}
+          type={type}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          inputMode={inputMode}
+          value={value}
+          aria-invalid={!!error}
+          className={cn(
+            "h-11 rounded-xl pl-9",
+            trailing && "pr-10",
+            error && "border-destructive focus-visible:ring-destructive",
+          )}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {trailing ? (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            {trailing}
+          </div>
+        ) : null}
       </div>
       <FieldError message={error} />
     </div>
@@ -283,5 +477,9 @@ function AuthInput({ id, label, icon: Icon, type = "text", placeholder, autoComp
 }
 
 export default function RegisterPage() {
-  return <Suspense><RegisterForm /></Suspense>;
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
+  );
 }
