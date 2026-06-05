@@ -1,13 +1,12 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MessageSquare, ImageIcon } from "lucide-react";
 
 import { ChatPanel } from "@/components/playground/chat-panel";
 import { ImagePanel } from "@/components/playground/image-panel";
-import { TokenSelector } from "@/components/playground/token-selector";
-import { Card, CardContent } from "@/components/ui/card";
+import { usePlaygroundToken } from "@/components/playground/use-playground-token";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -26,52 +25,23 @@ const TABS: { key: PlaygroundTab; label: string; icon: typeof MessageSquare }[] 
 function PlaygroundContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { tokenId, error, loading } = usePlaygroundToken();
 
   const tabParam = searchParams.get("tab");
   const activeTab: PlaygroundTab = isTab(tabParam) ? tabParam : "chat";
 
-  // 选择器只回传 id / model 字符串，绝不持有真实密钥。
-  const [selectedTokenId, setSelectedTokenId] = useState<number | null>(null);
-  // 模型选择器由包 B 接入，本批先留空。
-  const [selectedModel] = useState<string | null>(null);
-
   function selectTab(tab: PlaygroundTab) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", tab);
-    // 仅更新 URL，不整页刷新。
     router.replace(`?${params.toString()}`, { scroll: false });
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-normal">操练场</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          不用离开门户，用你自己的令牌直接试玩对话与生图能力。
-        </p>
-      </div>
-
-      {/* 页面壳：令牌选择器 + 用法提示 */}
-      <Card>
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium">试玩令牌</p>
-            <p className="text-xs text-muted-foreground">
-              选择一个令牌用于试玩，消耗将计入该令牌的用量。
-            </p>
-          </div>
-          <TokenSelector
-            selectedTokenId={selectedTokenId}
-            onSelect={setSelectedTokenId}
-          />
-        </CardContent>
-      </Card>
-
-      {/* 分段控件：切 对话 / 生图，状态写进 URL ?tab= */}
+    <div className="-mx-4 flex h-[calc(100dvh-12rem)] flex-col md:-mx-6 md:h-[calc(100dvh-7.5rem)]">
       <div
         role="tablist"
         aria-label="试玩模式"
-        className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground"
+        className="mb-3 inline-flex h-9 shrink-0 items-center self-start rounded-md bg-muted p-1 text-muted-foreground"
       >
         {TABS.map((tab) => {
           const active = tab.key === activeTab;
@@ -83,7 +53,7 @@ function PlaygroundContent() {
               aria-selected={active}
               onClick={() => selectTab(tab.key)}
               className={cn(
-                "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 active
                   ? "bg-card text-orange-600 shadow-subtle"
                   : "hover:text-foreground",
@@ -96,10 +66,16 @@ function PlaygroundContent() {
         })}
       </div>
 
-      {activeTab === "chat" ? (
-        <ChatPanel tokenId={selectedTokenId} model={selectedModel} />
+      {loading ? (
+        <PlaygroundPanelSkeleton />
+      ) : error ? (
+        <div className="flex flex-1 items-center justify-center rounded-xl border border-border bg-card px-6 py-10 text-center text-sm text-destructive">
+          {error}
+        </div>
+      ) : activeTab === "chat" ? (
+        <ChatPanel tokenId={tokenId} model={null} className="flex-1" />
       ) : (
-        <ImagePanel tokenId={selectedTokenId} model={selectedModel} />
+        <ImagePanel tokenId={tokenId} model={null} className="flex-1 min-h-0" />
       )}
     </div>
   );
@@ -107,22 +83,21 @@ function PlaygroundContent() {
 
 export default function PlaygroundPage() {
   return (
-    <Suspense fallback={<PlaygroundSkeleton />}>
+    <Suspense fallback={<PlaygroundPageSkeleton />}>
       <PlaygroundContent />
     </Suspense>
   );
 }
 
-function PlaygroundSkeleton() {
+function PlaygroundPageSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6">
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-4 w-72" />
-      </div>
-      <Skeleton className="h-20 w-full" />
-      <Skeleton className="h-10 w-48" />
-      <Skeleton className="h-[420px] w-full" />
+    <div className="-mx-4 flex h-[calc(100dvh-12rem)] flex-col md:-mx-6 md:h-[calc(100dvh-7.5rem)]">
+      <Skeleton className="h-9 w-40" />
+      <PlaygroundPanelSkeleton />
     </div>
   );
+}
+
+function PlaygroundPanelSkeleton() {
+  return <Skeleton className="min-h-0 flex-1 rounded-xl" />;
 }

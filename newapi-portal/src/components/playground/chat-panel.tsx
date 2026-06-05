@@ -58,6 +58,7 @@ export type ChatPanelProps = {
   tokenId: number | null;
   /** 选中的模型名。可能为 null（由本面板模型下拉自管）。 */
   model: string | null;
+  className?: string;
 };
 
 type ChatRole = "user" | "assistant";
@@ -89,7 +90,7 @@ const QUICK_PILLS = [
   { label: "给我惊喜", text: "给我讲一个关于编程的冷知识。" },
 ];
 
-export function ChatPanel({ tokenId, model }: ChatPanelProps) {
+export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -312,22 +313,22 @@ export function ChatPanel({ tokenId, model }: ChatPanelProps) {
     .find((m) => m.role === "assistant")?.id;
 
   return (
-    <Card className="flex h-[640px] flex-col overflow-hidden">
-      {/* 顶栏 */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="min-w-0">
-          {!isEmpty ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">在线对话</span>
-              {activeModel ? (
-                <span className="truncate rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
-                  {activeModel}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        {!isEmpty ? (
+    <Card
+      className={cn(
+        "flex min-h-0 flex-col overflow-hidden",
+        className ?? "h-[640px]",
+      )}
+    >
+      {!isEmpty ? (
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="text-sm font-medium">在线对话</span>
+            {activeModel ? (
+              <span className="truncate rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
+                {activeModel}
+              </span>
+            ) : null}
+          </div>
           <Button
             type="button"
             size="icon"
@@ -338,8 +339,8 @@ export function ChatPanel({ tokenId, model }: ChatPanelProps) {
           >
             <Trash2 className="h-4 w-4" />
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {/* 消息流 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
@@ -396,7 +397,7 @@ export function ChatPanel({ tokenId, model }: ChatPanelProps) {
               rows={1}
               placeholder={
                 tokenId === null
-                  ? "请先在上方选择令牌"
+                  ? "操练场准备中……"
                   : "随便问……（Enter 发送，Shift+Enter 换行）"
               }
               disabled={tokenId === null}

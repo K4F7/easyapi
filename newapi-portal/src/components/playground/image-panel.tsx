@@ -15,18 +15,20 @@ import { ImageIcon } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export type ImagePanelProps = {
   /** 选中的令牌 ID（仅标识，非密钥）。Phase B 由服务端按此注入密钥。 */
   tokenId: number | null;
   /** 选中的模型名，拼入 iframe `?model=`。 */
   model: string | null;
+  className?: string;
 };
 
 /** 生图 iframe 基址：独立部署的 gpt_image_playground 地址，留空则显示配置提示。 */
 const IMAGE_PLAYGROUND_URL = process.env.NEXT_PUBLIC_IMAGE_PLAYGROUND_URL;
 
-export function ImagePanel({ tokenId, model }: ImagePanelProps) {
+export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
   const [loaded, setLoaded] = useState(false);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState(false);
@@ -89,17 +91,17 @@ export function ImagePanel({ tokenId, model }: ImagePanelProps) {
     const title = sessionError
       ? "生图会话初始化失败"
       : IMAGE_PLAYGROUND_URL
-        ? "请选择试玩令牌"
+        ? "生图 Playground 加载中"
         : "生图 Playground 未配置";
     const description = sessionError
-      ? "请刷新页面或重新选择令牌，真实密钥不会暴露给 iframe。"
+      ? "请刷新页面重试，真实密钥不会暴露给 iframe。"
       : IMAGE_PLAYGROUND_URL
-        ? "选择一个令牌后即可打开生图 Playground，真实密钥只会在服务端代理中使用。"
+        ? "正在连接生图 Playground，真实密钥只会在服务端代理中使用。"
         : "配置 NEXT_PUBLIC_IMAGE_PLAYGROUND_URL 后即可嵌入独立的生图 Playground。";
 
     return (
-      <Card>
-        <CardContent className="flex min-h-[420px] flex-col items-center justify-center gap-3 p-6 text-center">
+      <Card className={cn("flex min-h-0 flex-col", className)}>
+        <CardContent className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
             <ImageIcon className="h-6 w-6" />
           </span>
@@ -115,8 +117,8 @@ export function ImagePanel({ tokenId, model }: ImagePanelProps) {
   }
 
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="relative p-0">
+    <Card className={cn("flex min-h-0 flex-col overflow-hidden", className)}>
+      <CardContent className="relative min-h-0 flex-1 p-0">
         {!loaded ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-card">
             <Skeleton className="h-full w-full" />
@@ -125,7 +127,7 @@ export function ImagePanel({ tokenId, model }: ImagePanelProps) {
         <iframe
           src={iframeSrc}
           title="生图 Playground"
-          className="h-[70vh] min-h-[480px] w-full border-0"
+          className="h-full min-h-[320px] w-full border-0"
           onLoad={() => setLoaded(true)}
           // 允许剪贴板/下载等常用能力；不授予导航顶层窗口。
           allow="clipboard-read; clipboard-write"

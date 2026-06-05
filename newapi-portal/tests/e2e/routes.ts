@@ -1,8 +1,15 @@
 import type { Locator, Page } from "@playwright/test";
 
 export type RouteMarker =
-  | { heading: string; level?: 1; exact?: boolean; text?: never }
-  | { text: string; heading?: never; level?: never };
+  | { heading: string; level?: 1; exact?: boolean; text?: never; role?: never }
+  | { text: string; heading?: never; level?: never; role?: never }
+  | {
+      role: "tab";
+      name: string;
+      selected?: boolean;
+      heading?: never;
+      text?: never;
+    };
 
 export type PortalRoute = {
   slug: string;
@@ -49,7 +56,7 @@ export const AUTH_ROUTES: readonly PortalRoute[] = [
   {
     slug: "dashboard-playground",
     path: "/dashboard/playground",
-    marker: { heading: "操练场", level: 1 },
+    marker: { role: "tab", name: "对话", selected: true },
   },
   {
     slug: "dashboard-profile",
@@ -69,6 +76,13 @@ export function isBenign404(url: string): boolean {
 }
 
 export function routeLocator(page: Page, marker: RouteMarker): Locator {
+  if ("role" in marker && marker.role === "tab") {
+    return page.getByRole("tab", {
+      name: marker.name,
+      selected: marker.selected,
+    });
+  }
+
   if ("text" in marker && marker.text) {
     return page.getByText(marker.text).first();
   }
