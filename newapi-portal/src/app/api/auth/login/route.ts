@@ -280,8 +280,6 @@ function mapNewApiLoginError(error: NewApiPasswordLoginError): NewApiLoginFailur
     code: error.code,
     status: error.status,
     message: error.message,
-    payload: error.payload,
-    cause: error.cause,
   });
 
   return {
