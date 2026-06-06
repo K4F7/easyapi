@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 
-const identifier = process.env.E2E_PORTAL_IDENTIFIER ?? "scr@easyapi.work";
+const identifier = process.env.E2E_PORTAL_IDENTIFIER ?? "scr@qq.com";
 const password = process.env.E2E_PORTAL_PASSWORD ?? "ScreenshotTest123!";
 
 const screenshotDir = path.join(

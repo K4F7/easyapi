@@ -39,7 +39,7 @@ function createInitialState(): MockState {
     sessionToken: "portal-dev-mock-session",
     user: {
       id: "dev-mock-user",
-      email: "dev@example.local",
+      email: "scr@qq.com",
       inviteCode: "DEVMOCK",
       newApiUserId: "10001",
       newApiBinding: "ready",
