@@ -33,7 +33,7 @@ async function login() {
   const response = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ identifier: email, password }),
+    body: JSON.stringify({ identifier: username, password }),
   });
   const payload = await readJson(response);
   return { response, payload };
