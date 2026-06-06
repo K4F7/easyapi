@@ -21,7 +21,6 @@ const AUTH_ROUTES = [
   { slug: "dashboard", path: "/dashboard", heading: "概览", level: 1 as const },
   { slug: "dashboard-tokens", path: "/dashboard/tokens", heading: "令牌", level: 1 as const },
   { slug: "dashboard-billing", path: "/dashboard/billing", heading: "充值", level: 1 as const },
-  { slug: "dashboard-referral", path: "/dashboard/referral", heading: "邀请", level: 1 as const },
   { slug: "dashboard-usage", path: "/dashboard/usage", heading: "用量", level: 1 as const },
   { slug: "dashboard-profile", path: "/dashboard/profile", heading: "设置", level: 1 as const },
 ] as const;

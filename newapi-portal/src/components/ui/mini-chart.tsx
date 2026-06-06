@@ -69,7 +69,9 @@ const Sparkline = React.forwardRef<HTMLSpanElement, SparklineProps>(
 
     const isFlat = max === min; // all-zero or constant => baseline
     const linePath = points
-      .map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`)
+      .map(
+        ([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`,
+      )
       .join(" ");
     const areaPath = `${linePath} L${(pad + innerW).toFixed(1)},${(
       height - pad
@@ -274,7 +276,9 @@ const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
               top: `${(padT / VB_H) * 100}%`,
             }}
           >
-            <div className="font-medium text-foreground">{series[hover].label}</div>
+            <div className="font-medium text-foreground">
+              {series[hover].label}
+            </div>
             <div className="tabular-nums text-muted-foreground">
               {formatValue(series[hover].value, unit)}
             </div>
@@ -360,7 +364,10 @@ const TopNBars = React.forwardRef<HTMLDivElement, TopNBarsProps>(
           return (
             <div key={`${d.label}-${i}`} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="truncate font-medium text-foreground" title={d.label}>
+                <span
+                  className="truncate font-medium text-foreground"
+                  title={d.label}
+                >
                   {d.label}
                 </span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">

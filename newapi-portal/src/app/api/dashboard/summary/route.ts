@@ -1,7 +1,6 @@
 import { jsonOk, requireUser } from "@/lib/auth";
 import { isDevMockEnabled, mockDashboardSummaryResponse } from "@/lib/dev-mock";
 import {
-  getRequestBaseUrl,
   getUserNewApiAuth,
   handleApiError,
   publicUserFromPortalUser,
@@ -35,7 +34,7 @@ export async function GET(request: Request) {
     const user = await requireUser();
     const authResult = await getUserNewApiAuth(user);
     const portalUser = authResult.user;
-    const [checkin, referralRows, rewardSummary] = await Promise.all([
+    const [checkin] = await Promise.all([
       db.checkin.findUnique({
         where: {
           userId_checkedInOn: {
@@ -50,22 +49,7 @@ export async function GET(request: Request) {
           createdAt: true,
         },
       }),
-      db.referral.groupBy({
-        by: ["status"],
-        where: { referrerId: portalUser.id },
-        _count: { _all: true },
-      }),
-      db.walletLedger.aggregate({
-        where: {
-          userId: portalUser.id,
-          reason: "referral_reward",
-        },
-        _sum: { amount: true },
-        _count: { _all: true },
-      }),
     ]);
-    const inviteLink = new URL("/register", getAppBaseUrl(request));
-    inviteLink.searchParams.set("inviteCode", portalUser.inviteCode);
 
     if (!authResult.ok) {
       return jsonOk({
@@ -82,13 +66,6 @@ export async function GET(request: Request) {
         },
         usage: emptyUsageSummary(),
         checkin: formatCheckin(checkin),
-        referral: {
-          inviteCode: portalUser.inviteCode,
-          inviteLink: inviteLink.toString(),
-          invitedCount: countReferralStatus(referralRows),
-          rewardCount: rewardSummary._count._all,
-          rewardQuota: rewardSummary._sum.amount ?? 0,
-        },
       });
     }
 
@@ -137,13 +114,6 @@ export async function GET(request: Request) {
           },
         },
         checkin: formatCheckin(checkin),
-        referral: {
-          inviteCode: portalUser.inviteCode,
-          inviteLink: inviteLink.toString(),
-          invitedCount: countReferralStatus(referralRows),
-          rewardCount: rewardSummary._count._all,
-          rewardQuota: rewardSummary._sum.amount ?? 0,
-        },
       });
     } catch (error) {
       if (!(error instanceof NewApiError)) {
@@ -164,13 +134,6 @@ export async function GET(request: Request) {
         },
         usage: emptyUsageSummary(),
         checkin: formatCheckin(checkin),
-        referral: {
-          inviteCode: portalUser.inviteCode,
-          inviteLink: inviteLink.toString(),
-          invitedCount: countReferralStatus(referralRows),
-          rewardCount: rewardSummary._count._all,
-          rewardQuota: rewardSummary._sum.amount ?? 0,
-        },
       });
     }
   } catch (error) {
@@ -210,36 +173,3 @@ function formatCheckin(
   };
 }
 
-function countReferralStatus(
-  rows: Array<{
-    status: "PENDING" | "REWARDED" | "CANCELED";
-    _count: {
-      _all: number;
-    };
-  }>,
-) {
-  const counts = {
-    total: 0,
-    pending: 0,
-    rewarded: 0,
-    canceled: 0,
-  };
-
-  for (const row of rows) {
-    counts.total += row._count._all;
-
-    if (row.status === "PENDING") {
-      counts.pending = row._count._all;
-    } else if (row.status === "REWARDED") {
-      counts.rewarded = row._count._all;
-    } else if (row.status === "CANCELED") {
-      counts.canceled = row._count._all;
-    }
-  }
-
-  return counts;
-}
-
-function getAppBaseUrl(request: Request): string {
-  return process.env.APP_URL ?? getRequestBaseUrl(request);
-}

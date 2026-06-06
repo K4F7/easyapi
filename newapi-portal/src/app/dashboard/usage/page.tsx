@@ -243,7 +243,9 @@ export default function UsagePage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   function queryString() {
-    const start = Math.floor(new Date(`${startDate}T00:00:00`).getTime() / 1000);
+    const start = Math.floor(
+      new Date(`${startDate}T00:00:00`).getTime() / 1000,
+    );
     const end = Math.floor(new Date(`${endDate}T23:59:59`).getTime() / 1000);
     const params = new URLSearchParams({
       start_timestamp: String(start),
@@ -514,7 +516,9 @@ export default function UsagePage() {
                 <CardDescription>每次 API 调用的明细。</CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="neutral">共 {formatCount(logs?.total)} 条</Badge>
+                <Badge variant="neutral">
+                  共 {formatCount(logs?.total)} 条
+                </Badge>
                 <Button
                   size="sm"
                   type="button"
@@ -722,7 +726,10 @@ function UsageSkeleton() {
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {["quota", "count", "tokens"].map((key) => (
-          <Card key={key} className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
+          <Card
+            key={key}
+            className="border-border/60 bg-white/80 shadow-soft backdrop-blur"
+          >
             <CardContent className="space-y-3 p-6">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-8 w-32" />

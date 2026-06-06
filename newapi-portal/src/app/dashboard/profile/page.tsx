@@ -138,7 +138,10 @@ export default function ProfilePage() {
               <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 当前邮箱
               </Label>
-              <div className="mt-2 truncate text-lg font-medium" title={user?.email}>
+              <div
+                className="mt-2 truncate text-lg font-medium"
+                title={user?.email}
+              >
                 {user?.email}
               </div>
             </div>
@@ -161,7 +164,9 @@ export default function ProfilePage() {
                 disabled={emailLoading || !newEmail || newEmail === user?.email}
                 className="h-12 w-full text-base font-medium"
               >
-                {emailLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {emailLoading && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 更新邮箱
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -234,10 +239,17 @@ export default function ProfilePage() {
 
               <Button
                 type="submit"
-                disabled={passwordLoading || !currentPassword || !newPassword || !confirmPassword}
+                disabled={
+                  passwordLoading ||
+                  !currentPassword ||
+                  !newPassword ||
+                  !confirmPassword
+                }
                 className="mt-2 h-12 w-full text-base font-medium"
               >
-                {passwordLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {passwordLoading && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 更新密码
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

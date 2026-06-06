@@ -97,11 +97,8 @@ export function mockRegisterResponse(request: Request) {
   return createMockSession(request);
 }
 
-export function mockDashboardSummaryResponse(request: Request) {
+export function mockDashboardSummaryResponse(_request: Request) {
   const state = getMockState();
-  const origin = new URL(request.url).origin;
-  const inviteLink = new URL("/register", origin);
-  inviteLink.searchParams.set("inviteCode", state.user.inviteCode);
   const usage = mockUsageResponse();
 
   return jsonOk({
@@ -142,13 +139,6 @@ export function mockDashboardSummaryResponse(request: Request) {
       createdAt: state.checkedInOn ? new Date().toISOString() : null,
       quotaApplied: state.checkedInOn ? true : null,
       quotaPending: false,
-    },
-    referral: {
-      inviteCode: state.user.inviteCode,
-      inviteLink: inviteLink.toString(),
-      invitedCount: { total: 1, pending: 0, rewarded: 1, canceled: 0 },
-      rewardCount: 1,
-      rewardQuota: 1000,
     },
   });
 }
@@ -258,28 +248,6 @@ export async function mockBillingEpayCreateResponse(request: Request) {
 
 export function mockCheckinResponse() {
   return jsonOk(checkInMockUser());
-}
-
-export function mockReferralResponse(request: Request) {
-  const inviteLink = new URL("/register", new URL(request.url).origin);
-  inviteLink.searchParams.set("inviteCode", getMockUser().inviteCode);
-  return jsonOk({
-    inviteCode: getMockUser().inviteCode,
-    inviteLink: inviteLink.toString(),
-    invitedCount: { total: 1, pending: 0, rewarded: 1, canceled: 0 },
-    rewards: [
-      {
-        id: "mock-referral-ledger-1",
-        amount: 1000,
-        reason: "referral_reward",
-        idempotencyKey: "mock-referral:1:reward",
-        referralId: "mock-referral-1",
-        metadata: { source: "dev_mock", quotaApplied: true },
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    settlement: { attempted: true, settled: 1, failed: 0 },
-  });
 }
 
 export function mockQuotaConfigResponse() {
