@@ -84,18 +84,6 @@ type DashboardSummary = {
     quotaApplied?: boolean | null;
     quotaPending?: boolean;
   };
-  referral: {
-    inviteCode: string;
-    inviteLink: string;
-    invitedCount: {
-      total: number;
-      pending: number;
-      rewarded: number;
-      canceled: number;
-    };
-    rewardCount: number;
-    rewardQuota: number;
-  };
 };
 
 /** 余额告警阈值（人民币）。 */
@@ -392,11 +380,6 @@ export default function DashboardPage() {
               title="用量日志"
               description="看看最近用了多少，哪些请求最费钱。"
             />
-            <QuickLink
-              href="/dashboard/billing"
-              title="邀请奖励"
-              description="在充值页查看邀请链接、奖励记录与提现额度。"
-            />
           </CardContent>
         </Card>
 
@@ -421,7 +404,8 @@ export default function DashboardPage() {
               </Badge>
             </div>
             <CardDescription>
-              {summary.checkin.checkedInOn} · {statusText(summary.checkin.status)}
+              {summary.checkin.checkedInOn} ·{" "}
+              {statusText(summary.checkin.status)}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

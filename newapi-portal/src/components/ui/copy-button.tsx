@@ -49,7 +49,9 @@ export function CopyButton({
       ) : (
         <Copy className="h-4 w-4" aria-hidden="true" />
       )}
-      {props.size === "icon" ? null : <span>{copied ? copiedLabel : label}</span>}
+      {props.size === "icon" ? null : (
+        <span>{copied ? copiedLabel : label}</span>
+      )}
     </Button>
   );
 }

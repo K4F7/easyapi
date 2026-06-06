@@ -44,7 +44,9 @@ export function AuthShell({
             <h1 className="text-2xl font-bold tracking-normal text-foreground sm:text-3xl">
               {title}
             </h1>
-            <p className="text-sm leading-6 text-muted-foreground">{description}</p>
+            <p className="text-sm leading-6 text-muted-foreground">
+              {description}
+            </p>
           </div>
         </div>
 

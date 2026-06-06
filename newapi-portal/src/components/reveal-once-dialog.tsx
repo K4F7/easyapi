@@ -36,7 +36,10 @@ export function RevealOnceDialog({
         </DialogHeader>
         <div className="space-y-3">
           <div className="flex items-start gap-2 rounded-xl border border-warning/20 bg-warning-soft px-3 py-2 text-sm text-warning">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <AlertTriangle
+              className="mt-0.5 h-4 w-4 shrink-0"
+              aria-hidden="true"
+            />
             <span>{warning}</span>
           </div>
           <code className="block max-h-40 overflow-auto rounded-xl border bg-muted px-3 py-2 font-mono text-xs break-all">

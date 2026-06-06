@@ -10,7 +10,12 @@ type StateProps = {
   onAction?: () => void;
 };
 
-export function EmptyState({ title, description, actionLabel, onAction }: StateProps) {
+export function EmptyState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: StateProps) {
   return (
     <Card>
       <CardContent className="flex min-h-40 flex-col items-center justify-center px-4 py-10 text-center">
@@ -22,7 +27,12 @@ export function EmptyState({ title, description, actionLabel, onAction }: StateP
           </p>
         ) : null}
         {actionLabel && onAction ? (
-          <Button className="mt-4" variant="outline" size="sm" onClick={onAction}>
+          <Button
+            className="mt-4"
+            variant="outline"
+            size="sm"
+            onClick={onAction}
+          >
             {actionLabel}
           </Button>
         ) : null}
@@ -31,7 +41,12 @@ export function EmptyState({ title, description, actionLabel, onAction }: StateP
   );
 }
 
-export function ErrorState({ title, description, actionLabel, onAction }: StateProps) {
+export function ErrorState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: StateProps) {
   return (
     <Card>
       <CardContent className="flex min-h-40 flex-col items-center justify-center px-4 py-10 text-center">
@@ -43,7 +58,12 @@ export function ErrorState({ title, description, actionLabel, onAction }: StateP
           </p>
         ) : null}
         {actionLabel && onAction ? (
-          <Button className="mt-4" variant="outline" size="sm" onClick={onAction}>
+          <Button
+            className="mt-4"
+            variant="outline"
+            size="sm"
+            onClick={onAction}
+          >
             {actionLabel}
           </Button>
         ) : null}

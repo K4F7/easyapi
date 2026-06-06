@@ -1,21 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Infinity as InfinityIcon, Plus, Search, Trash2 } from "lucide-react";
+import {
+  Infinity as InfinityIcon,
+  Plus,
+  Search,
+  Trash2,
+  KeyRound,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { RevealOnceDialog } from "@/components/reveal-once-dialog";
-import { EmptyState, ErrorState } from "@/components/page-state";
+import { ErrorState } from "@/components/page-state";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -184,16 +183,33 @@ export default function TokensPage() {
   }, [tokens, query]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-normal">令牌</h1>
+    <div className="mx-auto w-full max-w-5xl pb-16 relative z-10 page-transition home-enter-1">
+      <header className="mb-14 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+        <div className="space-y-3">
+          <p className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Access Control
+          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 dark:text-foreground">
+              API 令牌
+            </h1>
+          </div>
+          <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+            管理用于访问 API 的鉴权令牌及额度。
+          </p>
+        </div>
         {tokens.length > 0 ? (
-          <Button className="shrink-0" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" />
-            创建令牌
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              className="h-12 px-6 rounded-xl font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 text-base bg-gray-900 text-white hover:bg-gray-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              创建新令牌
+            </Button>
+          </div>
         ) : null}
-      </div>
+      </header>
 
       {loading ? (
         <TokenSkeleton />
@@ -205,66 +221,104 @@ export default function TokensPage() {
           onAction={loadTokens}
         />
       ) : tokens.length === 0 ? (
-        <EmptyState
-          title="还没有令牌"
-          description="创建一个就能在这里看到它的状态、剩余余额和最近使用情况。"
-          actionLabel="创建第一个令牌"
-          onAction={() => setCreateOpen(true)}
-        />
+        <div className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-gray-200 dark:border-border/50 bg-white/50 dark:bg-card/20 px-4 py-24 text-center shadow-sm page-transition home-enter-2">
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-yellow-100 dark:bg-yellow-900/30 shadow-sm transition-transform duration-300 hover:scale-110 hover:rotate-[10deg]">
+            <KeyRound className="h-10 w-10 text-yellow-600 dark:text-primary" />
+          </div>
+          <h3 className="mb-2 text-2xl font-extrabold tracking-tight text-gray-900 dark:text-foreground">
+            暂无令牌
+          </h3>
+          <p className="mb-8 max-w-sm text-sm font-medium text-muted-foreground leading-relaxed">
+            创建您的第一个 API 令牌，开始将我们的服务集成到您的应用中。
+          </p>
+          <Button
+            className="h-12 px-8 rounded-xl font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 text-base bg-gray-900 text-white hover:bg-gray-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            创建令牌
+          </Button>
+        </div>
       ) : (
-        <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
-          <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1.5">
-              <CardTitle>令牌列表</CardTitle>
-              <CardDescription>
-                为了安全，列表只显示密钥的掩码，不显示完整内容。
-              </CardDescription>
-            </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                aria-label="搜索令牌"
-                className="pl-9"
-                placeholder="按名称或密钥搜索"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {filtered.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border/70 bg-muted/30 px-4 py-12 text-center text-sm text-muted-foreground">
-                没有匹配「<span className="break-all">{query.trim()}</span>」的令牌。
+        <div className="group relative overflow-hidden bg-white/80 dark:bg-card/80 backdrop-blur-xl border border-gray-100 dark:border-border/50 shadow-sm dark:shadow-2xl rounded-[2rem] transition-all duration-500 hover:shadow-md page-transition home-enter-2">
+          <div
+            className="absolute inset-0 bg-gradient-to-br from-yellow-50/50 to-transparent dark:from-yellow-900/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+            aria-hidden="true"
+          />
+          <div className="relative">
+            <div className="flex flex-col gap-4 border-b border-gray-100 dark:border-border/50 bg-transparent p-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <h2 className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-foreground">
+                  活动令牌
+                </h2>
+                <p className="text-sm font-medium text-muted-foreground">
+                  出于安全考虑，列表仅显示密钥的掩码。
+                </p>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>名称</TableHead>
-                      <TableHead>密钥</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead className="text-right">剩余余额</TableHead>
-                      <TableHead>到期</TableHead>
-                      <TableHead>最近使用</TableHead>
-                      <TableHead className="text-right">操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((token) => (
-                      <TokenRow
-                        key={token.id}
-                        token={token}
-                        deleting={deletingId === token.id}
-                        onDelete={() => setPendingDelete(token)}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Input
+                  name="search-tokens"
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-label="搜索令牌"
+                  className="h-11 pl-9 rounded-xl font-medium bg-gray-50/50 dark:bg-background/50 border-gray-200 dark:border-border/50 focus-visible:ring-1 focus-visible:ring-primary/50 transition-all shadow-sm"
+                  placeholder="按名称或密钥搜索…"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                />
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+            <div className="p-0">
+              {filtered.length === 0 ? (
+                <div className="px-4 py-16 text-center text-sm font-medium text-muted-foreground">
+                  没有匹配「
+                  <span className="break-all text-gray-900 dark:text-foreground font-bold">
+                    {query.trim()}
+                  </span>
+                  」的令牌。
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-transparent border-b border-gray-100 dark:border-border/50">
+                      <TableRow className="hover:bg-transparent border-none">
+                        <TableHead className="h-12 pl-6 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          名称与密钥
+                        </TableHead>
+                        <TableHead className="h-12 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          状态
+                        </TableHead>
+                        <TableHead className="h-12 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          使用额度
+                        </TableHead>
+                        <TableHead className="h-12 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          到期时间
+                        </TableHead>
+                        <TableHead className="h-12 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          最近调用
+                        </TableHead>
+                        <TableHead className="h-12 pr-6 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          操作
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtered.map((token) => (
+                        <TokenRow
+                          key={token.id}
+                          token={token}
+                          deleting={deletingId === token.id}
+                          onDelete={() => setPendingDelete(token)}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       <CreateTokenDialog
@@ -316,48 +370,72 @@ function TokenRow({
   const remain = token.remain_quota ?? 0;
   const used = token.used_quota ?? 0;
   const total = remain + used;
-  const usedPct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+  const usedPct =
+    total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
 
   return (
-    <TableRow>
-      <TableCell className="max-w-[12rem] font-medium">
-        <span className="block truncate" title={token.name}>
-          {token.name}
-        </span>
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-1.5">
-          <code className="whitespace-nowrap rounded bg-muted px-2 py-1 font-mono text-xs">
-            {token.key ?? "sk-••••"}
-          </code>
-          {token.key && (
-            <CopyButton
-              value={token.key}
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-            />
-          )}
+    <TableRow className="group transition-colors hover:bg-gray-50/50 dark:hover:bg-muted/20 data-[state=selected]:bg-muted border-b border-gray-100 dark:border-border/20 last:border-0">
+      <TableCell className="py-5 pl-6">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <span
+            className="max-w-[14rem] truncate font-extrabold text-base text-gray-900 dark:text-foreground"
+            title={token.name}
+          >
+            {token.name}
+          </span>
+          <div className="flex items-center gap-2">
+            <code className="rounded-md border border-gray-200 dark:border-border/50 bg-gray-50 dark:bg-muted/50 px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground">
+              {token.key ?? "sk-••••"}
+            </code>
+            {token.key && (
+              <CopyButton
+                value={token.key}
+                variant="ghost"
+                size="icon"
+                aria-label="复制密钥"
+                className="h-5 w-5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+              />
+            )}
+          </div>
         </div>
       </TableCell>
       <TableCell>
-        <Badge variant={status.variant}>{status.label}</Badge>
+        <div className="flex items-center gap-2">
+          <div
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              status.variant === "success"
+                ? "bg-success"
+                : status.variant === "error"
+                  ? "bg-error"
+                  : status.variant === "warning"
+                    ? "bg-warning"
+                    : "bg-neutral",
+            )}
+          />
+          <span className="text-sm font-medium text-muted-foreground">
+            {status.label}
+          </span>
+        </div>
       </TableCell>
       <TableCell className="text-right">
         {unlimited ? (
-          <span className="inline-flex items-center justify-end gap-1 text-sm text-muted-foreground">
+          <span className="inline-flex items-center justify-end gap-1 text-sm font-medium text-muted-foreground">
             <InfinityIcon className="h-3.5 w-3.5" />
             不限
           </span>
         ) : (
-          <div className="ml-auto w-28 space-y-1">
-            <div className="flex justify-end gap-1 font-mono text-xs tabular-nums">
-              <span className="text-foreground">{formatQuota(used)}</span>
-              <span className="text-muted-subtle">/</span>
-              <span className="text-muted-foreground">{formatQuota(total)}</span>
+          <div className="ml-auto w-32 space-y-1.5">
+            <div className="flex justify-between gap-2 font-mono text-[11px] font-bold leading-none tabular-nums">
+              <span className="text-gray-900 dark:text-foreground">
+                {formatQuota(used)}
+              </span>
+              <span className="text-muted-foreground">
+                {formatQuota(total)}
+              </span>
             </div>
             <div
-              className="h-1 w-full overflow-hidden rounded-full bg-muted"
+              className="h-1.5 w-full overflow-hidden rounded-full border border-gray-200 dark:border-border/50 bg-gray-100 dark:bg-muted/50"
               role="progressbar"
               aria-valuenow={usedPct}
               aria-valuemin={0}
@@ -365,8 +443,12 @@ function TokenRow({
             >
               <div
                 className={cn(
-                  "h-full rounded-full transition-[width,background-color]",
-                  usedPct >= 100 ? "bg-error" : usedPct >= 80 ? "bg-warning" : "bg-primary",
+                  "h-full rounded-full transition-all duration-500 ease-out",
+                  usedPct >= 100
+                    ? "bg-error shadow-[0_0_8px_rgba(220,38,38,0.5)]"
+                    : usedPct >= 80
+                      ? "bg-warning shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                      : "bg-success shadow-[0_0_8px_rgba(34,197,94,0.3)] dark:bg-primary dark:shadow-[0_0_8px_rgba(255,255,255,0.3)]",
                 )}
                 style={{ width: `${usedPct}%` }}
               />
@@ -374,27 +456,25 @@ function TokenRow({
           </div>
         )}
       </TableCell>
-      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+      <TableCell className="whitespace-nowrap text-right text-sm font-medium text-muted-foreground tabular-nums">
         {isNeverExpire(token.expired_time)
           ? "永不过期"
           : formatDateTime(token.expired_time)}
       </TableCell>
-      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+      <TableCell className="whitespace-nowrap text-right text-sm font-medium text-muted-foreground tabular-nums">
         {formatDateTime(token.accessed_time)}
       </TableCell>
-      <TableCell>
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            aria-label={`删除令牌 ${token.name}`}
-            className="text-muted-foreground hover:bg-error-soft hover:text-error"
-            disabled={deleting}
-            size="icon"
-            variant="ghost"
-            onClick={onDelete}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+      <TableCell className="pr-6 text-right">
+        <Button
+          aria-label={`删除令牌 ${token.name}`}
+          className="text-muted-foreground opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 dark:hover:bg-error-soft dark:hover:text-error group-hover:opacity-100 rounded-xl"
+          disabled={deleting}
+          size="icon"
+          variant="ghost"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </TableCell>
     </TableRow>
   );
@@ -472,20 +552,35 @@ function CreateTokenDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>创建令牌</DialogTitle>
-          <DialogDescription>
-            不设置余额上限或过期时间时，将继承上游的默认配置。
+      <DialogContent className="rounded-[2rem] border-gray-200 dark:border-border/50 bg-white/95 dark:bg-card/95 shadow-2xl backdrop-blur-xl sm:max-w-md">
+        <DialogHeader className="space-y-3 border-b border-gray-100 dark:border-border/50 pb-4">
+          <DialogTitle className="text-2xl font-extrabold tracking-tight text-gray-900 dark:text-foreground">
+            创建新令牌
+          </DialogTitle>
+          <DialogDescription className="text-sm font-medium text-muted-foreground">
+            配置令牌的名称、额度限制和有效期。
           </DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-4" id="create-token-form" onSubmit={handleCreate}>
-          <div className="space-y-2">
-            <Label htmlFor="tokenName">名称</Label>
+        <form
+          className="space-y-5 py-4"
+          id="create-token-form"
+          onSubmit={handleCreate}
+        >
+          <div className="space-y-2.5">
+            <Label
+              htmlFor="tokenName"
+              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+            >
+              名称
+            </Label>
             <Input
               id="tokenName"
+              name="tokenName"
+              autoComplete="off"
+              spellCheck={false}
               maxLength={64}
+              className="h-11 rounded-xl font-medium border-gray-200 dark:border-border/50 bg-gray-50 dark:bg-background/50 transition-all focus-visible:ring-1 focus-visible:ring-primary/50 shadow-sm"
               placeholder="例如：生产环境"
               required
               value={name}
@@ -493,66 +588,99 @@ function CreateTokenDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="remainQuota">余额上限（元）</Label>
+          <div className="space-y-2.5">
+            <Label
+              htmlFor="remainQuota"
+              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+            >
+              余额上限（元）
+            </Label>
             <Input
               id="remainQuota"
+              name="remainQuota"
+              autoComplete="off"
               inputMode="decimal"
               min={0}
-              placeholder="例如 100，留空则继承默认"
+              className="h-11 rounded-xl font-medium border-gray-200 dark:border-border/50 bg-gray-50 dark:bg-background/50 tabular-nums transition-all focus-visible:ring-1 focus-visible:ring-primary/50 shadow-sm"
+              placeholder="留空则继承默认"
               type="number"
               value={remainQuota}
               onChange={(event) => setRemainQuota(event.target.value)}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               留空表示继承上游默认余额上限。
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="expiredAt">过期时间</Label>
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="space-y-2.5">
+            <Label
+              htmlFor="expiredAt"
+              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+            >
+              过期时间
+            </Label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:items-stretch">
               <button
                 type="button"
                 aria-pressed={neverExpire}
                 onClick={() => setNeverExpire((value) => !value)}
                 className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  "inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 shadow-sm",
                   neverExpire
-                    ? "border-primary/30 bg-primary-soft text-foreground"
-                    : "border-input bg-card text-muted-foreground hover:bg-muted",
+                    ? "border-yellow-200 bg-yellow-100 text-yellow-800 dark:border-primary/30 dark:bg-primary/10 dark:text-primary shadow-[inset_0_0_20px_rgba(255,255,255,0.05)]"
+                    : "border-gray-200 bg-gray-50 text-muted-foreground hover:bg-gray-100 dark:border-border/50 dark:bg-background/50 dark:hover:bg-muted/50 dark:hover:text-foreground",
                 )}
               >
-                <InfinityIcon className="h-3.5 w-3.5" />
-                Never / 永不过期
+                <InfinityIcon className="h-4 w-4" />
+                永不过期
               </button>
               <Input
                 id="expiredAt"
-                className="h-9 flex-1"
+                name="expiredAt"
+                autoComplete="off"
+                className={cn(
+                  "h-11 flex-1 rounded-xl font-medium border-gray-200 dark:border-border/50 bg-gray-50 dark:bg-background/50 tabular-nums transition-all focus-visible:ring-1 focus-visible:ring-primary/50 shadow-sm",
+                  neverExpire && "cursor-not-allowed opacity-50 grayscale",
+                )}
                 disabled={neverExpire}
                 type="datetime-local"
                 value={expiredAt}
                 onChange={(event) => setExpiredAt(event.target.value)}
               />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               {neverExpire ? "令牌将永不过期。" : "请选择令牌的到期时间。"}
             </p>
           </div>
         </form>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 border-t border-gray-100 dark:border-border/50 pt-4 sm:gap-0">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
+            className="rounded-xl font-bold hover:bg-gray-100 dark:hover:bg-muted/50"
             disabled={creating}
             onClick={() => handleOpenChange(false)}
           >
             取消
           </Button>
-          <Button type="submit" form="create-token-form" disabled={creating} className="shrink-0">
-            <Plus className="h-4 w-4" />
-            {creating ? "创建中…" : "创建"}
+          <Button
+            type="submit"
+            form="create-token-form"
+            disabled={creating}
+            className="h-10 rounded-xl px-6 font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 bg-gray-900 text-white hover:bg-gray-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+          >
+            {creating ? (
+              <>
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-transparent" />
+                创建中…
+              </>
+            ) : (
+              <>
+                <Plus className="mr-2 h-4 w-4" />
+                创建
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -573,21 +701,30 @@ function DeleteTokenDialog({
 }) {
   return (
     <Dialog open={Boolean(token)} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>删除令牌</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="rounded-[2rem] border-red-200 dark:border-error/20 bg-white/95 dark:bg-card/95 shadow-2xl backdrop-blur-xl sm:max-w-md">
+        <DialogHeader className="space-y-3 border-b border-gray-100 dark:border-border/50 pb-4">
+          <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 dark:bg-error/10 shadow-sm">
+            <Trash2 className="h-8 w-8 text-red-600 dark:text-error" />
+          </div>
+          <DialogTitle className="text-2xl font-extrabold tracking-tight text-red-600 dark:text-error">
+            删除令牌
+          </DialogTitle>
+          <DialogDescription className="text-sm font-medium text-muted-foreground">
             确定要删除令牌
             {token ? (
-              <span className="font-medium text-foreground"> 「{token.name}」</span>
+              <span className="font-extrabold text-gray-900 dark:text-foreground">
+                {" "}
+                「{token.name}」
+              </span>
             ) : null}
             吗？此操作不可撤销，使用该密钥的应用将立即失效。
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter>
+        <DialogFooter className="gap-2 pt-4 sm:gap-0">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
+            className="rounded-xl font-bold hover:bg-gray-100 dark:hover:bg-muted/50"
             disabled={deleting}
             onClick={() => onOpenChange(false)}
           >
@@ -596,11 +733,21 @@ function DeleteTokenDialog({
           <Button
             type="button"
             variant="destructive"
+            className="h-10 rounded-xl px-6 font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 bg-red-600 text-white hover:bg-red-700 dark:bg-error dark:text-error-foreground dark:hover:bg-error/90 shadow-[0_0_15px_rgba(220,38,38,0.3)]"
             disabled={deleting}
             onClick={onConfirm}
           >
-            <Trash2 className="h-4 w-4" />
-            {deleting ? "删除中…" : "删除令牌"}
+            {deleting ? (
+              <>
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-foreground border-r-transparent" />
+                删除中…
+              </>
+            ) : (
+              <>
+                <Trash2 className="mr-2 h-4 w-4" />
+                删除令牌
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -610,13 +757,34 @@ function DeleteTokenDialog({
 
 function TokenSkeleton() {
   return (
-    <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
-      <CardContent className="space-y-3 p-6">
-        <Skeleton className="h-5 w-36" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </CardContent>
-    </Card>
+    <div className="overflow-hidden rounded-[2rem] border border-gray-100 dark:border-border/50 bg-white/80 dark:bg-card/80 shadow-sm backdrop-blur-xl">
+      <div className="flex flex-col gap-4 border-b border-gray-100 dark:border-border/50 bg-transparent p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-24 rounded-md" />
+          <Skeleton className="h-4 w-48 rounded-md" />
+        </div>
+        <Skeleton className="h-11 w-full rounded-xl sm:w-72" />
+      </div>
+      <div className="p-0">
+        <div className="flex items-center border-b border-gray-100 dark:border-border/50 bg-transparent px-6 py-4">
+          <Skeleton className="h-4 w-full rounded-md" />
+        </div>
+        {[...Array(5)].map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between border-b border-gray-100 dark:border-border/20 px-6 py-5 last:border-0"
+          >
+            <div className="w-1/4 space-y-2">
+              <Skeleton className="h-6 w-32 rounded-md" />
+              <Skeleton className="h-5 w-24 rounded-md" />
+            </div>
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-8 w-32 rounded-md" />
+            <Skeleton className="h-4 w-24 rounded-md" />
+            <Skeleton className="h-8 w-8 rounded-md" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
