@@ -40,7 +40,7 @@ const outputBackup = path.join(
   "easyapi-portal-with-screenshot-user.sql.gz",
 );
 const seedScript = path.join(repoRoot, "newapi-portal", "scripts", "seed-screenshot-user.mjs");
-const seedEmail = process.env.SEED_EMAIL ?? "scr@easyapi.work";
+const seedEmail = process.env.SEED_EMAIL ?? "scr@qq.com";
 const seedPassword = process.env.SEED_PASSWORD ?? "ScreenshotTest123!";
 
 function run(command, args, options = {}) {

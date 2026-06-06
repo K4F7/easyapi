@@ -102,7 +102,7 @@ describe("dev mock auth", () => {
 
     expect(user).toMatchObject({
       id: "dev-mock-user",
-      email: "dev@example.local",
+      email: "scr@qq.com",
       newApiBinding: "ready",
     });
     expect(mockGetAuthSecret).not.toHaveBeenCalled();

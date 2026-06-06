@@ -56,7 +56,7 @@
 1. SSH 执行 [`scripts/restore-staging-production-db.sh`](../scripts/restore-staging-production-db.sh)：`down` → 删除 `easyapi-portal_pg_data_test` volume → 用服务器上的 `xbh-new-api-2026-05-23-172431.sql.gz` 重新 `up` 全栈
 2. 等待 `https://test.easyapi.work/api/health`
 3. 部署新 Portal 镜像（仅 `portal-test`）
-4. [`scripts/seed-staging-via-api.mjs`](../scripts/seed-staging-via-api.mjs) 注册/验证截图账号 `scr@easyapi.work` / `ScreenshotTest123!`（**dev 与 main 均执行**，幂等：已存在则仅验证登录）
+4. [`scripts/seed-staging-via-api.mjs`](../scripts/seed-staging-via-api.mjs) 注册/验证截图账号 `scr@qq.com` / `ScreenshotTest123!`（**dev 与 main 均执行**，幂等：已存在则仅验证登录）
 5. CI 内 POST login 校验该账号
 6. **`verify_ui` job**：先 curl 校验 E2E 账号可登录，再 `pnpm run test:e2e:ci`（[`ui-pages`](../newapi-portal/tests/e2e/ui-pages.spec.ts)、[`portal-smoke`](../newapi-portal/tests/e2e/portal-smoke.spec.ts)、[`playground`](../newapi-portal/tests/e2e/playground.spec.ts)、[`register-billing`](../newapi-portal/tests/e2e/register-billing.spec.ts)）；失败时上传 `playwright-report` artifact
 
@@ -89,7 +89,7 @@
 | `STAGING_SSH_USER` | `root` |
 | `STAGING_SSH_PRIVATE_KEY` | 部署用 SSH 私钥（对应服务器 `authorized_keys`） |
 | `GHCR_PULL_TOKEN`（可选） | 若服务器未持久 `docker login ghcr.io`，填只读 PAT（`read:packages`）；workflow 会传给部署脚本临时登录 |
-| `E2E_PORTAL_IDENTIFIER`（推荐） | `scr@easyapi.work`；未配置时 CI 使用文档默认账号 |
+| `E2E_PORTAL_IDENTIFIER`（推荐） | `scr@qq.com`；未配置时 CI 使用文档默认账号 |
 | `E2E_PORTAL_PASSWORD`（推荐） | `ScreenshotTest123!`；未配置时 CI 使用文档默认密码 |
 | `STAGING_NEWAPI_BASE_URL`（可选） | seed admin fallback 用 NewAPI 地址 |
 | `STAGING_NEWAPI_ADMIN_TOKEN`（可选） | seed admin fallback 用管理 token |
@@ -216,7 +216,7 @@ staging 仅有一个 `portal-test` 实例：`dev` 与 `main` 若连续部署，*
 ```bash
 cd newapi-portal
 export E2E_BASE_URL="https://test.easyapi.work"
-export E2E_PORTAL_IDENTIFIER="scr@easyapi.work"
+export E2E_PORTAL_IDENTIFIER="scr@qq.com"
 export E2E_PORTAL_PASSWORD="ScreenshotTest123!"
 pnpm install
 npx playwright install chromium
@@ -231,24 +231,24 @@ pnpm test:ui
 
 | 字段 | 值 |
 |------|-----|
-| **邮箱 / 登录名** | `scr@easyapi.work` |
+| **邮箱 / 登录名** | `scr@qq.com` |
 | **密码** | `ScreenshotTest123!` |
 
 ### 为何使用短邮箱
 
 Portal 注册时会把邮箱作为 NewAPI 的 `username`。NewAPI **用户名最长 20 字符**：
 
-- `scr@easyapi.work` = 16 字符 ✅
-- `screenshot-test@easyapi.work` = 28 字符 ❌（注册会失败）
+- 用户名 `scr` = 3 字符 ✅
+- `screenshot-test` = 15 字符 ✅；勿使用超过 20 字符的用户名
 
 ### 相关环境变量
 
 在 `newapi-portal/.env` 或运行命令前导出：
 
 ```bash
-E2E_PORTAL_IDENTIFIER="scr@easyapi.work"
+E2E_PORTAL_IDENTIFIER="scr@qq.com"
 E2E_PORTAL_PASSWORD="ScreenshotTest123!"
-SEED_EMAIL="scr@easyapi.work"
+SEED_EMAIL="scr@qq.com"
 SEED_PASSWORD="ScreenshotTest123!"
 SEED_BASE_URL="https://test.easyapi.work"   # seed 脚本目标地址
 E2E_BASE_URL="https://test.easyapi.work"    # Playwright baseURL
@@ -295,7 +295,7 @@ pnpm prepare:test-db
 
 1. SSH 到 `45.142.115.128`，在 **`easyapi-portal`** 项目内 down → 删除 `easyapi-portal_pg_data_test` volume → 用源备份重建栈
 2. 等待 `https://test.easyapi.work/api/health` 就绪
-3. 调用 seed 脚本创建 `scr@easyapi.work`
+3. 调用 seed 脚本创建 `scr@qq.com`
 4. `pg_dump` 导出到本地 `test-data/easyapi-portal-with-screenshot-user.sql.gz`
 
 可选环境变量：`PREPARE_REMOTE_HOST`、`PREPARE_REMOTE_DIR`、`PREPARE_COMPOSE_PROJECT`、`SEED_BASE_URL`。
@@ -410,7 +410,7 @@ Scheme 4 下图像 API 为同源调用，无需跨域 CORS preflight；外部 pl
 | `test:e2e:playground` | 仅操练场 spec |
 | `test:e2e:register-billing` | 仅注册 + 财务邀请 spec |
 | `test:e2e` | 全部 Playwright spec（含 screenshots，本地/手工用） |
-| `seed:screenshot-user` | 对 `SEED_BASE_URL`（默认 staging）注册/验证 `scr@easyapi.work` |
+| `seed:screenshot-user` | 对 `SEED_BASE_URL`（默认 staging）注册/验证 `scr@qq.com` |
 | `prepare:test-db` | SSH 远程重建 easyapi-portal 测试库、seed、导出 `test-data/*.sql.gz` |
 | `screenshots:e2e` | 仅运行 Playwright 截图 spec（需已部署新镜像 + 测试用户可登录） |
 | `screenshots:all` | `seed:screenshot-user` 然后 `screenshots:e2e`（一条龙；仍须先完成 GHA + 服务器部署） |
@@ -462,7 +462,7 @@ git push origin main
 
 ### 注册失败：邮箱域名限制
 
-NewAPI 选项 `EmailDomainRestrictionEnabled=true` 时，只允许特定域名注册。测试环境需允许 `@easyapi.work`，或在 Postgres 中关闭限制（**仅限 easyapi-portal 测试库**）：
+NewAPI 选项 `EmailDomainRestrictionEnabled=true` 时，只允许特定域名注册。测试注入账号使用 `@qq.com`（`scr@qq.com`）；若域名不在白名单，需在 Postgres 中关闭限制（**仅限 easyapi-portal 测试库**）：
 
 ```bash
 docker exec easyapi-portal-postgres-test psql -U newapi -d new-api -c \
@@ -471,12 +471,12 @@ docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easy
   restart new-api-test portal-test
 ```
 
-同时确认 `RegisterEnabled=true`，且测试邮箱使用 `@easyapi.work` 域名。
+同时确认 `RegisterEnabled=true`，且测试邮箱使用 `@qq.com`（或已将 `qq.com` 加入允许域名列表）。
 
 ### 注册失败：用户名超过 20 字符
 
 错误表现：NewAPI 返回注册失败 / Portal 500。
-解决：使用 `scr@easyapi.work`（16 字符），不要用 `screenshot-test@easyapi.work` 等长邮箱。
+解决：使用短用户名 `scr` 配合 `scr@qq.com`，不要用超过 20 字符的用户名。
 
 ### 注册失败：邮箱验证 / Turnstile
 

@@ -4,7 +4,7 @@ const baseUrl = (process.env.SEED_BASE_URL ?? "https://test.easyapi.work").repla
   /\/$/,
   "",
 );
-const email = (process.env.SEED_EMAIL ?? "scr@easyapi.work").toLowerCase();
+const email = (process.env.SEED_EMAIL ?? "scr@qq.com").toLowerCase();
 const username =
   process.env.SEED_USERNAME ??
   email

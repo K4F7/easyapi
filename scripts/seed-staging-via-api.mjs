@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Wait for portal health, then seed scr@easyapi.work (for CI on GitHub runners).
+ * Wait for portal health, then seed scr@qq.com (for CI on GitHub runners).
  */
 
 import { spawn } from "node:child_process";
@@ -67,7 +67,7 @@ async function main() {
     SEED_EMAIL:
       process.env.SEED_EMAIL ??
       process.env.E2E_PORTAL_IDENTIFIER ??
-      "scr@easyapi.work",
+      "scr@qq.com",
     SEED_PASSWORD:
       process.env.SEED_PASSWORD ??
       process.env.E2E_PORTAL_PASSWORD ??

@@ -9,6 +9,7 @@ import {
   verifyPassword,
   zodErrorResponse,
 } from "@/lib/auth";
+import { resolveNewApiLoginUsernames } from "@/lib/auth/login-identifier";
 import { upsertPortalUserFromNewApiIdentity } from "@/lib/auth/newapi-user";
 import { db } from "@/lib/db";
 import { isDevMockEnabled, mockLoginResponse } from "@/lib/dev-mock";
@@ -163,93 +164,135 @@ async function loginWithNewApi(input: {
   identifier: string;
   password: string;
 }) {
-  try {
-    const newApiUser = await loginNewApiWithPassword({
-      username: input.identifier,
-      password: input.password,
-    });
-    const user = await upsertPortalUserFromNewApiIdentity({
-      userId: newApiUser.userId,
-      username: newApiUser.username,
-      email: input.identifier.includes("@") ? input.identifier : undefined,
-      accessToken: newApiUser.accessToken,
-    });
+  const usernames = resolveNewApiLoginUsernames(input.identifier);
+  let lastFailure: NewApiLoginFailure | null = null;
 
-    return { ok: true as const, user };
-  } catch (error) {
-    if (error instanceof NewApiPasswordLoginError) {
-      if (error.code === "NEWAPI_2FA_REQUIRED") {
-        return {
-          ok: false as const,
-          response: jsonError(
-            {
-              code: "NEWAPI_2FA_REQUIRED",
-              message:
-                "This NewAPI account requires 2FA. Please sign in through NewAPI and disable 2FA or complete 2FA there first.",
-            },
-            403,
-          ),
-          allowLocalCompatibility: false,
-        };
-      }
-
-      if (error.code === "NEWAPI_VERIFICATION_REQUIRED") {
-        return {
-          ok: false as const,
-          response: jsonError(
-            {
-              code: "NEWAPI_VERIFICATION_REQUIRED",
-              message:
-                "NewAPI requires additional verification before password login can continue.",
-            },
-            403,
-          ),
-          allowLocalCompatibility: false,
-        };
-      }
-
-      if (error.code === "NEWAPI_UPSTREAM_DISABLED") {
-        return {
-          ok: false as const,
-          response: jsonError(
-            {
-              code: "NEWAPI_UPSTREAM_DISABLED",
-              message: "NewAPI password login is currently unavailable.",
-            },
-            503,
-          ),
-          allowLocalCompatibility: true,
-        };
-      }
-
-      if (error.code === "NEWAPI_INVALID_CREDENTIALS") {
-        return {
-          ok: false as const,
-          response: invalidCredentials(),
-          allowLocalCompatibility: true,
-        };
-      }
-
-      console.error("NewAPI fallback login failed", {
-        code: error.code,
-        status: error.status,
-        message: error.message,
-        payload: error.payload,
-        cause: error.cause,
+  for (const username of usernames) {
+    try {
+      const newApiUser = await loginNewApiWithPassword({
+        username,
+        password: input.password,
       });
-      return {
-        ok: false as const,
-        response: jsonError(
-          {
-            code: error.code,
-            message: "NewAPI login failed",
-          },
-          502,
-        ),
-        allowLocalCompatibility: false,
-      };
-    }
+      const user = await upsertPortalUserFromNewApiIdentity({
+        userId: newApiUser.userId,
+        username: newApiUser.username,
+        email: input.identifier.includes("@") ? input.identifier : undefined,
+        accessToken: newApiUser.accessToken,
+      });
 
-    throw error;
+      return { ok: true as const, user };
+    } catch (error) {
+      if (!(error instanceof NewApiPasswordLoginError)) {
+        throw error;
+      }
+
+      const failure = mapNewApiLoginError(error);
+
+      if (!shouldRetryNewApiLogin(error.code, usernames, username)) {
+        return failure;
+      }
+
+      lastFailure = failure;
+    }
   }
+
+  return (
+    lastFailure ?? {
+      ok: false as const,
+      response: invalidCredentials(),
+      allowLocalCompatibility: true,
+    }
+  );
+}
+
+type NewApiLoginFailure = {
+  ok: false;
+  response: ReturnType<typeof jsonError>;
+  allowLocalCompatibility: boolean;
+};
+
+function shouldRetryNewApiLogin(
+  code: NewApiPasswordLoginError["code"],
+  usernames: string[],
+  attemptedUsername: string,
+): boolean {
+  if (usernames.length <= 1 || attemptedUsername === usernames.at(-1)) {
+    return false;
+  }
+
+  return code === "NEWAPI_INVALID_CREDENTIALS" || code === "NEWAPI_LOGIN_FAILED";
+}
+
+function mapNewApiLoginError(error: NewApiPasswordLoginError): NewApiLoginFailure {
+  if (error.code === "NEWAPI_2FA_REQUIRED") {
+    return {
+      ok: false as const,
+      response: jsonError(
+        {
+          code: "NEWAPI_2FA_REQUIRED",
+          message:
+            "This NewAPI account requires 2FA. Please sign in through NewAPI and disable 2FA or complete 2FA there first.",
+        },
+        403,
+      ),
+      allowLocalCompatibility: false,
+    };
+  }
+
+  if (error.code === "NEWAPI_VERIFICATION_REQUIRED") {
+    return {
+      ok: false as const,
+      response: jsonError(
+        {
+          code: "NEWAPI_VERIFICATION_REQUIRED",
+          message:
+            "NewAPI requires additional verification before password login can continue.",
+        },
+        403,
+      ),
+      allowLocalCompatibility: false,
+    };
+  }
+
+  if (error.code === "NEWAPI_UPSTREAM_DISABLED") {
+    return {
+      ok: false as const,
+      response: jsonError(
+        {
+          code: "NEWAPI_UPSTREAM_DISABLED",
+          message: "NewAPI password login is currently unavailable.",
+        },
+        503,
+      ),
+      allowLocalCompatibility: true,
+    };
+  }
+
+  if (error.code === "NEWAPI_INVALID_CREDENTIALS") {
+    return {
+      ok: false as const,
+      response: invalidCredentials(),
+      allowLocalCompatibility: true,
+    };
+  }
+
+  console.error("NewAPI fallback login failed", {
+    code: error.code,
+    status: error.status,
+    message: error.message,
+    payload: error.payload,
+    cause: error.cause,
+  });
+
+  return {
+    ok: false as const,
+    response: jsonError(
+      {
+        code: error.code,
+        message: "NewAPI login failed",
+      },
+      502,
+    ),
+    allowLocalCompatibility: false,
+  };
 }
