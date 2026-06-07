@@ -86,7 +86,7 @@ async function mockImageEmbedConfig(
       contentType: "application/json",
       body: JSON.stringify({
         ok: true,
-        data: { configured },
+        data: { configured, theme: "light" },
       }),
     });
   });
@@ -255,9 +255,43 @@ test.describe("Playground", () => {
     expect(iframeUrl.searchParams.get("portalTokenId")).toBe(
       String(PLAYGROUND_IMAGE_TOKEN_ID),
     );
+    expect(iframeUrl.searchParams.get("theme")).toBe("light");
     expect(iframeUrl.searchParams.get("apiKey")).toBeNull();
     expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBeNull();
     expect(src).not.toMatch(/sk-[a-zA-Z0-9]{8,}|portal-token-101/);
+  });
+
+  test("/playground/embed/ HTML contains light theme injection", async ({
+    page,
+  }) => {
+    test.skip(
+      !shouldExpectImagePlayground(),
+      "IMAGE_PLAYGROUND_INTERNAL_URL is required for live embed proxy HTML.",
+    );
+
+    await mockPlaygroundToken(page);
+    await mockImageEmbedConfig(page, { configured: true });
+    await mockImageSession(page);
+    await page.goto("/dashboard/playground?tab=image");
+
+    const iframe = page.locator('iframe[title="生图 Playground"]');
+    await expect(iframe).toHaveCount(1);
+    const src = await iframe.first().getAttribute("src");
+    expect(src).toBeTruthy();
+
+    const response = await page.request.get(src!);
+    expect(response.ok()).toBe(true);
+    expect(response.headers()["content-type"]?.toLowerCase()).toContain(
+      "text/html",
+    );
+
+    const html = await response.text();
+    expect(html).toContain('<meta name="color-scheme" content="light">');
+    expect(html).toContain('id="ezapi-embed-light-theme-state"');
+    expect(html).toContain('dataset.theme="light"');
+    expect(html).toContain('localStorage.setItem("theme","light")');
+    expect(html).toContain('id="ezapi-embed-light-theme"');
+    expect(html).toContain(":root{color-scheme:light}");
   });
 
   test("playground token provisioning failure shows error", async ({

@@ -303,7 +303,10 @@ export default function DashboardPage() {
           <CardTitle className="text-base">接入信息</CardTitle>
           <CardDescription>复制 API 地址，到令牌页取你的密钥。</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardContent
+          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          data-onboarding-target="access-info"
+        >
           <div className="min-w-0 flex-1">
             <div className="text-xs text-muted-foreground">API 地址</div>
             <div className="mt-1 flex items-center gap-2">
@@ -369,6 +372,7 @@ export default function DashboardPage() {
               href="/dashboard/tokens"
               title="管理令牌"
               description="新建、查看或删除你的访问令牌。"
+              onboardingTarget="token-create"
             />
             <QuickLink
               href="/dashboard/billing"
@@ -379,6 +383,12 @@ export default function DashboardPage() {
               href="/dashboard/usage"
               title="用量日志"
               description="看看最近用了多少，哪些请求最费钱。"
+            />
+            <QuickLink
+              href="/dashboard/playground"
+              title="打开操练场"
+              description="用 Chat 或生图跑一次请求，验证模型接入。"
+              onboardingTarget="playground-entry"
             />
           </CardContent>
         </Card>
@@ -511,14 +521,17 @@ function QuickLink({
   href,
   title,
   description,
+  onboardingTarget,
 }: {
   href: string;
   title: string;
   description: string;
+  onboardingTarget?: string;
 }) {
   return (
     <Link
       href={href}
+      data-onboarding-target={onboardingTarget}
       className="group rounded-2xl border border-border/60 bg-white/80 p-4 shadow-soft transition-[background-color,box-shadow] hover:bg-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div className="flex items-center justify-between gap-3">

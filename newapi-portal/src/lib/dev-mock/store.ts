@@ -136,6 +136,41 @@ export function deleteMockToken(id: string | number): boolean {
   return state.tokens.length !== before;
 }
 
+export function updateMockToken(
+  id: string | number,
+  input: Partial<
+    Pick<
+      NewApiToken,
+      | "name"
+      | "expired_time"
+      | "remain_quota"
+      | "unlimited_quota"
+      | "model_limits_enabled"
+      | "model_limits"
+      | "allow_ips"
+      | "group"
+      | "cross_group_retry"
+      | "status"
+    >
+  >,
+): NewApiToken | null {
+  const state = getMockState();
+  const numericId = Number(id);
+  const token = state.tokens.find((item) => item.id === numericId);
+
+  if (!token) {
+    return null;
+  }
+
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined) {
+      token[key] = value;
+    }
+  }
+
+  return token;
+}
+
 export function listMockTokens(page: number, pageSize: number) {
   const state = getMockState();
   const start = (page - 1) * pageSize;

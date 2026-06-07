@@ -194,6 +194,74 @@ describe("dev mock API routes", () => {
     expect(JSON.stringify(listAfterDelete.data)).not.toContain("Unit Token");
   });
 
+  it("keeps token channel tiers consistent across create, update, and list in dev mock", async () => {
+    const { GET, POST } = await import("@/app/api/tokens/route");
+    const { PUT } = await import("@/app/api/tokens/[id]/route");
+    const { GET: tiers } = await import("@/app/api/channels/tiers/route");
+
+    const tiersBody = await readJson(await tiers());
+    expect(tiersBody.data).toMatchObject({
+      defaultGroup: "default",
+    });
+    expect(JSON.stringify(tiersBody.data)).toContain("低价渠道");
+    expect(JSON.stringify(tiersBody.data)).toContain("高价渠道");
+
+    const createResponse = await POST(
+      new Request("http://localhost/api/tokens", {
+        method: "POST",
+        body: JSON.stringify({ name: "Channel Token" }),
+      }),
+    );
+    const createBody = await readJson(createResponse);
+    const created = createBody.data?.token as {
+      id: number;
+      name: string;
+      group: string;
+    };
+
+    expect(createResponse.status).toBe(201);
+    expect(created).toMatchObject({
+      name: "Channel Token",
+      group: "default",
+    });
+
+    const updateResponse = await PUT(
+      new Request(`http://localhost/api/tokens/${created.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ group: "premium" }),
+      }),
+      { params: Promise.resolve({ id: String(created.id) }) },
+    );
+    const updateBody = await readJson(updateResponse);
+
+    expect(updateResponse.status).toBe(200);
+    expect(updateBody.data?.token).toMatchObject({
+      id: created.id,
+      group: "premium",
+    });
+
+    const listAfterUpdate = await readJson(
+      await GET(new Request("http://localhost/api/tokens?p=1&size=20")),
+    );
+    expect(JSON.stringify(listAfterUpdate.data)).toContain("premium");
+
+    const invalidResponse = await PUT(
+      new Request(`http://localhost/api/tokens/${created.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ group: "invalid-group" }),
+      }),
+      { params: Promise.resolve({ id: String(created.id) }) },
+    );
+    const invalidBody = await readJson(invalidResponse);
+
+    expect(invalidResponse.status).toBe(400);
+    expect(invalidBody.error).toMatchObject({
+      code: "VALIDATION_ERROR",
+      message: "请求参数无效",
+    });
+    expect(JSON.stringify(invalidBody.error)).toContain("请选择有效的渠道档位");
+  });
+
   it("returns 200/201 for representative mock API routes", async () => {
     const { GET: dashboard } = await import("@/app/api/dashboard/summary/route");
     const { GET: usage } = await import("@/app/api/usage/route");
@@ -282,6 +350,7 @@ describe("dev mock API routes", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("text/html");
     expect(html).toContain("Dev Mock Image Playground");
+    expect(html).toContain('<meta name="color-scheme" content="light">');
     expect(html).toContain("portal-dev-mock-ready");
   });
 
@@ -296,6 +365,7 @@ describe("dev mock API routes", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("text/html");
     expect(html).toContain("Dev Mock Image Playground");
+    expect(html).toContain('<meta name="color-scheme" content="light">');
     expect(html).toContain("portal-dev-mock-ready");
   });
 
@@ -353,6 +423,49 @@ describe("dev mock API routes", () => {
     expect(token.remain_quota).toBe(142_857);
   });
 
+  it("ignores remain_quota_cny on token update to match the production PUT contract", async () => {
+    const { POST } = await import("@/app/api/tokens/route");
+    const { PUT } = await import("@/app/api/tokens/[id]/route");
+
+    const createResponse = await POST(
+      new Request("http://localhost/api/tokens", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Mock Update Contract Token",
+          remain_quota: 321,
+        }),
+      }),
+    );
+    const createBody = await readJson(createResponse);
+    const created = createBody.data?.token as {
+      id: number;
+      remain_quota: number;
+    };
+
+    const updateResponse = await PUT(
+      new Request(`http://localhost/api/tokens/${created.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: "Renamed Mock Update Contract Token",
+          remain_quota_cny: 2,
+        }),
+      }),
+      { params: Promise.resolve({ id: String(created.id) }) },
+    );
+    const updateBody = await readJson(updateResponse);
+    const updated = updateBody.data?.token as {
+      name: string;
+      remain_quota: number;
+    };
+
+    expect(createResponse.status).toBe(201);
+    expect(updateResponse.status).toBe(200);
+    expect(updated).toMatchObject({
+      name: "Renamed Mock Update Contract Token",
+      remain_quota: 321,
+    });
+  });
+
   it("does not return the embed-config mock when production has no mock flag", async () => {
     const { GET } = await import("@/app/api/playground/images/embed-config/route");
 
@@ -363,6 +476,6 @@ describe("dev mock API routes", () => {
     const body = await readJson(response);
 
     expect(response.status).toBe(200);
-    expect(body.data).toMatchObject({ configured: false });
+    expect(body.data).toMatchObject({ configured: false, theme: "light" });
   });
 });

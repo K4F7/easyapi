@@ -1,16 +1,18 @@
 import "server-only";
 
-import { createToken, listTokens } from "@/lib/newapi";
+import { createToken, listTokens, updateToken } from "@/lib/newapi";
 import type {
   NewApiAuth,
   NewApiCreateTokenInput,
   NewApiToken,
 } from "@/lib/newapi/types";
+import {
+  PLAYGROUND_CHAT_TOKEN_NAME,
+  PLAYGROUND_IMAGE_TOKEN_NAME,
+} from "@/lib/playground/token-identity";
+import { getPlaygroundChatGroup } from "@/lib/playground/channel-policy";
 
-/** 门户自动创建的操练场对话专用令牌名称（对用户不可见，仅服务端识别）。 */
-export const PLAYGROUND_CHAT_TOKEN_NAME = "操练场-Chat";
-/** 门户自动创建的操练场生图专用令牌名称（对用户不可见，仅服务端识别）。 */
-export const PLAYGROUND_IMAGE_TOKEN_NAME = "操练场-Image";
+export { PLAYGROUND_CHAT_TOKEN_NAME, PLAYGROUND_IMAGE_TOKEN_NAME };
 
 export const PLAYGROUND_IMAGE_MODEL_LIMITS = "gpt-image-2";
 
@@ -37,14 +39,18 @@ export async function ensurePlaygroundTokenIds(auth: NewApiAuth): Promise<{
 export async function ensurePlaygroundChatTokenId(
   auth: NewApiAuth,
 ): Promise<number> {
+  const group = getPlaygroundChatGroup();
+
   return ensurePlaygroundToken(auth, {
     name: PLAYGROUND_CHAT_TOKEN_NAME,
     isQualified: isQualifiedChatToken,
+    canUpdate: (token) => isUsableToken(token),
     createInput: {
       name: PLAYGROUND_CHAT_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
       cross_group_retry: true,
+      group,
     },
   });
 }
@@ -69,17 +75,27 @@ async function ensurePlaygroundToken(
   options: {
     name: string;
     isQualified: (token: NewApiToken) => boolean;
+    canUpdate?: (token: NewApiToken) => boolean;
     createInput: NewApiCreateTokenInput;
   },
 ): Promise<number> {
-  const existing = await findUsableTokenByName(
-    auth,
-    options.name,
-    options.isQualified,
-  );
+  const existing = await findPlaygroundTokenCandidate(auth, {
+    name: options.name,
+    isQualified: options.isQualified,
+    canUpdate: options.canUpdate,
+  });
 
-  if (existing?.id) {
-    return existing.id;
+  if (existing.qualified?.id) {
+    return existing.qualified.id;
+  }
+
+  if (existing.updatable?.id) {
+    await updateToken(auth, {
+      id: existing.updatable.id,
+      ...options.createInput,
+    });
+
+    return existing.updatable.id;
   }
 
   const created = await createToken(auth, options.createInput);
@@ -92,13 +108,20 @@ async function ensurePlaygroundToken(
   return tokenId;
 }
 
-async function findUsableTokenByName(
+async function findPlaygroundTokenCandidate(
   auth: NewApiAuth,
-  name: string,
-  isQualified: (token: NewApiToken) => boolean,
-): Promise<NewApiToken | undefined> {
+  options: {
+    name: string;
+    isQualified: (token: NewApiToken) => boolean;
+    canUpdate?: (token: NewApiToken) => boolean;
+  },
+): Promise<{
+  qualified?: NewApiToken;
+  updatable?: NewApiToken;
+}> {
   let pageNumber = 1;
   let scanned = 0;
+  let updatable: NewApiToken | undefined;
 
   while (true) {
     const page = await listTokens(auth, {
@@ -106,12 +129,19 @@ async function findUsableTokenByName(
       size: TOKEN_PAGE_SIZE,
     });
     const items = Array.isArray(page.items) ? page.items : [];
-    const found = items.find(
-      (token) => token.name === name && isQualified(token),
-    );
 
-    if (found) {
-      return found;
+    for (const token of items) {
+      if (token.name !== options.name) {
+        continue;
+      }
+
+      if (options.isQualified(token)) {
+        return { qualified: token };
+      }
+
+      if (!updatable && options.canUpdate?.(token)) {
+        updatable = token;
+      }
     }
 
     scanned += items.length;
@@ -120,7 +150,7 @@ async function findUsableTokenByName(
       items.length < TOKEN_PAGE_SIZE ||
       (typeof page.total === "number" && scanned >= page.total)
     ) {
-      return undefined;
+      return { updatable };
     }
 
     pageNumber += 1;
@@ -131,7 +161,8 @@ function isQualifiedChatToken(token: NewApiToken): boolean {
   return (
     isUsableToken(token) &&
     token.model_limits_enabled !== true &&
-    token.cross_group_retry === true
+    token.cross_group_retry === true &&
+    token.group === getPlaygroundChatGroup()
   );
 }
 

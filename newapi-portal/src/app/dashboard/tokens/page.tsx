@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Check,
+  ChevronDown,
   Infinity as InfinityIcon,
   Plus,
   Search,
@@ -12,7 +14,7 @@ import { toast } from "sonner";
 
 import { RevealOnceDialog } from "@/components/reveal-once-dialog";
 import { ErrorState } from "@/components/page-state";
-import { Badge, type BadgeProps } from "@/components/ui/badge";
+import type { BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import {
@@ -23,6 +25,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,8 +43,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { apiDelete, apiFetch, apiPost } from "@/lib/client/api";
+import { apiDelete, apiFetch, apiPost, apiPut } from "@/lib/client/api";
 import { formatDateTime } from "@/lib/client/format";
+import { isManagedPlaygroundToken } from "@/lib/playground/token-identity";
 import { useQuotaFormat } from "@/hooks/use-quota-format";
 
 type TokenItem = {
@@ -60,10 +69,28 @@ type TokenPage = {
   page_size?: number;
 };
 
+type ChannelTier = {
+  id: string;
+  label: string;
+  group: string;
+  stability: string;
+  description: string;
+  default?: boolean;
+};
+
+type ChannelTiersResponse = {
+  tiers: ChannelTier[];
+  defaultGroup: string;
+};
+
 type CreateTokenResponse = {
   token?: TokenItem;
   key: string | null;
   keyReturnedOnce: boolean;
+};
+
+type UpdateTokenResponse = {
+  token: TokenItem;
 };
 
 type TokenStatus = {
@@ -75,6 +102,36 @@ const NEVER_EXPIRE_SENTINELS = new Set([-1, 0]);
 
 function isNeverExpire(expiredTime: number | undefined): boolean {
   return expiredTime === undefined || NEVER_EXPIRE_SENTINELS.has(expiredTime);
+}
+
+function isPlaygroundToken(token: TokenItem): boolean {
+  return isManagedPlaygroundToken(token);
+}
+
+function getTierByGroup(tiers: ChannelTier[], group: string | undefined) {
+  return group ? tiers.find((tier) => tier.group === group) : undefined;
+}
+
+async function fetchChannelTiers(): Promise<ChannelTiersResponse> {
+  const response = await apiFetch<ChannelTiersResponse>("/api/channels/tiers");
+
+  if (!response.tiers.length) {
+    throw new Error("渠道档位暂不可用，请稍后重试");
+  }
+
+  const defaultGroup =
+    response.defaultGroup ||
+    response.tiers.find((tier) => tier.default)?.group ||
+    response.tiers[0]?.group;
+
+  if (!defaultGroup) {
+    throw new Error("渠道档位暂不可用，请稍后重试");
+  }
+
+  return {
+    tiers: response.tiers,
+    defaultGroup,
+  };
 }
 
 /** Derive a semantic status (enabled / disabled / expiring / expired / exhausted). */
@@ -107,9 +164,15 @@ function deriveStatus(token: TokenItem): TokenStatus {
 export default function TokensPage() {
   const { refresh } = useQuotaFormat();
   const [tokens, setTokens] = useState<TokenItem[]>([]);
+  const [channelTiers, setChannelTiers] = useState<ChannelTier[]>([]);
+  const [defaultChannelGroup, setDefaultChannelGroup] = useState("");
+  const [channelTierError, setChannelTierError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [updatingGroupIds, setUpdatingGroupIds] = useState<Set<number>>(
+    () => new Set(),
+  );
 
   const [query, setQuery] = useState("");
 
@@ -120,14 +183,34 @@ export default function TokensPage() {
 
   const loadTokens = useCallback(async () => {
     setError(null);
+    setChannelTierError(null);
     setLoading(true);
 
     try {
-      const [page] = await Promise.all([
+      const [pageResult, tiersResult] = await Promise.allSettled([
         apiFetch<TokenPage>("/api/tokens?p=1&size=50"),
+        fetchChannelTiers(),
         refresh(),
       ]);
-      setTokens(page.items);
+
+      if (pageResult.status === "rejected") {
+        throw pageResult.reason;
+      }
+
+      setTokens(pageResult.value.items);
+
+      if (tiersResult.status === "fulfilled") {
+        setChannelTiers(tiersResult.value.tiers);
+        setDefaultChannelGroup(tiersResult.value.defaultGroup);
+      } else {
+        setChannelTiers([]);
+        setDefaultChannelGroup("");
+        setChannelTierError(
+          tiersResult.reason instanceof Error
+            ? tiersResult.reason.message
+            : "渠道档位加载失败",
+        );
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "令牌加载失败");
     } finally {
@@ -170,6 +253,48 @@ export default function TokensPage() {
     }
   }
 
+  async function handleChannelChange(token: TokenItem, group: string) {
+    if (token.group === group || isPlaygroundToken(token)) {
+      return;
+    }
+
+    if (channelTierError || !channelTiers.some((tier) => tier.group === group)) {
+      toast.error("渠道档位不可用，暂不能更新令牌渠道");
+      return;
+    }
+
+    setUpdatingGroupIds((current) => {
+      const next = new Set(current);
+      next.add(token.id);
+      return next;
+    });
+
+    try {
+      const result = await apiPut<UpdateTokenResponse>(
+        `/api/tokens/${encodeURIComponent(String(token.id))}`,
+        { group },
+      );
+      setTokens((current) =>
+        current.map((item) =>
+          item.id === token.id ? { ...item, ...result.token } : item,
+        ),
+      );
+      toast.success("令牌渠道已更新");
+    } catch (updateError) {
+      toast.error(
+        updateError instanceof Error ? updateError.message : "令牌渠道更新失败",
+      );
+    } finally {
+      setUpdatingGroupIds((current) => {
+        const next = new Set(current);
+        next.delete(token.id);
+        return next;
+      });
+    }
+  }
+
+  const channelTiersReady = !channelTierError && channelTiers.length > 0;
+
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (!term) {
@@ -202,6 +327,7 @@ export default function TokensPage() {
           <div className="flex flex-wrap gap-3">
             <Button
               className="h-12 px-6 rounded-xl font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 text-base bg-gray-900 text-white hover:bg-gray-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+              disabled={!channelTiersReady}
               onClick={() => setCreateOpen(true)}
             >
               <Plus className="mr-2 h-5 w-5" />
@@ -210,6 +336,10 @@ export default function TokensPage() {
           </div>
         ) : null}
       </header>
+
+      {!loading && !error && channelTierError ? (
+        <ChannelTierAlert message={channelTierError} />
+      ) : null}
 
       {loading ? (
         <TokenSkeleton />
@@ -233,6 +363,7 @@ export default function TokensPage() {
           </p>
           <Button
             className="h-12 px-8 rounded-xl font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 text-base bg-gray-900 text-white hover:bg-gray-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+            disabled={!channelTiersReady}
             onClick={() => setCreateOpen(true)}
           >
             <Plus className="mr-2 h-5 w-5" />
@@ -289,6 +420,9 @@ export default function TokensPage() {
                         <TableHead className="h-12 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                           状态
                         </TableHead>
+                        <TableHead className="h-12 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          渠道
+                        </TableHead>
                         <TableHead className="h-12 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
                           使用额度
                         </TableHead>
@@ -309,6 +443,12 @@ export default function TokensPage() {
                           key={token.id}
                           token={token}
                           deleting={deletingId === token.id}
+                          channelTiers={channelTiers}
+                          channelTiersReady={channelTiersReady}
+                          updatingGroup={updatingGroupIds.has(token.id)}
+                          onChannelChange={(group) =>
+                            handleChannelChange(token, group)
+                          }
                           onDelete={() => setPendingDelete(token)}
                         />
                       ))}
@@ -323,6 +463,9 @@ export default function TokensPage() {
 
       <CreateTokenDialog
         open={createOpen}
+        channelTiers={channelTiers}
+        channelTiersReady={channelTiersReady}
+        defaultChannelGroup={defaultChannelGroup}
         onOpenChange={setCreateOpen}
         onCreated={handleCreated}
       />
@@ -358,10 +501,18 @@ export default function TokensPage() {
 function TokenRow({
   token,
   deleting,
+  channelTiers,
+  channelTiersReady,
+  updatingGroup,
+  onChannelChange,
   onDelete,
 }: {
   token: TokenItem;
   deleting: boolean;
+  channelTiers: ChannelTier[];
+  channelTiersReady: boolean;
+  updatingGroup: boolean;
+  onChannelChange: (group: string) => void;
   onDelete: () => void;
 }) {
   const { formatQuota } = useQuotaFormat();
@@ -372,6 +523,8 @@ function TokenRow({
   const total = remain + used;
   const usedPct =
     total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+  const tier = getTierByGroup(channelTiers, token.group);
+  const playgroundToken = isPlaygroundToken(token);
 
   return (
     <TableRow className="group transition-colors hover:bg-gray-50/50 dark:hover:bg-muted/20 data-[state=selected]:bg-muted border-b border-gray-100 dark:border-border/20 last:border-0">
@@ -417,6 +570,18 @@ function TokenRow({
             {status.label}
           </span>
         </div>
+      </TableCell>
+      <TableCell>
+        <ChannelTierCell
+          currentTier={tier}
+          group={token.group}
+          tiers={channelTiers}
+          disabled={playgroundToken || updatingGroup || !channelTiersReady}
+          playgroundToken={playgroundToken}
+          tiersReady={channelTiersReady}
+          updating={updatingGroup}
+          onChange={onChannelChange}
+        />
       </TableCell>
       <TableCell className="text-right">
         {unlimited ? (
@@ -465,27 +630,194 @@ function TokenRow({
         {formatDateTime(token.accessed_time)}
       </TableCell>
       <TableCell className="pr-6 text-right">
-        <Button
-          aria-label={`删除令牌 ${token.name}`}
-          className="text-muted-foreground opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 dark:hover:bg-error-soft dark:hover:text-error group-hover:opacity-100 rounded-xl"
-          disabled={deleting}
-          size="icon"
-          variant="ghost"
-          onClick={onDelete}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        {playgroundToken ? (
+          <span className="text-xs font-medium text-muted-foreground">
+            系统托管
+          </span>
+        ) : (
+          <Button
+            aria-label={`删除令牌 ${token.name}`}
+            className="text-muted-foreground opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 dark:hover:bg-error-soft dark:hover:text-error group-hover:opacity-100 rounded-xl"
+            disabled={deleting}
+            size="icon"
+            variant="ghost"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </TableCell>
     </TableRow>
   );
 }
 
+function ChannelTierCell({
+  currentTier,
+  group,
+  tiers,
+  disabled,
+  playgroundToken,
+  tiersReady,
+  updating,
+  onChange,
+}: {
+  currentTier: ChannelTier | undefined;
+  group: string | undefined;
+  tiers: ChannelTier[];
+  disabled: boolean;
+  playgroundToken: boolean;
+  tiersReady: boolean;
+  updating: boolean;
+  onChange: (group: string) => void;
+}) {
+  const label = currentTier?.label ?? (group ? "自定义分组" : "未设置");
+  const description =
+    !tiersReady
+      ? "渠道档位不可用"
+      : currentTier?.stability ??
+        (group ? `NewAPI 分组：${group}` : "旧 Token，沿用上游默认分组");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn(
+            "h-auto min-h-10 w-40 justify-between rounded-xl border-gray-200 bg-gray-50/70 px-3 py-2 text-left shadow-sm hover:bg-white dark:border-border/50 dark:bg-background/50 dark:hover:bg-muted/50",
+            disabled && "cursor-not-allowed opacity-70",
+          )}
+          disabled={disabled}
+          aria-label={`当前渠道：${label}`}
+        >
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-extrabold text-gray-900 dark:text-foreground">
+              {updating ? "更新中…" : label}
+            </span>
+            <span className="block truncate text-[11px] font-medium text-muted-foreground">
+              {playgroundToken ? "操练场 Token 不可编辑" : description}
+            </span>
+          </span>
+          <ChevronDown className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-64 rounded-xl p-1.5">
+        {tiers.map((tier) => (
+          <DropdownMenuItem
+            key={tier.group}
+            className="items-start gap-2 rounded-lg p-2"
+            onSelect={() => onChange(tier.group)}
+          >
+            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+              {tier.group === group ? <Check className="h-3.5 w-3.5" /> : null}
+            </span>
+            <span className="min-w-0">
+              <span className="flex items-center gap-2 text-sm font-bold text-foreground">
+                {tier.label}
+                {tier.default ? (
+                  <span className="rounded-md border border-transparent bg-secondary px-1.5 py-0 text-[10px] font-bold uppercase text-secondary-foreground">
+                    默认
+                  </span>
+                ) : null}
+              </span>
+              <span className="mt-0.5 block text-xs font-medium leading-relaxed text-muted-foreground">
+                {tier.stability} · {tier.description}
+              </span>
+            </span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ChannelTierAlert({ message }: { message: string }) {
+  return (
+    <div
+      className="mb-6 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm font-medium text-red-700 shadow-sm dark:border-error/20 dark:bg-error-soft dark:text-error"
+      role="alert"
+    >
+      <span className="font-extrabold">渠道档位加载失败。</span>
+      创建令牌和渠道编辑已暂时禁用，避免提交错误分组。
+      <span className="ml-1">{message}</span>
+    </div>
+  );
+}
+
+function ChannelTierPicker({
+  tiers,
+  value,
+  onChange,
+}: {
+  tiers: ChannelTier[];
+  value: string;
+  onChange: (group: string) => void;
+}) {
+  return (
+    <div className="grid gap-2" role="radiogroup" aria-label="渠道档位">
+      {tiers.map((tier) => {
+        const selected = tier.group === value;
+
+        return (
+          <button
+            key={tier.group}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            className={cn(
+              "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              selected
+                ? "border-yellow-300 bg-yellow-50 shadow-sm dark:border-primary/40 dark:bg-primary/10"
+                : "border-gray-200 bg-gray-50/60 hover:border-gray-300 hover:bg-white dark:border-border/50 dark:bg-background/50 dark:hover:bg-muted/50",
+            )}
+            onClick={() => onChange(tier.group)}
+          >
+            <span
+              className={cn(
+                "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                selected
+                  ? "border-yellow-500 bg-yellow-500 text-white dark:border-primary dark:bg-primary"
+                  : "border-gray-300 bg-white dark:border-border dark:bg-card",
+              )}
+              aria-hidden="true"
+            >
+              {selected ? <Check className="h-3.5 w-3.5" /> : null}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-center gap-2 text-sm font-extrabold text-gray-900 dark:text-foreground">
+                {tier.label}
+                {tier.default ? (
+                  <span className="rounded-md border border-transparent bg-secondary px-1.5 py-0 text-[10px] font-bold uppercase text-secondary-foreground">
+                    默认
+                  </span>
+                ) : null}
+              </span>
+              <span className="mt-1 block text-xs font-bold text-muted-foreground">
+                {tier.stability}
+              </span>
+              <span className="mt-0.5 block text-xs font-medium leading-relaxed text-muted-foreground">
+                {tier.description}
+              </span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function CreateTokenDialog({
   open,
+  channelTiers,
+  channelTiersReady,
+  defaultChannelGroup,
   onOpenChange,
   onCreated,
 }: {
   open: boolean;
+  channelTiers: ChannelTier[];
+  channelTiersReady: boolean;
+  defaultChannelGroup: string;
   onOpenChange: (open: boolean) => void;
   onCreated: (key: string | null) => void;
 }) {
@@ -494,12 +826,22 @@ function CreateTokenDialog({
   const [remainQuota, setRemainQuota] = useState("");
   const [neverExpire, setNeverExpire] = useState(true);
   const [expiredAt, setExpiredAt] = useState("");
+  const [group, setGroup] = useState(defaultChannelGroup);
+  const groupIsValid = channelTiers.some((tier) => tier.group === group);
+  const canCreateWithChannel = channelTiersReady && groupIsValid;
+
+  useEffect(() => {
+    if (open) {
+      setGroup(defaultChannelGroup);
+    }
+  }, [defaultChannelGroup, open]);
 
   function reset() {
     setName("");
     setRemainQuota("");
     setNeverExpire(true);
     setExpiredAt("");
+    setGroup(defaultChannelGroup);
   }
 
   function handleOpenChange(next: boolean) {
@@ -511,6 +853,12 @@ function CreateTokenDialog({
 
   async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!canCreateWithChannel) {
+      toast.error("渠道档位不可用，暂不能创建令牌");
+      return;
+    }
+
     setCreating(true);
 
     try {
@@ -518,8 +866,10 @@ function CreateTokenDialog({
         name: string;
         remain_quota_cny?: number;
         expired_time?: number;
+        group: string;
       } = {
         name: name.trim(),
+        group,
       };
 
       if (remainQuota.trim()) {
@@ -552,7 +902,7 @@ function CreateTokenDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="rounded-[2rem] border-gray-200 dark:border-border/50 bg-white/95 dark:bg-card/95 shadow-2xl backdrop-blur-xl sm:max-w-md">
+      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border-gray-200 bg-white/95 shadow-2xl backdrop-blur-xl dark:border-border/50 dark:bg-card/95 sm:max-w-md">
         <DialogHeader className="space-y-3 border-b border-gray-100 dark:border-border/50 pb-4">
           <DialogTitle className="text-2xl font-extrabold tracking-tight text-gray-900 dark:text-foreground">
             创建新令牌
@@ -613,6 +963,22 @@ function CreateTokenDialog({
           </div>
 
           <div className="space-y-2.5">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              渠道档位
+            </Label>
+            <ChannelTierPicker
+              tiers={channelTiers}
+              value={group}
+              onChange={setGroup}
+            />
+            {!canCreateWithChannel ? (
+              <p className="text-xs font-medium text-red-600 dark:text-error">
+                渠道档位不可用，暂不能创建令牌。
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-2.5">
             <Label
               htmlFor="expiredAt"
               className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
@@ -667,7 +1033,7 @@ function CreateTokenDialog({
           <Button
             type="submit"
             form="create-token-form"
-            disabled={creating}
+            disabled={creating || !canCreateWithChannel}
             className="h-10 rounded-xl px-6 font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 bg-gray-900 text-white hover:bg-gray-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
           >
             {creating ? (

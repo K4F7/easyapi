@@ -11,5 +11,6 @@ export async function GET() {
 
   return jsonOk({
     configured: isImagePlaygroundProxyConfigured(),
+    theme: "light",
   });
 }
