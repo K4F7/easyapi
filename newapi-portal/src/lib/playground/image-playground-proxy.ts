@@ -34,6 +34,9 @@ const browserNavigationHeaders = new Set([
   "upgrade-insecure-requests",
 ]);
 
+const relativeStaticAssetPath =
+  /^(?:\.{1,2}\/)?assets\/.+\.(?:css|js|mjs|map|avif|gif|ico|jpe?g|png|svg|webp|woff2?)$/i;
+
 export function isImagePlaygroundProxyConfigured(): boolean {
   return Boolean(getImagePlaygroundInternalUrl());
 }
@@ -169,11 +172,12 @@ function appendSessionTokenToRelativeAssetReferences(
 }
 
 function isRelativeAssetReference(value: string): boolean {
-  return (
-    value.startsWith("./") ||
-    value.startsWith("../") ||
-    value.startsWith("assets/")
-  );
+  if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#|data:|mailto:|tel:)/i.test(value)) {
+    return false;
+  }
+
+  const [path] = value.split(/[?#]/, 1);
+  return relativeStaticAssetPath.test(path);
 }
 
 function sanitizeProxyRequestHeaders(headers: Headers): Headers {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 const mockRequireUser = vi.fn();
@@ -98,7 +98,17 @@ async function parseResponse(response: Response) {
 }
 
 describe("GET /api/channels/tiers", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
   it("returns the fixed channel tier metadata", async () => {
+    vi.stubEnv("NEWAPI_CHANNEL_GROUP_LOW", undefined);
+    vi.stubEnv("NEWAPI_CHANNEL_GROUP_STANDARD", undefined);
+    vi.stubEnv("NEWAPI_CHANNEL_GROUP_PREMIUM", undefined);
+    vi.resetModules();
+
     const { GET } = await import("@/app/api/channels/tiers/route");
 
     const response = await GET();
@@ -136,36 +146,31 @@ describe("GET /api/channels/tiers", () => {
     vi.stubEnv("NEWAPI_CHANNEL_GROUP_PREMIUM", "ops-premium");
     vi.resetModules();
 
-    try {
-      const { GET } = await import("@/app/api/channels/tiers/route");
+    const { GET } = await import("@/app/api/channels/tiers/route");
 
-      const response = await GET();
-      const body = await parseResponse(response);
+    const response = await GET();
+    const body = await parseResponse(response);
 
-      expect(response.status).toBe(200);
-      expect(body.data?.defaultGroup).toBe("ops-standard");
-      expect(body.data?.tiers).toEqual([
-        expect.objectContaining({
-          id: "low",
-          label: "低价渠道",
-          group: "ops-low",
-        }),
-        expect.objectContaining({
-          id: "standard",
-          label: "一般渠道",
-          group: "ops-standard",
-          default: true,
-        }),
-        expect.objectContaining({
-          id: "premium",
-          label: "高价渠道",
-          group: "ops-premium",
-        }),
-      ]);
-    } finally {
-      vi.unstubAllEnvs();
-      vi.resetModules();
-    }
+    expect(response.status).toBe(200);
+    expect(body.data?.defaultGroup).toBe("ops-standard");
+    expect(body.data?.tiers).toEqual([
+      expect.objectContaining({
+        id: "low",
+        label: "低价渠道",
+        group: "ops-low",
+      }),
+      expect.objectContaining({
+        id: "standard",
+        label: "一般渠道",
+        group: "ops-standard",
+        default: true,
+      }),
+      expect.objectContaining({
+        id: "premium",
+        label: "高价渠道",
+        group: "ops-premium",
+      }),
+    ]);
   });
 });
 
@@ -236,6 +241,30 @@ describe("POST /api/tokens", () => {
       unknown
     >;
     expect(tokenInput).not.toHaveProperty("remain_quota_cny");
+  });
+
+  it("rejects creating tokens with reserved playground names", async () => {
+    const { POST } = await import("@/app/api/tokens/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/tokens", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "操练场-Image",
+          group: "default",
+        }),
+      }),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.error?.code).toBe("VALIDATION_ERROR");
+    expect(body.error?.message).toBe("请求参数无效");
+    expect(JSON.stringify(body.error?.details)).toContain(
+      "该名称为系统保留的操练场 Token 名称",
+    );
+    expect(mockCreateTokenAndRevealKey).not.toHaveBeenCalled();
   });
 });
 
@@ -354,6 +383,26 @@ describe("PUT /api/tokens/:id", () => {
       { userId: "99", accessToken: "newapi-token" },
       101,
     );
+    expect(mockUpdateToken).not.toHaveBeenCalled();
+  });
+
+  it("rejects renaming regular tokens to reserved playground names", async () => {
+    const { PUT } = await import("@/app/api/tokens/[id]/route");
+
+    const response = await PUT(
+      tokenRequest({ name: "操练场-Chat" }),
+      routeContext(),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.error?.code).toBe("VALIDATION_ERROR");
+    expect(body.error?.message).toBe("请求参数无效");
+    expect(JSON.stringify(body.error?.details)).toContain(
+      "该名称为系统保留的操练场 Token 名称",
+    );
+    expect(mockGetToken).not.toHaveBeenCalled();
     expect(mockUpdateToken).not.toHaveBeenCalled();
   });
 

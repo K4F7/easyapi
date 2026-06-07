@@ -77,6 +77,50 @@ describe("handleApiError", () => {
       });
       expect(JSON.stringify(body)).not.toMatch(/sk-live-secret|raw trace|provider raw/);
       expect(consoleError).toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(NewApiError),
+      );
+      expect(JSON.stringify(consoleError.mock.calls)).not.toMatch(
+        /sk-live-secret|raw trace|provider raw|payload/i,
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it("sanitizes generic error log objects before logging", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      const { handleApiError } = await import("@/lib/api/bff");
+      const error = Object.assign(new Error("generic leaked sk-live-secret"), {
+        headers: { Authorization: "Bearer sk-live-secret" },
+        body: "raw body sk-live-secret",
+        payload: { token: "sk-live-secret" },
+        code: "GENERIC_FAILURE",
+      });
+
+      const response = handleApiError(error, "内部调用失败");
+      const body = await parseResponse(response);
+
+      expect(response.status).toBe(500);
+      expect(body.error).toEqual({
+        code: "INTERNAL_ERROR",
+        message: "内部调用失败",
+      });
+      expect(consoleError).toHaveBeenCalledWith(
+        "内部调用失败",
+        expect.objectContaining({
+          name: "Error",
+          code: "GENERIC_FAILURE",
+        }),
+      );
+      expect(JSON.stringify(consoleError.mock.calls)).not.toMatch(
+        /sk-live-secret|raw body|headers|payload|Authorization/i,
+      );
     } finally {
       consoleError.mockRestore();
     }

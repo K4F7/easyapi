@@ -128,7 +128,7 @@ export function handleApiError(error: unknown, fallbackMessage: string) {
   }
 
   if (error instanceof NewApiError) {
-    console.error(fallbackMessage, error);
+    console.error(fallbackMessage, sanitizeNewApiErrorForLog(error));
 
     return jsonError(
       {
@@ -156,7 +156,7 @@ export function handleApiError(error: unknown, fallbackMessage: string) {
     );
   }
 
-  console.error(fallbackMessage, error);
+  console.error(fallbackMessage, sanitizeErrorForLog(error));
   return jsonError(
     {
       code: "INTERNAL_ERROR",
@@ -164,6 +164,41 @@ export function handleApiError(error: unknown, fallbackMessage: string) {
     },
     500,
   );
+}
+
+export function sanitizeNewApiErrorForLog(error: NewApiError) {
+  return {
+    name: error.name,
+    status: error.status,
+    statusText: error.statusText,
+    code: error.code,
+  };
+}
+
+function sanitizeErrorForLog(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      code: getSafeErrorCode(error),
+    };
+  }
+
+  return {
+    type: typeof error,
+  };
+}
+
+function getSafeErrorCode(error: Error): unknown {
+  if (!("code" in error)) {
+    return undefined;
+  }
+
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ||
+    typeof code === "number" ||
+    typeof code === "boolean"
+    ? code
+    : undefined;
 }
 
 export function parsePositiveInt(

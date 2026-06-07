@@ -6,7 +6,7 @@ import {
   ensureDashboardSession,
 } from "./helpers";
 
-const LIGHT_BACKGROUND_MAX_CHANNEL = 245;
+const LIGHT_BACKGROUND_MIN_LUMINANCE = 0.85;
 
 async function mockDashboardApis(page: import("@playwright/test").Page) {
   await page.route("**/api/dashboard/summary", async (route) => {
@@ -69,9 +69,20 @@ function rgbChannels(color: string) {
 
 function expectLightColor(color: string) {
   const [red, green, blue] = rgbChannels(color);
-  expect(Math.max(red, green, blue)).toBeGreaterThanOrEqual(
-    LIGHT_BACKGROUND_MAX_CHANNEL,
+  expect(relativeLuminance(red, green, blue)).toBeGreaterThanOrEqual(
+    LIGHT_BACKGROUND_MIN_LUMINANCE,
   );
+}
+
+function relativeLuminance(red: number, green: number, blue: number) {
+  const [r, g, b] = [red, green, blue].map((channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 test.describe("Portal light theme", () => {

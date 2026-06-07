@@ -13,6 +13,7 @@ import {
   mockTokensListResponse,
 } from "@/lib/dev-mock";
 import { createTokenAndRevealKey, listTokens, type NewApiToken } from "@/lib/newapi";
+import { isManagedPlaygroundTokenName } from "@/lib/playground/token-identity";
 import { getQuotaDisplayConfig } from "@/lib/quota/get-display-config";
 import { cnyToQuota } from "@/lib/quota/display-config.shared";
 import { maskToken, normalizePage } from "@/lib/quota/usage";
@@ -20,7 +21,14 @@ import { maskToken, normalizePage } from "@/lib/quota/usage";
 export const runtime = "nodejs";
 
 const createTokenSchema = z.object({
-  name: z.string().trim().min(1).max(64),
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .refine((name) => !isManagedPlaygroundTokenName(name), {
+      message: "该名称为系统保留的操练场 Token 名称",
+    }),
   expired_time: z.number().int().nonnegative().optional(),
   remain_quota: z.number().int().nonnegative().optional(),
   remain_quota_cny: z.number().nonnegative().optional(),

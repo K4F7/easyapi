@@ -4,6 +4,7 @@ import {
   getUserNewApiAuth,
   handleApiError,
   publicUserFromPortalUser,
+  sanitizeNewApiErrorForLog,
 } from "@/lib/api/bff";
 import { db } from "@/lib/db";
 import {
@@ -131,7 +132,10 @@ export async function GET(request: Request) {
         throw error;
       }
 
-      console.error("Failed to load dashboard NewAPI summary", error);
+      console.error(
+        "Failed to load dashboard NewAPI summary",
+        sanitizeNewApiErrorForLog(error),
+      );
 
       return jsonOk({
         user: publicUserFromPortalUser(portalUser),

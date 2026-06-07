@@ -127,7 +127,7 @@ The browser must call the portal BFF only. It must not call NewAPI hosts directl
 - Delete token: `DELETE /api/tokens/{id}`.
 - Validation errors use `{ "ok": false, "error": { "code": "VALIDATION_ERROR", "message": "请求参数无效", "details": ... } }`.
 - NewAPI binding errors use `409` with Chinese `message` values such as `NewAPI 账号绑定仍在处理中`.
-- NewAPI upstream failures use stable user-facing responses only: `{ "code": "NEWAPI_ERROR", "message": "上游 NewAPI 请求失败", "details": { "status": <status>, "code": <code> } }`. Raw upstream `message` and payload text are logged server-side and must not be returned to the browser.
+- NewAPI upstream failures use stable BFF envelopes only: `{ "ok": false, "error": { "code": "NEWAPI_ERROR", "message": "上游 NewAPI 请求失败", "details": { "status": <status>, "code": <code> } } }`. Raw upstream `message` and payload text are only available in server-side logs and must not be returned to the browser.
 
 ### Portal channel tiers
 

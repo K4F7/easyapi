@@ -21,7 +21,7 @@ async function mockDashboardSummary(page: Page) {
           },
           newApi: {
             binding: "ready",
-            status: "ok",
+            status: "ready",
             self: {
               quota: 1000000,
               used_quota: 10000,
@@ -30,7 +30,7 @@ async function mockDashboardSummary(page: Page) {
           },
           tokens: {
             count: 0,
-            status: "ok",
+            status: "ready",
           },
           usage: {
             today: {
@@ -51,12 +51,12 @@ async function mockDashboardSummary(page: Page) {
           logStats: {
             rpm: 1,
             tpm: 100,
-            status: "ok",
+            status: "ready",
           },
           checkin: {
             checkedInToday: false,
             checkedInOn: "2026-06-08",
-            status: "available",
+            status: "AVAILABLE",
             quotaApplied: null,
             quotaPending: false,
           },

@@ -62,6 +62,11 @@ vi.mock("@/lib/api/bff", () => ({
     newApiBinding: user.newApiUserId ? "ready" : "pending",
     createdAt: user.createdAt.toISOString(),
   }),
+  sanitizeNewApiErrorForLog: (error: MockNewApiError) => ({
+    name: error.name,
+    status: error.status,
+    code: error.code,
+  }),
 }));
 
 vi.mock("@/lib/dev-mock", () => ({
@@ -169,6 +174,13 @@ describe("GET /api/dashboard/summary", () => {
         /sk-live-secret|raw trace|provider_secret_trace|provider raw/,
       );
       expect(consoleError).toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(MockNewApiError),
+      );
+      expect(JSON.stringify(consoleError.mock.calls)).not.toMatch(
+        /sk-live-secret|raw trace|provider raw|payload/i,
+      );
     } finally {
       consoleError.mockRestore();
     }

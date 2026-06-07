@@ -9,14 +9,25 @@ import {
 } from "@/lib/dev-mock";
 import { getUserNewApiAuth, handleApiError } from "@/lib/api/bff";
 import { deleteToken, getToken, updateToken } from "@/lib/newapi";
-import { isManagedPlaygroundToken } from "@/lib/playground/token-identity";
+import {
+  isManagedPlaygroundToken,
+  isManagedPlaygroundTokenName,
+} from "@/lib/playground/token-identity";
 import { maskToken } from "@/lib/quota/usage";
 
 export const runtime = "nodejs";
 
 const updateTokenSchema = z
   .object({
-    name: z.string().trim().min(1).max(64).optional(),
+    name: z
+      .string()
+      .trim()
+      .min(1)
+      .max(64)
+      .refine((name) => !isManagedPlaygroundTokenName(name), {
+        message: "该名称为系统保留的操练场 Token 名称",
+      })
+      .optional(),
     expired_time: z.number().int().nonnegative().optional(),
     remain_quota: z.number().int().nonnegative().optional(),
     unlimited_quota: z.boolean().optional(),

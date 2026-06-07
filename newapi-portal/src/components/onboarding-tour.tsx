@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Check,
@@ -85,6 +85,7 @@ export function OnboardingTour() {
   const [status, setStatus] = useState<OnboardingStatus>("pending");
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const firstInteractiveRef = useRef<HTMLButtonElement>(null);
 
   const isDashboardHome = pathname === "/dashboard";
   const currentStep = steps[stepIndex];
@@ -134,8 +135,15 @@ export function OnboardingTour() {
       return;
     }
 
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
     element.classList.add("onboarding-highlight");
-    element.scrollIntoView({ block: "center", behavior: "smooth" });
+    element.scrollIntoView({
+      block: "center",
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
 
     return () => {
       element.classList.remove("onboarding-highlight");
@@ -195,7 +203,10 @@ export function OnboardingTour() {
         <DialogContent
           className="sm:max-w-xl"
           data-testid="onboarding-dialog"
-          onOpenAutoFocus={(event) => event.preventDefault()}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            firstInteractiveRef.current?.focus();
+          }}
         >
           <DialogHeader>
             <div className="mb-2 flex items-center justify-between gap-3 pr-8">
@@ -203,6 +214,7 @@ export function OnboardingTour() {
                 新手引导 {progressLabel}
               </div>
               <button
+                ref={firstInteractiveRef}
                 type="button"
                 className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={skip}

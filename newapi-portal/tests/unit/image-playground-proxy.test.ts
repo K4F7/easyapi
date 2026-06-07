@@ -110,6 +110,7 @@ describe("rewritePlaygroundEmbedHtml", () => {
       "<html><head>",
       '<script src="./assets/app.js"></script>',
       '<link rel="stylesheet" href="./assets/app.css?version=1">',
+      '<img src="../assets/logo.png#main">',
       '<link rel="preload" href="https://cdn.example.test/app.css">',
       "</head><body></body></html>",
     ].join("");
@@ -124,7 +125,34 @@ describe("rewritePlaygroundEmbedHtml", () => {
     expect(rewritten).toContain(
       'href="./assets/app.css?version=1&apiKey=portal-image-session-v1.payload.sig"',
     );
+    expect(rewritten).toContain(
+      'src="../assets/logo.png?apiKey=portal-image-session-v1.payload.sig#main"',
+    );
     expect(rewritten).toContain('href="https://cdn.example.test/app.css"');
+  });
+
+  it("does not add the signed session token to relative navigation links", () => {
+    const html = [
+      "<html><head></head><body>",
+      '<a href="../settings">Settings</a>',
+      '<a href="./history?tab=images">History</a>',
+      '<script src="./assets/app.js"></script>',
+      '<link rel="stylesheet" href="../assets/app.css">',
+      "</body></html>",
+    ].join("");
+    const rewritten = rewritePlaygroundEmbedHtml(
+      html,
+      "portal-image-session-v1.payload.sig",
+    );
+
+    expect(rewritten).toContain('href="../settings"');
+    expect(rewritten).toContain('href="./history?tab=images"');
+    expect(rewritten).toContain(
+      'src="./assets/app.js?apiKey=portal-image-session-v1.payload.sig"',
+    );
+    expect(rewritten).toContain(
+      'href="../assets/app.css?apiKey=portal-image-session-v1.payload.sig"',
+    );
   });
 
   it("does not duplicate existing light theme controls", () => {
