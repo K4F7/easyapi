@@ -186,8 +186,8 @@ export default function DashboardPage() {
   const totalTokenUsed = summary.usage.week.totals.tokenUsed;
   const todayTokenUsed = summary.usage.today.totals.tokenUsed;
   const todayRequestCount = summary.usage.today.totals.count;
-  const rpm = summary.logStats.rpm;
-  const tpm = summary.logStats.tpm;
+  const rpm = summary.logStats?.rpm ?? null;
+  const tpm = summary.logStats?.tpm ?? null;
 
   // 今日 vs 本周日均的迷你趋势（接口暂无逐日序列，用现有汇总字段构造 2 点对比）
   const todayQuota = summary.usage.today.totals.quota;
