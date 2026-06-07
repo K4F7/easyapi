@@ -7,6 +7,7 @@ import {
 } from "@/lib/api/bff";
 import { db } from "@/lib/db";
 import {
+  getLogStats,
   getSelf,
   getUsageData,
   listTokens,
@@ -24,6 +25,9 @@ import {
 } from "@/lib/quota/usage";
 
 export const runtime = "nodejs";
+
+const DASHBOARD_UPSTREAM_ERROR_MESSAGE =
+  "暂时无法获取 NewAPI 仪表盘数据，请稍后重试";
 
 export async function GET(request: Request) {
   if (isDevMockEnabled()) {
@@ -127,12 +131,14 @@ export async function GET(request: Request) {
         throw error;
       }
 
+      console.error("Failed to load dashboard NewAPI summary", error);
+
       return jsonOk({
         user: publicUserFromPortalUser(portalUser),
         newApi: {
           binding: "ready",
           status: "upstream_error",
-          message: error.message,
+          message: DASHBOARD_UPSTREAM_ERROR_MESSAGE,
           self: null,
         },
         tokens: {

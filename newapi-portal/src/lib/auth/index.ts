@@ -40,7 +40,7 @@ export class AuthError extends Error {
   readonly status = 401;
   readonly code = "UNAUTHORIZED";
 
-  constructor(message = "Authentication required") {
+  constructor(message = "请先登录后再继续操作") {
     super(message);
     this.name = "AuthError";
   }
@@ -270,7 +270,7 @@ export async function readJson<TSchema extends z.ZodTypeAny>(
       {
         code: z.ZodIssueCode.custom,
         path: [],
-        message: "Request body must be valid JSON",
+        message: "请求体必须是有效 JSON",
       },
     ]);
   }
@@ -282,7 +282,7 @@ export function zodErrorResponse(error: z.ZodError): NextResponse<{ ok: false; e
   return jsonError(
     {
       code: "VALIDATION_ERROR",
-      message: "Invalid request input",
+      message: "请求参数无效",
       details: error.flatten(),
     },
     400,

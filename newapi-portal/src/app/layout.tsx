@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Toaster } from "sonner";
 
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
+    <html lang="zh-CN" data-theme="light" style={{ colorScheme: "light" }}>
       <body className="font-sans">
         {children}
         <Toaster position="top-center" richColors closeButton />

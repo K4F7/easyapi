@@ -44,7 +44,7 @@ export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
         }
         const payload = (await response.json()) as {
           ok?: boolean;
-          data?: { configured?: boolean };
+          data?: { configured?: boolean; theme?: string };
         };
         return payload.ok === true && payload.data?.configured === true;
       })
@@ -90,6 +90,7 @@ export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
         );
         baseUrl.searchParams.set("tokenId", String(selectedTokenId));
         baseUrl.searchParams.set("portalTokenId", String(selectedTokenId));
+        baseUrl.searchParams.set("theme", "light");
         if (model) {
           baseUrl.searchParams.set("model", model);
         }

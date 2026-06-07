@@ -103,7 +103,7 @@ export interface NewApiCreateTokenInput {
   cross_group_retry?: boolean;
 }
 
-export interface NewApiUpdateTokenInput extends NewApiCreateTokenInput {
+export interface NewApiUpdateTokenInput extends Partial<NewApiCreateTokenInput> {
   id: number;
   status?: number;
 }

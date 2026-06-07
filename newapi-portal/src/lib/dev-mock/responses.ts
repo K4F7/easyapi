@@ -14,8 +14,15 @@ import {
   listMockTokens,
   checkInMockUser,
   redeemMockCode,
+  updateMockToken,
 } from "@/lib/dev-mock/store";
 import { mockLogs, mockModels, mockQuotaConfig, mockUsageResponse } from "@/lib/dev-mock/fixtures";
+import {
+  channelTiers,
+  defaultChannelGroup,
+  isChannelGroup,
+  type ChannelGroup,
+} from "@/lib/channels/tiers";
 import { cnyToQuota } from "@/lib/quota/display-config.shared";
 import { maskToken } from "@/lib/quota/usage";
 
@@ -161,6 +168,12 @@ export function mockTokensListResponse(request: Request) {
 export async function mockTokenCreateResponse(request: Request) {
   const body = await request.json().catch(() => ({}));
   const name = typeof body.name === "string" && body.name.trim() ? body.name.trim() : "Dev Mock Token";
+  const groupResult = parseMockChannelGroup(body);
+
+  if (!groupResult.ok) {
+    return groupResult.response;
+  }
+
   const token = createMockToken({
     name,
     expired_time: numberOrUndefined(body.expired_time),
@@ -169,7 +182,7 @@ export async function mockTokenCreateResponse(request: Request) {
     model_limits_enabled: body.model_limits_enabled === true,
     model_limits: typeof body.model_limits === "string" ? body.model_limits : undefined,
     allow_ips: typeof body.allow_ips === "string" || body.allow_ips === null ? body.allow_ips : undefined,
-    group: typeof body.group === "string" ? body.group : undefined,
+    group: groupResult.group,
     cross_group_retry: body.cross_group_retry === true,
   });
   return jsonOk(
@@ -182,9 +195,69 @@ export async function mockTokenCreateResponse(request: Request) {
   );
 }
 
+export async function mockTokenUpdateResponse(request: Request, id: string) {
+  const body = await request.json().catch(() => ({}));
+  const groupResult = parseMockOptionalChannelGroup(body);
+
+  if (!groupResult.ok) {
+    return groupResult.response;
+  }
+
+  const update = {
+    name: typeof body.name === "string" && body.name.trim() ? body.name.trim() : undefined,
+    expired_time: numberOrUndefined(body.expired_time),
+    remain_quota: numberOrUndefined(body.remain_quota),
+    unlimited_quota: typeof body.unlimited_quota === "boolean" ? body.unlimited_quota : undefined,
+    model_limits_enabled:
+      typeof body.model_limits_enabled === "boolean" ? body.model_limits_enabled : undefined,
+    model_limits: typeof body.model_limits === "string" ? body.model_limits : undefined,
+    allow_ips: typeof body.allow_ips === "string" || body.allow_ips === null ? body.allow_ips : undefined,
+    group: groupResult.group,
+    cross_group_retry:
+      typeof body.cross_group_retry === "boolean" ? body.cross_group_retry : undefined,
+    status: numberOrUndefined(body.status),
+  };
+
+  if (!hasDefinedValue(update)) {
+    return jsonError(
+      {
+        code: "VALIDATION_ERROR",
+        message: "请求参数无效",
+        details: {
+          fieldErrors: {
+            _errors: ["至少提供一个要更新的字段"],
+          },
+        },
+      },
+      400,
+    );
+  }
+
+  const token = updateMockToken(id, update);
+
+  if (!token) {
+    return jsonError(
+      {
+        code: "TOKEN_NOT_FOUND",
+        message: "令牌不存在或已被删除",
+      },
+      404,
+    );
+  }
+
+  return jsonOk({ token: maskToken(token) });
+}
+
 export function mockTokenDeleteResponse(id: string) {
   deleteMockToken(id);
   return jsonOk({ deleted: true });
+}
+
+export function mockChannelTiersResponse() {
+  return jsonOk({
+    tiers: channelTiers,
+    defaultGroup: defaultChannelGroup,
+  });
 }
 
 export function mockUsageRouteResponse() {
@@ -290,7 +363,7 @@ export function mockPlaygroundImageSessionResponse() {
 }
 
 export function mockImageEmbedConfigResponse() {
-  return jsonOk({ configured: true });
+  return jsonOk({ configured: true, theme: "light" });
 }
 
 export function mockImagePlaygroundEmbedResponse(request: Request) {
@@ -310,8 +383,11 @@ export function mockImagePlaygroundEmbedResponse(request: Request) {
       "<head>",
       '<meta charset="utf-8" />',
       '<meta name="viewport" content="width=device-width, initial-scale=1" />',
+      '<meta name="color-scheme" content="light">',
+      '<meta name="theme-color" content="#f9fafb">',
       "<title>Dev Mock Image Playground</title>",
-      "<style>html,body{margin:0;height:100%;font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0}main{min-height:100%;display:grid;place-items:center;padding:24px;text-align:center}button{border:0;border-radius:6px;padding:10px 14px;background:#38bdf8;color:#082f49;font-weight:600}</style>",
+      '<script id="ezapi-embed-light-theme-state">(function(){try{var d=document.documentElement;d.dataset.theme="light";d.classList.remove("dark");d.classList.add("light");localStorage.setItem("theme","light");localStorage.setItem("color-theme","light");localStorage.setItem("vite-ui-theme","light");sessionStorage.setItem("theme","light");}catch(e){}})();</script>',
+      '<style id="ezapi-embed-light-theme">:root{color-scheme:light}html,body{margin:0;height:100%;font-family:system-ui,sans-serif;background:#f9fafb;color:#111827}main{min-height:100%;display:grid;place-items:center;padding:24px;text-align:center}button{border:0;border-radius:6px;padding:10px 14px;background:#2563eb;color:#ffffff;font-weight:600}</style>',
       "</head>",
       "<body>",
       "<main>",
@@ -391,6 +467,55 @@ function resolveMockRemainQuota(body: Record<string, unknown>): number | undefin
   return remainQuotaCny !== undefined
     ? cnyToQuota(remainQuotaCny, mockQuotaConfig)
     : undefined;
+}
+
+function hasDefinedValue(input: Record<string, unknown>): boolean {
+  return Object.values(input).some((value) => value !== undefined);
+}
+
+function parseMockChannelGroup(
+  body: Record<string, unknown>,
+):
+  | { ok: true; group: ChannelGroup }
+  | { ok: false; response: ReturnType<typeof invalidChannelGroupResponse> } {
+  const result = parseMockOptionalChannelGroup(body);
+
+  if (!result.ok) {
+    return result;
+  }
+
+  return { ok: true, group: result.group ?? defaultChannelGroup };
+}
+
+function parseMockOptionalChannelGroup(
+  body: Record<string, unknown>,
+):
+  | { ok: true; group?: ChannelGroup }
+  | { ok: false; response: ReturnType<typeof invalidChannelGroupResponse> } {
+  if (!Object.hasOwn(body, "group") || body.group === undefined) {
+    return { ok: true };
+  }
+
+  if (typeof body.group === "string" && isChannelGroup(body.group)) {
+    return { ok: true, group: body.group };
+  }
+
+  return { ok: false, response: invalidChannelGroupResponse() };
+}
+
+function invalidChannelGroupResponse() {
+  return jsonError(
+    {
+      code: "VALIDATION_ERROR",
+      message: "请求参数无效",
+      details: {
+        fieldErrors: {
+          group: ["请选择有效的渠道档位"],
+        },
+      },
+    },
+    400,
+  );
 }
 
 function parseAmountCents(body: Record<string, unknown>): number {

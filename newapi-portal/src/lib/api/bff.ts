@@ -68,7 +68,7 @@ export async function getUserNewApiAuth(
       ok: false,
       user,
       code: "NEWAPI_BINDING_PENDING",
-      message: "NewAPI account binding is still pending",
+      message: "NewAPI 账号绑定仍在处理中",
     };
   }
 
@@ -77,7 +77,7 @@ export async function getUserNewApiAuth(
       ok: false,
       user,
       code: "NEWAPI_ACCESS_TOKEN_MISSING",
-      message: "NewAPI access token is missing for this user",
+      message: "当前用户缺少 NewAPI 访问凭据",
     };
   }
 
@@ -128,14 +128,15 @@ export function handleApiError(error: unknown, fallbackMessage: string) {
   }
 
   if (error instanceof NewApiError) {
+    console.error(fallbackMessage, error);
+
     return jsonError(
       {
         code: "NEWAPI_ERROR",
-        message: "Upstream NewAPI request failed",
+        message: "上游 NewAPI 请求失败",
         details: {
           status: error.status,
           code: error.code,
-          message: error.message,
         },
       },
       502,
@@ -149,7 +150,7 @@ export function handleApiError(error: unknown, fallbackMessage: string) {
     return jsonError(
       {
         code: "CONFLICT",
-        message: "A conflicting record already exists",
+        message: "记录已存在，请检查后重试",
       },
       409,
     );

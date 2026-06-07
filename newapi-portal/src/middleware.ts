@@ -27,6 +27,8 @@ const PUBLIC_PATHS = [
 ];
 
 const EMBED_DOCUMENT_PATH = /^\/playground\/embed\/?$/;
+const EMBED_STATIC_RESOURCE_PATH =
+  /^\/playground\/embed\/assets\/.+\.(?:css|js|mjs|map|avif|gif|ico|jpe?g|png|svg|webp|woff2?)$/i;
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
@@ -40,6 +42,13 @@ function isAuthPage(pathname: string): boolean {
 
 function isPlaygroundEmbedDocument(pathname: string): boolean {
   return EMBED_DOCUMENT_PATH.test(pathname);
+}
+
+function canUseSignedEmbedReferer(request: NextRequest): boolean {
+  return (
+    (request.method === "GET" || request.method === "HEAD") &&
+    EMBED_STATIC_RESOURCE_PATH.test(request.nextUrl.pathname)
+  );
 }
 
 function markdownHomeResponse(): NextResponse {
@@ -92,16 +101,26 @@ function shouldBlockTopLevelEmbedNavigation(request: NextRequest): boolean {
   }
 }
 
+function hasSignedEmbedReferer(request: NextRequest): boolean {
+  const referer = request.headers.get("referer");
+  if (!referer) {
+    return false;
+  }
+
+  try {
+    const refererUrl = new URL(referer);
+    return (
+      refererUrl.origin === request.nextUrl.origin &&
+      isPlaygroundEmbedDocument(refererUrl.pathname) &&
+      Boolean(extractImagePlaygroundSessionToken(refererUrl.searchParams))
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  if (PUBLIC_STATIC.test(pathname)) {
-    return NextResponse.next();
-  }
-
-  if (pathname === "/" && wantsMarkdown(request)) {
-    return markdownHomeResponse();
-  }
 
   const hasSession = request.cookies.has(SESSION_COOKIE);
 
@@ -109,8 +128,10 @@ export function middleware(request: NextRequest) {
     const hasEmbedToken = Boolean(
       extractImagePlaygroundSessionToken(request.nextUrl.searchParams),
     );
+    const hasEmbedReferer =
+      canUseSignedEmbedReferer(request) && hasSignedEmbedReferer(request);
 
-    if (!hasSession && !hasEmbedToken) {
+    if (!hasSession && !hasEmbedToken && !hasEmbedReferer) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       return NextResponse.redirect(url);
@@ -124,6 +145,14 @@ export function middleware(request: NextRequest) {
     }
 
     return NextResponse.next();
+  }
+
+  if (PUBLIC_STATIC.test(pathname)) {
+    return NextResponse.next();
+  }
+
+  if (pathname === "/" && wantsMarkdown(request)) {
+    return markdownHomeResponse();
   }
 
   // Allow public paths, APIs, and static assets through. API routes enforce
@@ -150,6 +179,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/playground/embed/:path*",
     /*
      * Match all request paths except:
      * - _next/static (static files)

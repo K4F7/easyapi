@@ -4,6 +4,7 @@ import { Bell } from "lucide-react";
 
 import { DashboardNav } from "@/components/dashboard-nav";
 import { DuckLogo } from "@/components/duck-logo";
+import { OnboardingTour } from "@/components/onboarding-tour";
 import { UserMenu } from "@/components/user-menu";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
@@ -72,6 +73,7 @@ export default async function DashboardLayout({
           <main className="px-4 py-6 md:px-6">{children}</main>
         </div>
       </div>
+      <OnboardingTour />
       <Toaster position="top-center" richColors closeButton />
     </>
   );

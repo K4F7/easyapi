@@ -3,7 +3,13 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    color-scheme: light;
+    background: hsl(var(--background));
+  }
+
   :root {
+    color-scheme: light;
     --background: 210 20% 98%; /* #F8F9FA */
     --foreground: 221.5385 39.3939% 11.5686%; /* #111827 */
     --card: 0 0% 100%;
@@ -81,6 +87,16 @@
     animation: home-float 4s ease-in-out infinite;
   }
 
+  .onboarding-highlight {
+    position: relative;
+    z-index: 30;
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 4px;
+    box-shadow:
+      0 0 0 8px hsl(var(--primary) / 0.16),
+      0 18px 40px hsl(var(--foreground) / 0.14);
+  }
+
   @keyframes page-enter {
     from {
       opacity: 0;
@@ -123,5 +139,9 @@
     animation: none;
     filter: none;
     transform: none;
+  }
+
+  .onboarding-highlight {
+    scroll-behavior: auto;
   }
 }
