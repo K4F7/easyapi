@@ -4,6 +4,7 @@ import {
   E2E_IDENTIFIER,
   E2E_PASSWORD,
   ensureDashboardSession,
+  shouldSkipUnauthenticatedCiProject,
 } from "./helpers";
 
 async function mockDashboardSummary(page: Page) {
@@ -66,30 +67,38 @@ async function mockDashboardSummary(page: Page) {
   });
 }
 
-async function loginWithFreshOnboarding(page: Page) {
+async function loginWithFreshOnboarding(
+  page: Page,
+  projectName: string,
+) {
+  test.skip(
+    shouldSkipUnauthenticatedCiProject(projectName),
+    "Authenticated specs run in authenticated-chromium on CI.",
+  );
   test.skip(
     !E2E_IDENTIFIER || !E2E_PASSWORD,
     "Set E2E_PORTAL_IDENTIFIER and E2E_PORTAL_PASSWORD to run onboarding E2E.",
   );
 
-  await page.addInitScript(() => {
-    window.localStorage.removeItem("ezapi:onboarding:v1");
-  });
   await mockDashboardSummary(page);
-  await ensureDashboardSession(page);
+  await ensureDashboardSession(page, { onboarding: "fresh" });
 }
 
 test.describe("onboarding tour", () => {
-  test("first dashboard visit shows the onboarding tour", async ({ page }) => {
-    await loginWithFreshOnboarding(page);
+  test("first dashboard visit shows the onboarding tour", async ({
+    page,
+  }, testInfo) => {
+    await loginWithFreshOnboarding(page, testInfo.project.name);
 
     await expect(page.getByTestId("onboarding-dialog")).toBeVisible();
     await expect(page.getByText("新手引导 1 / 3")).toBeVisible();
     await expect(page.getByRole("heading", { name: "复制接入信息" })).toBeVisible();
   });
 
-  test("can skip onboarding and keep it dismissed", async ({ page }) => {
-    await loginWithFreshOnboarding(page);
+  test("can skip onboarding and keep it dismissed", async ({
+    page,
+  }, testInfo) => {
+    await loginWithFreshOnboarding(page, testInfo.project.name);
 
     await page.getByRole("button", { name: "跳过引导" }).click();
     await expect(page.getByTestId("onboarding-dialog")).toHaveCount(0);
@@ -99,8 +108,10 @@ test.describe("onboarding tour", () => {
     await expect(page.getByTestId("onboarding-dialog")).toHaveCount(0);
   });
 
-  test("can restore the onboarding tour after skipping", async ({ page }) => {
-    await loginWithFreshOnboarding(page);
+  test("can restore the onboarding tour after skipping", async ({
+    page,
+  }, testInfo) => {
+    await loginWithFreshOnboarding(page, testInfo.project.name);
 
     await page.getByRole("button", { name: "跳过引导" }).click();
     await page.getByTestId("onboarding-restart").click();
@@ -111,8 +122,8 @@ test.describe("onboarding tour", () => {
 
   test("steps cover access info, token creation, and playground", async ({
     page,
-  }) => {
-    await loginWithFreshOnboarding(page);
+  }, testInfo) => {
+    await loginWithFreshOnboarding(page, testInfo.project.name);
 
     await expect(
       page.locator('[data-onboarding-target="access-info"]'),

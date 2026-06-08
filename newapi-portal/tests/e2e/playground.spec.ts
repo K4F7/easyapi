@@ -7,6 +7,7 @@ import {
   E2E_PASSWORD,
   ensureDashboardSession,
   mockChatSseBody,
+  shouldSkipUnauthenticatedCiProject,
 } from "./helpers";
 
 const identifier = E2E_IDENTIFIER;
@@ -160,7 +161,11 @@ test.describe.configure({ mode: "serial" });
 test.describe("Playground", () => {
   test.setTimeout(90_000);
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(
+      shouldSkipUnauthenticatedCiProject(testInfo.project.name),
+      "Authenticated specs run in authenticated-chromium on CI.",
+    );
     test.skip(
       !identifier || !password,
       "Set E2E_PORTAL_IDENTIFIER and E2E_PORTAL_PASSWORD.",
@@ -168,17 +173,30 @@ test.describe("Playground", () => {
     await ensureDashboardSession(page);
   });
 
-  test("sidebar shows 操练场 between 用量 and 个人", async ({ page }) => {
+  test("sidebar shows 操练场 between 用量 and 设置", async ({ page }) => {
     const labels = await page
       .getByRole("navigation")
       .getByRole("link")
       .allTextContents();
     const usageIdx = labels.findIndex((t) => t.includes("用量"));
     const playgroundIdx = labels.findIndex((t) => t.includes("操练场"));
-    const profileIdx = labels.findIndex((t) => t.includes("个人"));
+    const settingsIdx = labels.findIndex((t) => t.includes("设置"));
     expect(usageIdx).toBeGreaterThanOrEqual(0);
     expect(playgroundIdx).toBeGreaterThan(usageIdx);
-    expect(profileIdx).toBeGreaterThan(playgroundIdx);
+    expect(settingsIdx).toBeGreaterThan(playgroundIdx);
+
+    const hrefs = await page
+      .getByRole("navigation")
+      .getByRole("link")
+      .evaluateAll((links) =>
+        links.map((link) => link.getAttribute("href") ?? ""),
+      );
+    const usageHrefIdx = hrefs.indexOf("/dashboard/usage");
+    const playgroundHrefIdx = hrefs.indexOf("/dashboard/playground");
+    const settingsHrefIdx = hrefs.indexOf("/dashboard/profile");
+    expect(usageHrefIdx).toBeGreaterThanOrEqual(0);
+    expect(playgroundHrefIdx).toBeGreaterThan(usageHrefIdx);
+    expect(settingsHrefIdx).toBeGreaterThan(playgroundHrefIdx);
   });
 
   test("defaults to chat tab; tab switches update URL without full reload", async ({
