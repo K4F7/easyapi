@@ -15,6 +15,7 @@ const authenticatedSpecs = [
   /.*\/theme-light\.spec\.ts/,
   /.*\/onboarding\.spec\.ts/,
 ];
+const checkinDiagnosticsSpec = /.*\/checkin-diagnostics\.spec\.ts/;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -42,7 +43,12 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: /.*\/auth\.setup\.ts/,
+      testIgnore: [/.*\/auth\.setup\.ts/, checkinDiagnosticsSpec],
+    },
+    {
+      name: "checkin-diagnostics",
+      testMatch: checkinDiagnosticsSpec,
+      use: { ...devices["Desktop Chrome"], video: "off" },
     },
     {
       name: "authenticated-chromium",
