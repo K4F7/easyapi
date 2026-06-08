@@ -10,7 +10,7 @@
     "test:watch": "vitest tests/unit",
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test tests/e2e/auth.setup.ts tests/e2e/portal-smoke.spec.ts tests/e2e/playground.spec.ts tests/e2e/register-billing.spec.ts tests/e2e/tokens-channel.spec.ts tests/e2e/theme-light.spec.ts tests/e2e/chat-polish.spec.ts tests/e2e/onboarding.spec.ts tests/e2e/image-playground-embed-light.spec.ts",
-    "test:e2e:checkin": "playwright test tests/e2e/checkin-diagnostics.spec.ts --trace=off --video=off",
+    "test:e2e:checkin": "playwright test tests/e2e/checkin-diagnostics.spec.ts --trace=off",
     "test:e2e:playground": "playwright test tests/e2e/playground.spec.ts",
     "test:e2e:register-billing": "playwright test tests/e2e/register-billing.spec.ts",
     "test:e2e:ui": "playwright test --ui",
