@@ -162,15 +162,28 @@ jobs:
           E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
           NEWAPI_BASE_URL: ${{ secrets.STAGING_NEWAPI_BASE_URL }}
           NEWAPI_ADMIN_TOKEN: ${{ secrets.STAGING_NEWAPI_ADMIN_TOKEN }}
-        run: node scripts/seed-staging-via-api.mjs
+        run: |
+          for variable in E2E_PORTAL_IDENTIFIER E2E_PORTAL_PASSWORD; do
+            if [ -z "${!variable}" ]; then
+              echo "Missing required environment variable: ${variable}"
+              exit 1
+            fi
+          done
+          node scripts/seed-staging-via-api.mjs
 
       - name: Verify screenshot login
         env:
           E2E_PORTAL_IDENTIFIER: ${{ secrets.E2E_PORTAL_IDENTIFIER }}
           E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
         run: |
-          identifier="${E2E_PORTAL_IDENTIFIER:-scr@qq.com}"
-          password="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
+          for variable in E2E_PORTAL_IDENTIFIER E2E_PORTAL_PASSWORD; do
+            if [ -z "${!variable}" ]; then
+              echo "Missing required environment variable: ${variable}"
+              exit 1
+            fi
+          done
+          identifier="${E2E_PORTAL_IDENTIFIER}"
+          password="${E2E_PORTAL_PASSWORD}"
           for attempt in $(seq 1 12); do
             response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
               -H "Content-Type: application/json" \
@@ -234,8 +247,14 @@ jobs:
           E2E_PORTAL_IDENTIFIER: ${{ secrets.E2E_PORTAL_IDENTIFIER }}
           E2E_PORTAL_PASSWORD: ${{ secrets.E2E_PORTAL_PASSWORD }}
         run: |
-          identifier="${E2E_PORTAL_IDENTIFIER:-scr@qq.com}"
-          password="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
+          for variable in E2E_PORTAL_IDENTIFIER E2E_PORTAL_PASSWORD; do
+            if [ -z "${!variable}" ]; then
+              echo "Missing required environment variable: ${variable}"
+              exit 1
+            fi
+          done
+          identifier="${E2E_PORTAL_IDENTIFIER}"
+          password="${E2E_PORTAL_PASSWORD}"
           for attempt in $(seq 1 12); do
             response=$(curl -fsS -X POST "https://test.easyapi.work/api/auth/login" \
               -H "Content-Type: application/json" \
@@ -262,8 +281,12 @@ jobs:
           IMAGE_PLAYGROUND_INTERNAL_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL }}
           STAGING_IMAGE_PLAYGROUND_INTERNAL_URL: ${{ vars.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL }}
         run: |
-          export E2E_PORTAL_IDENTIFIER="${E2E_PORTAL_IDENTIFIER:-scr@qq.com}"
-          export E2E_PORTAL_PASSWORD="${E2E_PORTAL_PASSWORD:-ScreenshotTest123!}"
+          for variable in E2E_PORTAL_IDENTIFIER E2E_PORTAL_PASSWORD; do
+            if [ -z "${!variable}" ]; then
+              echo "Missing required environment variable: ${variable}"
+              exit 1
+            fi
+          done
           pnpm run test:e2e:ci
 
       - name: Upload Playwright report on failure
