@@ -1,6 +1,20 @@
 import { defineConfig, devices } from "@playwright/test";
+import { join } from "node:path";
 
 const baseURL = process.env.E2E_BASE_URL ?? "https://test.easyapi.work";
+const authStorageState = join(
+  process.cwd(),
+  "test-results",
+  "auth",
+  "portal-user.json",
+);
+const authenticatedSpecs = [
+  /.*\/tokens-channel\.spec\.ts/,
+  /.*\/playground\.spec\.ts/,
+  /.*\/chat-polish\.spec\.ts/,
+  /.*\/theme-light\.spec\.ts/,
+  /.*\/onboarding\.spec\.ts/,
+];
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -21,8 +35,23 @@ export default defineConfig({
   },
   projects: [
     {
+      name: "auth setup",
+      testMatch: /.*\/auth\.setup\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      testIgnore: /.*\/auth\.setup\.ts/,
+    },
+    {
+      name: "authenticated-chromium",
+      dependencies: ["auth setup"],
+      testMatch: authenticatedSpecs,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: authStorageState,
+      },
     },
   ],
 });

@@ -4,6 +4,8 @@ import {
   E2E_IDENTIFIER,
   E2E_PASSWORD,
   ensureDashboardSession,
+  shouldSkipAuthenticatedProject,
+  shouldSkipUnauthenticatedCiProject,
 } from "./helpers";
 
 const LIGHT_BACKGROUND_MIN_LUMINANCE = 0.85;
@@ -90,7 +92,12 @@ test.describe("Portal light theme", () => {
 
   test("keeps html and public portal pages light under dark OS", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.skip(
+      shouldSkipAuthenticatedProject(testInfo.project.name),
+      "Public theme coverage runs in chromium.",
+    );
+
     await page.goto("/");
 
     const themeState = await page.evaluate(() => {
@@ -115,7 +122,11 @@ test.describe("Portal light theme", () => {
 
   test("keeps dashboard pages and toast light under dark OS", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    test.skip(
+      shouldSkipUnauthenticatedCiProject(testInfo.project.name),
+      "Authenticated specs run in authenticated-chromium on CI.",
+    );
     test.skip(
       !E2E_IDENTIFIER || !E2E_PASSWORD,
       "Set E2E_PORTAL_IDENTIFIER and E2E_PORTAL_PASSWORD.",

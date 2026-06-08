@@ -1,6 +1,9 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
-import { ensureDashboardSession } from "./helpers";
+import {
+  ensureDashboardSession,
+  shouldSkipUnauthenticatedCiProject,
+} from "./helpers";
 
 const identifier = process.env.E2E_PORTAL_IDENTIFIER;
 const password = process.env.E2E_PORTAL_PASSWORD;
@@ -77,7 +80,11 @@ const envMappedTiers: MockTier[] = [
 ];
 
 test.describe("Token channel tier UI", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(
+      shouldSkipUnauthenticatedCiProject(testInfo.project.name),
+      "Authenticated specs run in authenticated-chromium on CI.",
+    );
     test.skip(
       !devMockEnabled && (!identifier || !password),
       "Set PORTAL_DEV_MOCK=1 or E2E_PORTAL_IDENTIFIER/E2E_PORTAL_PASSWORD to run token channel UI tests.",

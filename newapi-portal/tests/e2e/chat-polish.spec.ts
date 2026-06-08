@@ -5,6 +5,7 @@ import {
   E2E_PASSWORD,
   ensureDashboardSession,
   mockChatSseBody,
+  shouldSkipUnauthenticatedCiProject,
 } from "./helpers";
 
 const PLAYGROUND_CHAT_TOKEN_ID = 101;
@@ -64,7 +65,11 @@ async function openPlaygroundChat(page: Page) {
 test.describe("Chat polish", () => {
   test.setTimeout(90_000);
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(
+      shouldSkipUnauthenticatedCiProject(testInfo.project.name),
+      "Authenticated specs run in authenticated-chromium on CI.",
+    );
     test.skip(
       !E2E_IDENTIFIER || !E2E_PASSWORD,
       "Set E2E_PORTAL_IDENTIFIER and E2E_PORTAL_PASSWORD.",

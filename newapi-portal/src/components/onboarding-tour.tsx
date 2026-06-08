@@ -128,25 +128,76 @@ export function OnboardingTour() {
       return;
     }
 
-    const element = document.querySelector<HTMLElement>(
-      `[data-onboarding-target="${highlightedTarget}"]`,
-    );
-    if (!element) {
-      return;
+    const selector = `[data-onboarding-target="${highlightedTarget}"]`;
+    let highlightedElement: HTMLElement | null = null;
+    let observer: MutationObserver | null = null;
+    let pollTimeout: number | null = null;
+
+    const clearHighlight = () => {
+      highlightedElement?.classList.remove("onboarding-highlight");
+      highlightedElement = null;
+    };
+
+    const highlightTarget = () => {
+      const element = document.querySelector<HTMLElement>(selector);
+
+      if (!element) {
+        return false;
+      }
+
+      if (highlightedElement === element) {
+        return true;
+      }
+
+      clearHighlight();
+      highlightedElement = element;
+
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+      element.classList.add("onboarding-highlight");
+      element.scrollIntoView({
+        block: "center",
+        behavior: reduceMotion ? "auto" : "smooth",
+      });
+
+      return true;
+    };
+
+    const schedulePoll = () => {
+      if (pollTimeout !== null) {
+        return;
+      }
+
+      pollTimeout = window.setTimeout(() => {
+        pollTimeout = null;
+        if (!highlightTarget()) {
+          schedulePoll();
+        }
+      }, 100);
+    };
+
+    if (!highlightTarget()) {
+      observer = new MutationObserver(() => {
+        if (highlightTarget()) {
+          observer?.disconnect();
+          observer = null;
+        }
+      });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+      schedulePoll();
     }
 
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    element.classList.add("onboarding-highlight");
-    element.scrollIntoView({
-      block: "center",
-      behavior: reduceMotion ? "auto" : "smooth",
-    });
-
     return () => {
-      element.classList.remove("onboarding-highlight");
+      if (pollTimeout !== null) {
+        window.clearTimeout(pollTimeout);
+      }
+      observer?.disconnect();
+      clearHighlight();
     };
   }, [highlightedTarget]);
 

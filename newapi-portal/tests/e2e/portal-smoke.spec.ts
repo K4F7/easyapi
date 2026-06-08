@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import {
   attachPageDiagnostics,
   assertNoClientErrors,
-  ensureDashboardSession,
+  loginThroughPortalForm,
 } from "./helpers";
 import { AUTH_ROUTES, routeLocator } from "./routes";
 
@@ -178,7 +178,7 @@ test.describe("NewAPI Portal smoke", () => {
       browserErrors,
     );
 
-    await ensureDashboardSession(page);
+    await loginThroughPortalForm(page);
     await expect(page.getByText("客户控制台")).toBeVisible();
     await expect(page.getByRole("heading", { name: "概览" })).toBeVisible();
     await expect(page.getByText("概览加载失败")).toHaveCount(0);
