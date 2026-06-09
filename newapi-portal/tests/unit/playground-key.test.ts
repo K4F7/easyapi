@@ -50,6 +50,19 @@ describe("resolvePlaygroundKey", () => {
     expect(mockRevealTokenKey).toHaveBeenCalledWith(auth, 101);
   });
 
+  it("reveals the key when getToken returns an asterisk-masked key", async () => {
+    mockGetToken.mockResolvedValue({
+      id: 101,
+      name: "Playground Chat",
+      status: 1,
+      key: "NmXg**********W14g",
+    });
+    mockRevealTokenKey.mockResolvedValue("sk-revealed-key");
+
+    await expect(resolvePlaygroundKey(auth, 101)).resolves.toBe("sk-revealed-key");
+    expect(mockRevealTokenKey).toHaveBeenCalledWith(auth, 101);
+  });
+
   it("reveals the key when getToken returns a masked key", async () => {
     mockGetToken.mockResolvedValue({
       id: 101,

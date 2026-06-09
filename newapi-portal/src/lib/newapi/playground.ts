@@ -3,8 +3,12 @@ import "server-only";
 import { getToken, revealTokenKey } from "@/lib/newapi/tokens";
 import type { NewApiAuth } from "@/lib/newapi/types";
 
+function isMaskedTokenKey(key: string): boolean {
+  return key.includes("...") || key.includes("*");
+}
+
 function isInlinePlaygroundKey(key: string): boolean {
-  return key.length > 0 && !key.includes("...");
+  return key.length > 0 && !isMaskedTokenKey(key);
 }
 
 export class PlaygroundError extends Error {
