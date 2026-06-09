@@ -371,11 +371,7 @@ export default function TokensPage() {
           </Button>
         </div>
       ) : (
-        <div className="group relative overflow-hidden bg-white/80 dark:bg-card/80 backdrop-blur-xl border border-gray-100 dark:border-border/50 shadow-sm dark:shadow-2xl rounded-[2rem] transition-all duration-500 hover:shadow-md page-transition home-enter-2">
-          <div
-            className="absolute inset-0 bg-gradient-to-br from-yellow-50/50 to-transparent dark:from-yellow-900/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-            aria-hidden="true"
-          />
+        <div className="relative overflow-hidden bg-white/80 dark:bg-card/80 backdrop-blur-xl border border-gray-100 dark:border-border/50 shadow-sm dark:shadow-2xl rounded-[2rem] page-transition home-enter-2">
           <div className="relative">
             <div className="flex flex-col gap-4 border-b border-gray-100 dark:border-border/50 bg-transparent p-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
@@ -527,7 +523,7 @@ function TokenRow({
   const playgroundToken = isPlaygroundToken(token);
 
   return (
-    <TableRow className="group transition-colors hover:bg-gray-50/50 dark:hover:bg-muted/20 data-[state=selected]:bg-muted border-b border-gray-100 dark:border-border/20 last:border-0">
+    <TableRow className="group/row transition-colors hover:bg-gray-50/50 dark:hover:bg-muted/20 data-[state=selected]:bg-muted border-b border-gray-100 dark:border-border/20 last:border-0">
       <TableCell className="py-5 pl-6">
         <div className="flex min-w-0 flex-col gap-1.5">
           <span
@@ -546,7 +542,7 @@ function TokenRow({
                 variant="ghost"
                 size="icon"
                 aria-label="复制密钥"
-                className="h-5 w-5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                className="h-5 w-5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/row:opacity-100"
               />
             )}
           </div>
@@ -637,7 +633,7 @@ function TokenRow({
         ) : (
           <Button
             aria-label={`删除令牌 ${token.name}`}
-            className="text-muted-foreground opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 dark:hover:bg-error-soft dark:hover:text-error group-hover:opacity-100 rounded-xl"
+            className="text-muted-foreground opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 dark:hover:bg-error-soft dark:hover:text-error group-hover/row:opacity-100 rounded-xl"
             disabled={deleting}
             size="icon"
             variant="ghost"
