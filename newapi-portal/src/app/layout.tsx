@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EZAPI — 人人都会用的 API 控制台",
+  title: "EasyAPI — 人人都会用的 API 控制台",
   description: "小白也能用的 API 管理控制台",
   icons: {
     icon: [{ url: "/duck-64.webp", type: "image/webp", sizes: "64x64" }],

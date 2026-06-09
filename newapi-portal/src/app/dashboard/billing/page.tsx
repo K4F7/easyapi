@@ -189,7 +189,7 @@ export default function BillingPage() {
           amount: String(amountValue),
           payType,
           productCode: "quota",
-          name: "EZAPI 余额充值",
+          name: "EasyAPI 余额充值",
           idempotencyKey: crypto.randomUUID(),
         },
       );

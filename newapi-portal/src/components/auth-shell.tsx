@@ -30,14 +30,14 @@ export function AuthShell({
         <div className="mb-7 flex flex-col items-center justify-center gap-4 text-center">
           <Link
             href="/"
-            aria-label="返回 EZAPI 首页"
+            aria-label="返回 EasyAPI 首页"
             className="group flex items-center gap-3 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border bg-card/80 p-1.5 shadow-sm shadow-primary/10 backdrop-blur-md transition-transform duration-200 group-hover:scale-[1.03]">
               <BrandMark compact priority className="h-full w-full" />
             </span>
             <span className="text-xl font-bold tracking-normal text-foreground">
-              EZAPI
+              EasyAPI
             </span>
           </Link>
           <div className="max-w-[20rem] space-y-2">

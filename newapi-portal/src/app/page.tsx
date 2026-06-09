@@ -44,7 +44,7 @@ export default function HomePage() {
             <div className="transition-transform duration-200 group-hover:rotate-[5deg] group-hover:scale-105">
               <DuckLogo size={36} priority />
             </div>
-            <span className="text-xl font-bold tracking-tight text-foreground">EZAPI</span>
+            <span className="text-xl font-bold tracking-tight text-foreground">EasyAPI</span>
           </Link>
           <div className="flex items-center gap-3">
             <Button asChild variant="ghost" className="hidden md:flex rounded-xl text-muted-foreground hover:bg-primary-soft hover:text-foreground">
