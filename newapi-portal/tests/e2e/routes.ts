@@ -59,6 +59,11 @@ export const AUTH_ROUTES: readonly PortalRoute[] = [
     marker: { role: "tab", name: "对话", selected: true },
   },
   {
+    slug: "dashboard-docs",
+    path: "/dashboard/docs",
+    marker: { heading: "接入文档" },
+  },
+  {
     slug: "dashboard-profile",
     path: "/dashboard/profile",
     marker: { heading: "个人资料" },

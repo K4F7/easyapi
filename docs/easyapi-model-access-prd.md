@@ -1,8 +1,8 @@
 # Product Requirements Document: EasyAPI 模型便捷接入与渠道体系
 
-**Version**: 2.0  
+**Version**: 2.1  
 **Date**: 2026-06-09  
-**Status**: MVP 已交付；本文档仅跟踪**未完成项**与 **Phase 2**
+**Status**: MVP 已交付；本文档跟踪**剩余 Phase 2** 与运维核对项
 
 **已交付记录** → [changelog-model-access-mvp.md](./changelog-model-access-mvp.md)
 
@@ -10,35 +10,37 @@
 
 ## 产品目标（不变）
 
-让开发者注册后即可获取 API Key、按三档渠道选择服务质量，并在 Playground 体验 Chat 与生图。门户专注用户侧；NewAPI 管理面不暴露。全站与生图嵌入区默认浅色（深色模式适配列为 Phase 2）。
+让开发者注册后即可获取 API Key、按渠道档位选择服务质量，并在 Playground 体验 Chat 与生图。门户专注用户侧；NewAPI 管理面不暴露。全站与生图嵌入区默认浅色。
 
 ---
 
-## 当前阻塞项
+## 已关闭项（原阻塞）
 
-| 项 | 负责 | 说明 |
-|----|------|------|
-| **`claude-latest` 别名可见性** | NewAPI 运营 | Fastboot 已发布别名；`/v1/models` 不暴露 `claude-latest`，无法从公开模型列表验收 |
-| **`auto` 跳组顺序文档** | NewAPI 运营 | 操练场 Chat Token 使用 `group=auto` + `cross_group_retry`；门户不硬编码顺序。需在运维文档中记录 NewAPI 后台推荐顺序（自下而上：如 `budget` → `normal` → `stable`），并完成一次后台确认 |
+| 项 | 结论 |
+|----|------|
+| **`claude-latest` 别名** | 已在 `/v1/models` 暴露；本地 Dev Mock 与操练场模型列表可验收（2026-06-09） |
+| **`auto` 跨组重试** | NewAPI 侧已处理跳组；操练场 Chat Token 使用 **`normal`（一般渠道）**，门户不传 `cross_group_retry`，用户仅需在 Chat 选模型 |
 
 ---
 
 ## 运维核对清单（发布前/后）
 
 1. NewAPI 分组存在且与门户一致：`auto`、`budget`、`free`、`normal`、`stable`。
-2. 环境变量（未设置则用代码默认）：`NEWAPI_CHANNEL_GROUP_AUTO=auto`，`LOW=budget`，`ACTIVITY=free`，`STANDARD=normal`，`PREMIUM=stable`；`PLAYGROUND_CHAT_GROUP=auto`。
+2. 环境变量（未设置则用代码默认）：`NEWAPI_CHANNEL_GROUP_AUTO=auto`，`LOW=budget`，`ACTIVITY=free`，`STANDARD=normal`，`PREMIUM=stable`；`PLAYGROUND_CHAT_GROUP=normal`。
 3. Staging 抽检：`GET /api/channels/tiers` → 5 档 group；各档创建 Token 后 `group` 与 NewAPI 一致。
-4. 模型别名：`gpt-latest` 已验证；`claude-latest` 待 `/v1/models` 暴露后复验。
+4. 模型别名：`gpt-latest`、`claude-latest` 均已验证。
 
 ---
 
-## Phase 2（未开始）
+## Phase 2（范围已收窄）
 
-- 接入文档页（静态站或门户 `/docs`）
-- 全站深色模式适配
-- Playground 增强：多会话历史、参数面板、渠道健康只读展示
-- 注册法律条款门（需法务文案）
-- 可选 E2E：`E2E-C02` 移动端 375px；`E2E-T06` 无 `group` 旧 Token 向后兼容专项
+| 项 | 决策 |
+|----|------|
+| **接入文档** | 计划独立静态文档站；门户侧边栏已加 **文档（WIP）** 占位入口 `/dashboard/docs` |
+| **深色模式** | **不做** |
+| **Playground 增强** | **不做**（多会话、参数面板、渠道健康等）；保持简单调用 |
+| **注册法律条款门** | **不做** |
+| **E2E** | **不做**移动端专项；保留/关注无 `group` 旧 Token 向后兼容（`tokens-channel.spec.ts` + 单测） |
 
 ---
 
@@ -72,8 +74,7 @@
 - [NewAPI Contract](./newapi-contract.md)
 - [Image Playground Security](./image-playground-security.md)
 - [Test Deploy Guide](./test-deploy-easyapi-portal.md)
-- NewAPI 故障转移：[PR #2426](https://github.com/QuantumNous/new-api/pull/2426)、[PR #4226](https://github.com/QuantumNous/new-api/pull/4226)
 
 ---
 
-*v2.0：MVP 交付内容迁入 changelog；PRD 仅保留阻塞项、运维清单与 Phase 2。历史 v1.x 见 git 历史。*
+*v2.1：关闭 claude-latest / auto 阻塞项；操练场 Chat 改为 normal 渠道；收窄 Phase 2 范围并记录文档 WIP 占位。*

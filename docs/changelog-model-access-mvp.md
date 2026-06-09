@@ -17,7 +17,7 @@
 
 ## Playground
 
-- **Chat 自动开通**：进入操练场自动 provision Token；`group=auto`，`cross_group_retry=true`。
+- **Chat 自动开通**：进入操练场自动 provision Token；`group=normal`（一般渠道）；不传 `cross_group_retry`（v2.1 起，见 PRD）。
 - **Chat 体验**：消息布局、模型选择器搜索/filter、建议语与模式 pill、流式输出与用量提示、停止/清空确认、上游错误脱敏。
 - **生图 iframe 浅色**（不改 `gpt_image_playground` 镜像）：同源代理 `/playground/embed/` 注入浅色 HTML/CSS；`embed-config` 返回 `theme: light`；深色 OS 下 E2E 验收通过。
 - **内部 URL**：`IMAGE_PLAYGROUND_INTERNAL_URL=http://image-playground-test`（Scheme 4 同源反代，非公网 `image.easyapi.work`）
@@ -37,6 +37,7 @@
 
 - **脚本发布**：`https://easyapi.work/sh/claudecode.sh`、`https://easyapi.work/sh/opencode-ui.sh`（fastboot PR #1，`f6c49efa`）。
 - **`gpt-latest`**：NewAPI 别名已验证（解析至 `gpt-5.5`）。
+- **`claude-latest`**：NewAPI 别名已验证（`/v1/models` 可见，2026-06-09）。
 
 ---
 

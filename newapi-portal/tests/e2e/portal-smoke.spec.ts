@@ -179,7 +179,10 @@ test.describe("NewAPI Portal smoke", () => {
     );
 
     await loginThroughPortalForm(page);
-    await expect(page.getByText("客户控制台")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "切换导航栏" }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "文档" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "概览" })).toBeVisible();
     await expect(page.getByText("概览加载失败")).toHaveCount(0);
 

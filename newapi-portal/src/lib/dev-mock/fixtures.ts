@@ -17,6 +17,8 @@ export const mockQuotaConfig = {
 };
 
 export const mockModels = [
+  { id: "gpt-latest" },
+  { id: "claude-latest" },
   { id: "gpt-4o-mini" },
   { id: "gpt-4.1-mini" },
   { id: "o3-mini" },

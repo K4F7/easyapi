@@ -190,9 +190,8 @@ The response envelope is:
 
 ### Playground chat token policy
 
-- Portal-managed Chat tokens use the general channel group. The default group value is `auto`; override `PLAYGROUND_CHAT_GROUP` only when the deployed NewAPI/BFF mapping names the general channel differently.
-- Chat tokens must keep `cross_group_retry: true`.
-- Portal does not encode fallback order. Configure NewAPI `auto` so the recommended operational order is `normal` first, then `budget`, then `stable` or other operator-approved fallback groups.
+- Portal-managed Chat tokens use the standard channel group (`normal` by default). Override `PLAYGROUND_CHAT_GROUP` only when the deployed NewAPI/BFF maps the standard channel differently.
+- The portal does not set `cross_group_retry` on Chat tokens. Cross-group failover is configured in NewAPI; Chat Playground only requires model selection in the UI.
 
 ## Billing and top-up
 

@@ -30,8 +30,7 @@ function token(input: Partial<NewApiToken> & Pick<NewApiToken, "id" | "name">) {
   return {
     status: 1,
     unlimited_quota: true,
-    cross_group_retry: true,
-    group: "auto",
+    group: "normal",
     ...input,
   } satisfies NewApiToken;
 }
@@ -101,8 +100,7 @@ describe("ensure playground tokens", () => {
       name: PLAYGROUND_CHAT_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
-      cross_group_retry: true,
-      group: "auto",
+      group: "normal",
     });
     expect(mockCreateToken).not.toHaveBeenCalled();
   });
@@ -128,8 +126,7 @@ describe("ensure playground tokens", () => {
       name: PLAYGROUND_CHAT_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
-      cross_group_retry: true,
-      group: "auto",
+      group: "normal",
     });
 
     mockListTokens.mockResolvedValueOnce({
@@ -158,7 +155,7 @@ describe("ensure playground tokens", () => {
     });
   });
 
-  it("updates a usable chat token without cross group retry", async () => {
+  it("reuses a qualified chat token on the normal channel", async () => {
     mockListTokens.mockResolvedValueOnce({
       items: [
         token({
@@ -171,14 +168,7 @@ describe("ensure playground tokens", () => {
     });
 
     await expect(ensurePlaygroundChatTokenId(auth)).resolves.toBe(33);
-    expect(mockUpdateToken).toHaveBeenCalledWith(auth, {
-      id: 33,
-      name: PLAYGROUND_CHAT_TOKEN_NAME,
-      unlimited_quota: true,
-      model_limits_enabled: false,
-      cross_group_retry: true,
-      group: "auto",
-    });
+    expect(mockUpdateToken).not.toHaveBeenCalled();
     expect(mockCreateToken).not.toHaveBeenCalled();
   });
 
@@ -201,7 +191,6 @@ describe("ensure playground tokens", () => {
       name: PLAYGROUND_CHAT_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
-      cross_group_retry: true,
       group: "general",
     });
     expect(mockCreateToken).not.toHaveBeenCalled();
@@ -222,7 +211,6 @@ describe("ensure playground tokens", () => {
       name: PLAYGROUND_CHAT_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
-      cross_group_retry: true,
       group: "general",
     });
     expect(mockUpdateToken).not.toHaveBeenCalled();
@@ -236,7 +224,7 @@ describe("ensure playground tokens", () => {
             ? token({
                 id: 36,
                 name: PLAYGROUND_CHAT_TOKEN_NAME,
-                group: "normal",
+                group: "auto",
               })
             : token({ id: 1000 + index, name: `Token ${index}` }),
         ),
@@ -260,7 +248,7 @@ describe("ensure playground tokens", () => {
             ? token({
                 id: 38,
                 name: PLAYGROUND_CHAT_TOKEN_NAME,
-                group: "normal",
+                group: "auto",
               })
             : token({ id: 1100 + index, name: `Token ${index}` }),
         ),
@@ -271,7 +259,7 @@ describe("ensure playground tokens", () => {
           token({
             id: 39,
             name: PLAYGROUND_CHAT_TOKEN_NAME,
-            group: "normal",
+            group: "auto",
           }),
         ],
         total: 101,
@@ -283,8 +271,7 @@ describe("ensure playground tokens", () => {
       name: PLAYGROUND_CHAT_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
-      cross_group_retry: true,
-      group: "auto",
+      group: "normal",
     });
     expect(mockCreateToken).not.toHaveBeenCalled();
   });

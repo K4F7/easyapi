@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BookOpen,
   ChartNoAxesColumn,
   CreditCard,
   FlaskConical,
@@ -20,6 +21,7 @@ type NavItem = {
   icon: LucideIcon;
   exact?: boolean;
   onboardingTarget?: string;
+  badge?: string;
 };
 
 const navItems: NavItem[] = [
@@ -32,6 +34,12 @@ const navItems: NavItem[] = [
     label: "操练场",
     icon: FlaskConical,
     onboardingTarget: "playground-entry",
+  },
+  {
+    href: "/dashboard/docs",
+    label: "文档",
+    icon: BookOpen,
+    badge: "WIP",
   },
   { href: "/dashboard/profile", label: "设置", icon: UserRound },
 ];
@@ -63,6 +71,11 @@ export function DashboardNav() {
           >
             <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span className="whitespace-nowrap">{item.label}</span>
+            {item.badge ? (
+              <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                {item.badge}
+              </span>
+            ) : null}
           </Link>
         );
       })}

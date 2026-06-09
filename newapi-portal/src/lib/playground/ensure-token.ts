@@ -49,7 +49,6 @@ export async function ensurePlaygroundChatTokenId(
       name: PLAYGROUND_CHAT_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
-      cross_group_retry: true,
       group,
     },
   });
@@ -161,7 +160,6 @@ function isQualifiedChatToken(token: NewApiToken): boolean {
   return (
     isUsableToken(token) &&
     token.model_limits_enabled !== true &&
-    token.cross_group_retry === true &&
     token.group === getPlaygroundChatGroup()
   );
 }
