@@ -186,6 +186,12 @@ export async function destroySession(): Promise<void> {
   cookieStore.delete(sessionCookieName);
 }
 
+/** Clear the session cookie from Route Handlers or Server Actions only. */
+export async function clearSessionCookie(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(sessionCookieName);
+}
+
 export async function getCurrentUser(): Promise<PublicUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(sessionCookieName)?.value;
@@ -217,7 +223,8 @@ export async function getCurrentUser(): Promise<PublicUser | null> {
   });
 
   if (!session) {
-    cookieStore.delete(sessionCookieName);
+    // Do not mutate cookies here: getCurrentUser runs in Server Components
+    // (e.g. dashboard layout). cookies().delete() must stay in Route Handlers.
     return null;
   }
 

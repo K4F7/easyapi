@@ -36,10 +36,6 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
-function isAuthPage(pathname: string): boolean {
-  return pathname === "/login" || pathname === "/register";
-}
-
 function isPlaygroundEmbedDocument(pathname: string): boolean {
   return EMBED_DOCUMENT_PATH.test(pathname);
 }
@@ -158,12 +154,8 @@ export function middleware(request: NextRequest) {
   // Allow public paths, APIs, and static assets through. API routes enforce
   // their own authentication so external callbacks do not need browser cookies.
   if (isPublicPath(pathname)) {
-    // Redirect authenticated users away from login/register to dashboard
-    if (hasSession && isAuthPage(pathname)) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
-    }
+    // Session validity is checked in layouts/API routes. Cookie presence alone
+    // is not enough (stale cookies after deploy/DB restore caused RSC errors).
     return NextResponse.next();
   }
 
