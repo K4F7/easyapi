@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/client/api";
-import { parseSSE, type SSEUsage } from "@/lib/playground/sse";
+import { parseSSE } from "@/lib/playground/sse";
 import { cn } from "@/lib/utils";
 
 export type ChatPanelProps = {
@@ -70,7 +70,6 @@ type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
-  usage?: SSEUsage;
 };
 
 type ModelsResponse = {
@@ -235,12 +234,6 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
                   : m,
               ),
             );
-          } else if (chunk.type === "usage") {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId ? { ...m, usage: chunk.usage } : m,
-              ),
-            );
           }
         }
       } catch (err) {
@@ -336,7 +329,17 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
       )}
     >
       {!isEmpty ? (
-        <div className="flex shrink-0 items-center justify-between px-4 py-3 md:px-6">
+        <div className="flex shrink-0 items-center gap-2 px-4 py-3 md:px-6">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 shrink-0 text-muted-foreground"
+            aria-label="清空对话"
+            onClick={() => setConfirmClearOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
           <div className="flex min-w-0 items-center gap-2">
             <span className="text-sm font-medium">在线对话</span>
             {activeModel ? (
@@ -345,16 +348,6 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
               </span>
             ) : null}
           </div>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-muted-foreground"
-            aria-label="清空对话"
-            onClick={() => setConfirmClearOpen(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
         </div>
       ) : null}
 
@@ -733,13 +726,6 @@ function MessageBubble({
             <MarkdownMessage content={message.content} />
           )}
         </div>
-
-        {/* 消耗回显 */}
-        {message.usage?.total_tokens ? (
-          <span className="px-1 text-xs text-muted-foreground">
-            ≈ {message.usage.total_tokens.toLocaleString()} tokens
-          </span>
-        ) : null}
 
         {/* hover 操作行 */}
         {!showTyping && message.content ? (
