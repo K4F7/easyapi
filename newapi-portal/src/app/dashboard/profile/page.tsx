@@ -124,12 +124,12 @@ export default function ProfilePage() {
   const contactEmail = user ? getUserContactEmail(user) : null;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 page-transition">
+    <div className="mx-auto w-full max-w-6xl space-y-6">
       <h1 className="text-2xl font-semibold tracking-normal">个人资料</h1>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
-          <CardHeader className="flex-row items-center gap-3 space-y-0">
+          <CardHeader className="flex-row items-center gap-3 space-y-0 pb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-accent">
               <Mail className="h-5 w-5" />
             </div>
@@ -140,12 +140,10 @@ export default function ProfilePage() {
           </CardHeader>
 
           <CardContent>
-            <div className="mb-6">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                当前邮箱
-              </Label>
+            <div className="mb-4">
+              <p className="text-xs text-muted-foreground">当前邮箱</p>
               <div
-                className="mt-2 truncate text-lg font-medium"
+                className="mt-0.5 truncate text-lg font-semibold"
                 title={contactEmail ?? undefined}
               >
                 {contactEmail ?? "未绑定邮箱"}
@@ -162,13 +160,12 @@ export default function ProfilePage() {
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   required
-                  className="h-12 bg-background/50 text-base"
                 />
               </div>
               <Button
                 type="submit"
                 disabled={emailLoading || !newEmail || newEmail === contactEmail}
-                className="h-12 w-full text-base font-medium"
+                className="w-full"
               >
                 {emailLoading && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -181,7 +178,7 @@ export default function ProfilePage() {
         </Card>
 
         <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
-          <CardHeader className="flex-row items-center gap-3 space-y-0">
+          <CardHeader className="flex-row items-center gap-3 space-y-0 pb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-accent">
               <ShieldCheck className="h-5 w-5" />
             </div>
@@ -192,7 +189,7 @@ export default function ProfilePage() {
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handlePasswordChange} className="space-y-5">
+            <form onSubmit={handlePasswordChange} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">当前密码</Label>
                 <div className="relative">
@@ -203,9 +200,9 @@ export default function ProfilePage() {
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     required
-                    className="h-12 bg-background/50 pl-10 text-base"
+                    className="pl-10"
                   />
-                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
 
@@ -220,9 +217,9 @@ export default function ProfilePage() {
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
                     minLength={8}
-                    className="h-12 bg-background/50 pl-10 text-base"
+                    className="pl-10"
                   />
-                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
 
@@ -237,9 +234,9 @@ export default function ProfilePage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     minLength={8}
-                    className="h-12 bg-background/50 pl-10 text-base"
+                    className="pl-10"
                   />
-                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
 
@@ -251,7 +248,7 @@ export default function ProfilePage() {
                   !newPassword ||
                   !confirmPassword
                 }
-                className="mt-2 h-12 w-full text-base font-medium"
+                className="w-full"
               >
                 {passwordLoading && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
