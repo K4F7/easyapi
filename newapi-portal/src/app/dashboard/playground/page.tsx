@@ -45,7 +45,7 @@ function PlaygroundContent() {
       <div
         role="tablist"
         aria-label="试玩模式"
-        className="mb-4 inline-flex h-10 shrink-0 items-center self-center rounded-full border border-border/60 bg-background/80 p-1 text-muted-foreground shadow-sm backdrop-blur-sm sm:self-start"
+        className="mb-4 inline-flex h-10 shrink-0 items-center self-center rounded-full border border-border/60 bg-background/80 p-1 text-muted-foreground shadow-sm backdrop-blur-sm sm:self-start mx-4 md:mx-6"
       >
         {TABS.map((tab) => {
           const active = tab.key === activeTab;
@@ -78,16 +78,16 @@ function PlaygroundContent() {
       {loading ? (
         <PlaygroundPanelSkeleton />
       ) : error ? (
-        <div className="flex flex-1 items-center justify-center rounded-2xl border border-border/60 bg-background/80 px-6 py-10 text-center text-sm text-destructive shadow-sm backdrop-blur-sm">
+        <div className="flex flex-1 items-center justify-center rounded-2xl border border-border/60 bg-background/80 px-6 py-10 text-center text-sm text-destructive shadow-sm backdrop-blur-sm mx-4 md:mx-6">
           {error}
         </div>
       ) : activeTab === "chat" ? (
-        <ChatPanel tokenId={chatTokenId} model={null} className="flex-1" />
+        <ChatPanel tokenId={chatTokenId} model={null} className="flex-1 min-h-0" />
       ) : (
         <ImagePanel
           tokenId={imageTokenId}
           model={null}
-          className="flex-1 min-h-0"
+          className="flex-1 min-h-0 mx-4 md:mx-6"
         />
       )}
     </div>
@@ -105,12 +105,12 @@ export default function PlaygroundPage() {
 function PlaygroundPageSkeleton() {
   return (
     <div className="-mx-4 flex h-[calc(100dvh-12rem)] flex-col md:-mx-6 md:h-[calc(100dvh-7.5rem)]">
-      <Skeleton className="h-9 w-40" />
+      <Skeleton className="h-9 w-40 mx-4 md:mx-6 mb-4" />
       <PlaygroundPanelSkeleton />
     </div>
   );
 }
 
 function PlaygroundPanelSkeleton() {
-  return <Skeleton className="min-h-0 flex-1 rounded-2xl" />;
+  return <Skeleton className="min-h-0 flex-1 rounded-2xl mx-4 md:mx-6" />;
 }

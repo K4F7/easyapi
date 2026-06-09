@@ -329,14 +329,14 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
     .find((m) => m.role === "assistant")?.id;
 
   return (
-    <Card
+    <div
       className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-2xl border-border/60 bg-background/80 shadow-sm backdrop-blur-sm",
+        "flex min-h-0 flex-col overflow-hidden bg-transparent",
         className ?? "h-[640px]",
       )}
     >
       {!isEmpty ? (
-        <div className="flex shrink-0 items-center justify-between border-b border-border/60 bg-background/60 px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between px-4 py-3 md:px-6">
           <div className="flex min-w-0 items-center gap-2">
             <span className="text-sm font-medium">在线对话</span>
             {activeModel ? (
@@ -362,9 +362,9 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
       <div
         ref={scrollRef}
         data-testid="chat-message-list"
-        className="flex-1 overflow-y-auto overscroll-contain"
+        className="flex-1 overflow-y-auto overscroll-contain px-4 md:px-6"
       >
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-3 py-5 sm:px-4 sm:py-6">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 py-5 sm:py-6">
           {isEmpty ? (
             <EmptyState onPick={fillInput} />
           ) : (
@@ -398,17 +398,9 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
       </div>
 
       {/* 底部输入区 */}
-      <div className="border-t border-border/60 bg-background/60 px-3 py-3 sm:px-4">
-        <div className="mx-auto w-full max-w-3xl space-y-2">
-          {/* 快捷 prompt 胶囊行 */}
-          <QuickPills
-            collapsed={!isEmpty}
-            expanded={pillsExpanded}
-            onToggle={() => setPillsExpanded((v) => !v)}
-            onPick={fillInput}
-          />
-
-          <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-background/90 p-2 shadow-md backdrop-blur-md transition-all duration-200 focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/10 sm:flex-row sm:items-end">
+      <div className="px-4 pb-6 md:px-6 sm:pb-8">
+        <div className="mx-auto w-full max-w-3xl space-y-4">
+          <div className="flex flex-col gap-2 rounded-3xl border border-border/60 bg-background/90 p-3 shadow-[0_8px_30px_rgb(0,0,0,0.08)] backdrop-blur-md transition-all duration-200 focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/10 sm:flex-row sm:items-end">
             <textarea
               ref={textareaRef}
               value={input}
@@ -456,6 +448,14 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
               )}
             </div>
           </div>
+
+          {/* 快捷 prompt 胶囊行 */}
+          <QuickPills
+            collapsed={!isEmpty}
+            expanded={pillsExpanded}
+            onToggle={() => setPillsExpanded((v) => !v)}
+            onPick={fillInput}
+          />
         </div>
       </div>
 
@@ -481,7 +481,7 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }
 
@@ -538,7 +538,7 @@ function QuickPills({
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
       {QUICK_PILLS.map((pill) => (
         <button
           key={pill.label}
