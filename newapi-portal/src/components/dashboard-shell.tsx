@@ -8,6 +8,7 @@ import { DashboardNav } from "@/components/dashboard-nav";
 import { DuckLogo } from "@/components/duck-logo";
 import { UserMenu } from "@/components/user-menu";
 import { Button } from "@/components/ui/button";
+import { getDocsNavConfig } from "@/lib/docs-site";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR_STORAGE_KEY = "dashboard-sidebar-open";
@@ -20,6 +21,7 @@ type DashboardShellProps = {
 export function DashboardShell({ email, children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(true);
+  const docsNav = getDocsNavConfig();
 
   useEffect(() => {
     const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
@@ -107,10 +109,21 @@ export function DashboardShell({ email, children }: DashboardShellProps) {
                 asChild
                 className="rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
-                <Link href="/dashboard/docs">
-                  <BookOpen className="h-4 w-4" aria-hidden="true" />
-                  文档
-                </Link>
+                {docsNav.external ? (
+                  <a
+                    href={docsNav.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <BookOpen className="h-4 w-4" aria-hidden="true" />
+                    文档
+                  </a>
+                ) : (
+                  <Link href={docsNav.href}>
+                    <BookOpen className="h-4 w-4" aria-hidden="true" />
+                    文档
+                  </Link>
+                )}
               </Button>
               <Button
                 variant="ghost"

@@ -95,7 +95,7 @@ const BALANCE_CRITICAL_CNY = 0.2;
  * 注：summary 接口当前未返回该地址，已在交接报告中标注建议由接口下发。
  */
 const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_NEWAPI_BASE_URL || "https://api.easyapi.work"
+  process.env.NEXT_PUBLIC_NEWAPI_BASE_URL || "https://easyapi.work"
 ).replace(/\/+$/, "");
 const API_ENDPOINT = `${API_BASE_URL}/v1`;
 

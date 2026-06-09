@@ -101,7 +101,7 @@
 | Variable | 用途 | 示例 |
 |----------|------|------|
 | `STAGING_IMAGE_PLAYGROUND_INTERNAL_URL` | **Scheme 4**：生图 Playground 容器内网上游；Portal 在 `/playground/embed/` 同源反代 | `http://image-playground-test` |
-| `STAGING_PUBLIC_NEWAPI_BASE_URL` | 前端可见的 NewAPI 公网地址；Docker build 时写入 `NEXT_PUBLIC_NEWAPI_BASE_URL` | `https://api.easyapi.work` |
+| `STAGING_PUBLIC_NEWAPI_BASE_URL` | 前端可见的 NewAPI 公网地址；Docker build 时写入 `NEXT_PUBLIC_NEWAPI_BASE_URL` | `https://easyapi.work` |
 
 **Scheme 4（同源嵌入）要点：**
 

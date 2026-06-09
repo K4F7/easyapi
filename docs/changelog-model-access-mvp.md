@@ -48,7 +48,7 @@
 | Portal MVP 合并 | easyapi [PR #23](https://github.com/K4F7/easyapi/pull/23)，merge `5b7c82f7` |
 | 分组映射对齐 | commit `542abe1e`；staging CD run `27208400768` 全绿 |
 | Staging E2E | run `27156406233` / `27208400768`：`39 passed, 25 skipped` |
-| Check-in 修复合并 | easyapi PR #26/#27/#28（workflow 本身仍被运维项阻塞，见 PRD） |
+| Check-in 诊断验收 | easyapi PR #26/#27/#28；独立 workflow 已验收（2026-06-09，见 [checkin-diagnostics.md](./checkin-diagnostics.md)） |
 | PRD 状态同步 | easyapi PR #29 |
 
 ### E2E spec（已纳入 `test:e2e:ci`）
