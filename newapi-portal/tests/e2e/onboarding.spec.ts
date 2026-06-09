@@ -126,7 +126,7 @@ test.describe("onboarding tour", () => {
     await loginWithFreshOnboarding(page, testInfo.project.name);
 
     await expect(
-      page.locator('[data-onboarding-target="access-info"]'),
+      page.locator('[data-onboarding-target="access-copy"]'),
     ).toHaveClass(/onboarding-highlight/);
 
     await page.getByTestId("onboarding-next").click();

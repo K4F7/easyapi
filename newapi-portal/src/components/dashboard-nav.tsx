@@ -9,16 +9,30 @@ import {
   KeyRound,
   LayoutDashboard,
   UserRound,
+  type LucideIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  onboardingTarget?: string;
+};
+
+const navItems: NavItem[] = [
   { href: "/dashboard", label: "总览", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/tokens", label: "令牌", icon: KeyRound },
   { href: "/dashboard/billing", label: "充值", icon: CreditCard },
   { href: "/dashboard/usage", label: "用量", icon: ChartNoAxesColumn },
-  { href: "/dashboard/playground", label: "操练场", icon: FlaskConical },
+  {
+    href: "/dashboard/playground",
+    label: "操练场",
+    icon: FlaskConical,
+    onboardingTarget: "playground-entry",
+  },
   { href: "/dashboard/profile", label: "设置", icon: UserRound },
 ];
 
@@ -39,6 +53,7 @@ export function DashboardNav() {
           <Link
             key={item.href}
             href={item.href}
+            data-onboarding-target={item.onboardingTarget}
             className={cn(
               "flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-muted-foreground outline-none transition-[background-color,color,box-shadow] duration-200 hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:gap-3",
               active &&

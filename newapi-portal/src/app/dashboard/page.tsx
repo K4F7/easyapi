@@ -288,7 +288,10 @@ export default function DashboardPage() {
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/dashboard/tokens">
+              <Link
+                href="/dashboard/tokens"
+                data-onboarding-target="token-create"
+              >
                 <Plus className="h-4 w-4" />
                 新建令牌
               </Link>
@@ -303,17 +306,18 @@ export default function DashboardPage() {
           <CardTitle className="text-base">接入信息</CardTitle>
           <CardDescription>复制 API 地址，到令牌页取你的密钥。</CardDescription>
         </CardHeader>
-        <CardContent
-          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-          data-onboarding-target="access-info"
-        >
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 flex-1">
             <div className="text-xs text-muted-foreground">API 地址</div>
             <div className="mt-1 flex items-center gap-2">
               <code className="truncate rounded-md bg-muted px-2 py-1 font-mono text-sm">
                 {API_ENDPOINT}
               </code>
-              <CopyButton value={API_ENDPOINT} label="一键复制" />
+              <CopyButton
+                value={API_ENDPOINT}
+                label="一键复制"
+                data-onboarding-target="access-copy"
+              />
             </div>
           </div>
           <Button asChild variant="outline" size="sm">
@@ -372,7 +376,6 @@ export default function DashboardPage() {
               href="/dashboard/tokens"
               title="管理令牌"
               description="新建、查看或删除你的访问令牌。"
-              onboardingTarget="token-create"
             />
             <QuickLink
               href="/dashboard/billing"
@@ -388,7 +391,6 @@ export default function DashboardPage() {
               href="/dashboard/playground"
               title="打开操练场"
               description="用 Chat 或生图跑一次请求，验证模型接入。"
-              onboardingTarget="playground-entry"
             />
           </CardContent>
         </Card>

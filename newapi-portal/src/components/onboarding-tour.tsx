@@ -115,7 +115,7 @@ export function OnboardingTour() {
       return null;
     }
     if (stepIndex === 0) {
-      return "access-info";
+      return "access-copy";
     }
     if (stepIndex === 1) {
       return "token-create";
@@ -252,7 +252,8 @@ export function OnboardingTour() {
         }}
       >
         <DialogContent
-          className="sm:max-w-xl"
+          overlayClassName="bg-foreground/10 backdrop-blur-none"
+          className="fixed bottom-6 right-6 left-auto top-auto max-h-[calc(100vh-3rem)] w-[calc(100%-2rem)] max-w-md translate-x-0 translate-y-0 overflow-y-auto sm:max-w-md"
           data-testid="onboarding-dialog"
           onOpenAutoFocus={(event) => {
             event.preventDefault();

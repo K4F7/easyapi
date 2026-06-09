@@ -89,9 +89,11 @@
 
   .onboarding-highlight {
     position: relative;
-    z-index: 30;
+    z-index: 60;
+    border-radius: inherit;
+    background: hsl(var(--card));
     outline: 2px solid hsl(var(--primary));
-    outline-offset: 4px;
+    outline-offset: 2px;
     box-shadow:
       0 0 0 8px hsl(var(--primary) / 0.16),
       0 18px 40px hsl(var(--foreground) / 0.14);
