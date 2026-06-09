@@ -4,7 +4,7 @@
  * ImagePanel —— Playground「生图」面板。
  *
  * 通过 `/playground/embed/` 同源代理嵌入（`IMAGE_PLAYGROUND_INTERNAL_URL`）。
- * iframe URL 不携带 session token，依赖 Portal httpOnly session + tokenId。
+ * 签发短期签名 session token 写入 iframe `apiKey`（非真实 sk-*）；Portal 服务端再注入真实密钥。
  */
 
 import { useEffect, useState } from "react";
@@ -95,6 +95,18 @@ export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
           baseUrl.searchParams.set("model", model);
         }
 
+        const sessionToken = await createImageSessionToken(
+          selectedTokenId,
+          controller.signal,
+        );
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        baseUrl.searchParams.set("playgroundSessionToken", sessionToken);
+        baseUrl.searchParams.set("apiKey", sessionToken);
+
         setIframeSrc(baseUrl.toString());
       } catch {
         if (!controller.signal.aborted) {
@@ -118,7 +130,7 @@ export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
       ? "请刷新页面重试，真实密钥不会暴露给 iframe。"
       : embedMode === null
         ? "配置 IMAGE_PLAYGROUND_INTERNAL_URL（同源代理）。"
-        : "正在通过 Portal 同源代理连接生图 Playground，会话 token 不会写入 URL。";
+        : "正在签发生图会话并连接 Playground，真实密钥不会暴露给 iframe。";
 
     return (
       <Card className={cn("flex min-h-0 flex-col", className)}>
@@ -156,4 +168,37 @@ export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
       </CardContent>
     </Card>
   );
+}
+
+async function createImageSessionToken(
+  tokenId: number,
+  signal: AbortSignal,
+): Promise<string> {
+  const response = await fetch("/api/playground/images/session", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({ tokenId, embedTarget: "proxy" }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create playground image session");
+  }
+
+  const payload = (await response.json()) as {
+    ok?: boolean;
+    data?: {
+      token?: unknown;
+    };
+  };
+  const token = payload.data?.token;
+
+  if (payload.ok !== true || typeof token !== "string") {
+    throw new Error("Invalid playground image session response");
+  }
+
+  return token;
 }

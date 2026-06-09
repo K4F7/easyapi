@@ -230,7 +230,7 @@ test.describe("Playground", () => {
     expect(loadEvents.length).toBe(loadsBeforeTab);
   });
 
-  test("image tab passes only token identifiers to the iframe", async ({
+  test("image tab passes session token and token identifiers to the iframe", async ({
     page,
   }) => {
     await mockPlaygroundToken(page);
@@ -274,8 +274,9 @@ test.describe("Playground", () => {
       String(PLAYGROUND_IMAGE_TOKEN_ID),
     );
     expect(iframeUrl.searchParams.get("theme")).toBe("light");
-    expect(iframeUrl.searchParams.get("apiKey")).toBeNull();
-    expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBeNull();
+    const apiKey = iframeUrl.searchParams.get("apiKey");
+    expect(apiKey).toMatch(/^portal-image-session-v1\./);
+    expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBe(apiKey);
     expect(src).not.toMatch(/sk-[a-zA-Z0-9]{8,}|portal-token-101/);
   });
 
@@ -470,7 +471,6 @@ async function expectImageIframeDoesNotExposeRealKey(page: Page) {
   const src = await iframe.first().getAttribute("src");
   expect(src).toBeTruthy();
   expect(src).toContain("/playground/embed");
-  expect(src).not.toMatch(/portal-image-session-v1\./);
   expect(src).not.toMatch(
     /sk-[a-zA-Z0-9]{8,}|portal-token-\d+|api[_-]?key=sk-/i,
   );
