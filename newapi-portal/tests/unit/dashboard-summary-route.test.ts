@@ -74,6 +74,10 @@ vi.mock("@/lib/dev-mock", () => ({
   mockDashboardSummaryResponse: vi.fn(),
 }));
 
+vi.mock("@/lib/env", () => ({
+  getServerEnv: () => ({ CHECKIN_QUOTA: 1000 }),
+}));
+
 vi.mock("@/lib/db", () => ({
   db: {
     checkin: {
@@ -107,8 +111,18 @@ async function readJson(response: Response) {
       logStats?: {
         status?: string;
       };
+      checkin?: {
+        checkedInToday?: boolean;
+        quotaApplied?: boolean | null;
+        quotaPending?: boolean;
+      };
     };
   }>;
+}
+
+async function loadSummary() {
+  const { GET } = await import("@/app/api/dashboard/summary/route");
+  return GET(new Request("http://localhost/api/dashboard/summary"));
 }
 
 describe("GET /api/dashboard/summary", () => {
@@ -131,9 +145,74 @@ describe("GET /api/dashboard/summary", () => {
       auth: { userId: "99", accessToken: "access-token" },
     });
     mockCheckinFindUnique.mockResolvedValue(null);
+    mockGetSelf.mockResolvedValue({ quota: 1000 });
     mockListTokens.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 1 });
     mockGetUsageData.mockResolvedValue([]);
     mockGetLogStats.mockResolvedValue({});
+  });
+
+  it("returns null quotaApplied and false quotaPending when not checked in today", async () => {
+    const response = await loadSummary();
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body.data?.checkin).toMatchObject({
+      checkedInToday: false,
+      quotaApplied: null,
+      quotaPending: false,
+    });
+  });
+
+  it("returns quotaApplied true and quotaPending false when check-in quota was applied", async () => {
+    mockCheckinFindUnique.mockResolvedValue({
+      id: "checkin-1",
+      status: "CLAIMED",
+      checkedInOn: new Date("2026-06-09T00:00:00.000Z"),
+      createdAt: new Date("2026-06-09T08:00:00.000Z"),
+      ledgerEntries: [
+        {
+          metadata: {
+            source: "checkin",
+            quotaApplied: true,
+          },
+        },
+      ],
+    });
+
+    const response = await loadSummary();
+    const body = await readJson(response);
+
+    expect(body.data?.checkin).toMatchObject({
+      checkedInToday: true,
+      quotaApplied: true,
+      quotaPending: false,
+    });
+  });
+
+  it("returns quotaPending true when checked in but quota was not applied", async () => {
+    mockCheckinFindUnique.mockResolvedValue({
+      id: "checkin-2",
+      status: "CLAIMED",
+      checkedInOn: new Date("2026-06-09T00:00:00.000Z"),
+      createdAt: new Date("2026-06-09T08:00:00.000Z"),
+      ledgerEntries: [
+        {
+          metadata: {
+            source: "checkin",
+            quotaApplied: false,
+          },
+        },
+      ],
+    });
+
+    const response = await loadSummary();
+    const body = await readJson(response);
+
+    expect(body.data?.checkin).toMatchObject({
+      checkedInToday: true,
+      quotaApplied: false,
+      quotaPending: true,
+    });
   });
 
   it("returns a stable Chinese message when NewAPI summary calls fail", async () => {
@@ -151,9 +230,7 @@ describe("GET /api/dashboard/summary", () => {
     );
 
     try {
-      const { GET } = await import("@/app/api/dashboard/summary/route");
-
-      const response = await GET(new Request("http://localhost/api/dashboard/summary"));
+      const response = await loadSummary();
       const body = await readJson(response);
 
       expect(response.status).toBe(200);

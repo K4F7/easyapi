@@ -1,5 +1,7 @@
 import { jsonOk, requireUser } from "@/lib/auth";
+import { isCheckinQuotaApplied } from "@/lib/checkin/quota";
 import { isDevMockEnabled, mockDashboardSummaryResponse } from "@/lib/dev-mock";
+import { getServerEnv } from "@/lib/env";
 import {
   getUserNewApiAuth,
   handleApiError,
@@ -39,6 +41,7 @@ export async function GET(request: Request) {
     const user = await requireUser();
     const authResult = await getUserNewApiAuth(user);
     const portalUser = authResult.user;
+    const checkinQuota = getServerEnv().CHECKIN_QUOTA;
     const [checkin] = await Promise.all([
       db.checkin.findUnique({
         where: {
@@ -52,6 +55,10 @@ export async function GET(request: Request) {
           status: true,
           checkedInOn: true,
           createdAt: true,
+          ledgerEntries: {
+            select: { metadata: true },
+            take: 1,
+          },
         },
       }),
     ]);
@@ -71,7 +78,7 @@ export async function GET(request: Request) {
         },
         usage: emptyUsageSummary(),
         logStats: pendingLogStats(),
-        checkin: formatCheckin(checkin),
+        checkin: formatCheckin(checkin, checkinQuota),
       });
     }
 
@@ -125,7 +132,7 @@ export async function GET(request: Request) {
           },
         },
         logStats: formatLogStats(logStatsRaw),
-        checkin: formatCheckin(checkin),
+        checkin: formatCheckin(checkin, checkinQuota),
       });
     } catch (error) {
       if (!(error instanceof NewApiError)) {
@@ -151,7 +158,7 @@ export async function GET(request: Request) {
         },
         usage: emptyUsageSummary(),
         logStats: errorLogStats(),
-        checkin: formatCheckin(checkin),
+        checkin: formatCheckin(checkin, checkinQuota),
       });
     }
   } catch (error) {
@@ -196,14 +203,24 @@ function formatCheckin(
     status: "CLAIMED" | "REVERSED";
     checkedInOn: Date;
     createdAt: Date;
+    ledgerEntries: Array<{ metadata: unknown }>;
   } | null,
+  checkinQuota: number,
 ) {
+  const ledgerMetadata = checkin?.ledgerEntries[0]?.metadata;
+  const quotaApplied = checkin
+    ? isCheckinQuotaApplied(ledgerMetadata)
+    : null;
+
   return {
     checkedInToday: Boolean(checkin),
     checkedInOn: checkin ? dateKey(checkin.checkedInOn) : dateKey(todayDateOnly()),
     status: checkin?.status ?? "AVAILABLE",
     checkinId: checkin?.id ?? null,
     createdAt: checkin?.createdAt.toISOString() ?? null,
+    quotaApplied,
+    quotaPending:
+      Boolean(checkin) && checkinQuota > 0 && quotaApplied === false,
   };
 }
 
