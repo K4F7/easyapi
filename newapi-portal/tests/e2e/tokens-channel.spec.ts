@@ -229,10 +229,7 @@ test.describe("Token channel tier UI", () => {
       }),
     );
 
-    await page.keyboard.press("Escape");
-    await expect(
-      page.getByRole("heading", { name: "令牌已创建" }),
-    ).toBeHidden();
+    await dismissRevealDialog(page);
     await page.getByRole("button", { name: "创建新令牌" }).click();
     await page.getByRole("radio", { name: /高价渠道/ }).click();
     await page.getByLabel("名称").fill("Premium Token");
@@ -244,10 +241,7 @@ test.describe("Token channel tier UI", () => {
       }),
     );
 
-    await page.keyboard.press("Escape");
-    await expect(
-      page.getByRole("heading", { name: "令牌已创建" }),
-    ).toBeHidden();
+    await dismissRevealDialog(page);
     await page.getByRole("button", { name: "创建新令牌" }).click();
     await page.getByRole("radio", { name: /自动选择/ }).click();
     await page.getByLabel("名称").fill("Auto Channel Token");
@@ -355,10 +349,7 @@ test.describe("Token channel tier UI", () => {
       }),
     ]);
 
-    await page.keyboard.press("Escape");
-    await expect(
-      page.getByRole("heading", { name: "令牌已创建" }),
-    ).toBeHidden();
+    await dismissRevealDialog(page);
     const envRow = page.locator("tr", { hasText: "Env Token" });
     const envTierButton = envRow.getByRole("button", {
       name: /当前渠道：预发环境/,
@@ -683,6 +674,15 @@ function tokenFixture(overrides: Partial<MockToken>): MockToken {
     unlimited_quota: false,
     ...overrides,
   };
+}
+
+async function dismissRevealDialog(page: Page) {
+  const revealDialog = page
+    .getByRole("dialog")
+    .filter({ has: page.getByRole("heading", { name: "令牌已创建" }) });
+  await revealDialog.getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("heading", { name: "令牌已创建" })).toBeHidden();
+  await expect(page.locator('[data-state="open"].fixed.inset-0')).toHaveCount(0);
 }
 
 async function authenticate(page: Parameters<typeof ensureDashboardSession>[0]) {
