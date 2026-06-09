@@ -27,9 +27,11 @@ const postgresVolume = "easyapi-portal_pg_data_test";
 const postgresContainer = "easyapi-portal-postgres-test";
 const postgresUser = process.env.POSTGRES_USER ?? "newapi";
 const postgresDb = process.env.POSTGRES_DB ?? "new-api";
+const stagingBackupFilename =
+  process.env.STAGING_BACKUP_FILENAME ?? "xbh-new-api-2026-06-09-174203.sql.gz";
 const sourceBackup =
   process.env.PREPARE_REMOTE_BACKUP_SQL_GZ ??
-  `${remoteDir}/xbh-new-api-2026-05-23-172431.sql.gz`;
+  `${remoteDir}/${stagingBackupFilename}`;
 const seedBaseUrl = (process.env.SEED_BASE_URL ?? "https://test.easyapi.work").replace(
   /\/$/,
   "",

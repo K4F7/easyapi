@@ -88,6 +88,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Upload staging DB snapshot (dev only)
+        if: github.ref_name == 'dev'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          source: infra/staging-dumps/xbh-new-api-2026-06-09-174203.sql.gz
+          target: /opt/easyapi-portal-test/
+          overwrite: true
+
       - name: Restore production DB snapshot (dev only)
         if: github.ref_name == 'dev'
         uses: appleboy/ssh-action@v1.2.2

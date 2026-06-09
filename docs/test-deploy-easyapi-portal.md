@@ -56,7 +56,7 @@
 
 **dev 专用数据步骤**（每次 push `dev` 且触发 workflow 时）：
 
-1. SSH 执行 [`scripts/restore-staging-production-db.sh`](../scripts/restore-staging-production-db.sh)：`down` → 删除 `easyapi-portal_pg_data_test` volume → 用服务器上的 `xbh-new-api-2026-05-23-172431.sql.gz` 重新 `up` 全栈
+1. GHA 将 [`infra/staging-dumps/xbh-new-api-2026-06-09-174203.sql.gz`](../infra/staging-dumps/xbh-new-api-2026-06-09-174203.sql.gz) SCP 到 staging 后，SSH 执行 [`scripts/restore-staging-production-db.sh`](../scripts/restore-staging-production-db.sh)：`down` → 删除 `easyapi-portal_pg_data_test` volume → 用服务器上的 `xbh-new-api-2026-06-09-174203.sql.gz` 重新 `up` 全栈
 2. 等待 `https://test.easyapi.work/api/health`
 3. 同步 compose 并部署 `new-api-test`、`image-playground-test`、`portal-test`（拉官方 `:latest` + Portal 分支 tag）
 4. [`scripts/seed-staging-via-api.mjs`](../scripts/seed-staging-via-api.mjs) 注册/验证截图账号 `scr@qq.com` / `ScreenshotTest123!`（**dev 与 main 均执行**，幂等：已存在则仅验证登录）
@@ -274,8 +274,8 @@ E2E_BASE_URL="https://test.easyapi.work"    # Playwright baseURL
 
 | 位置 | 说明 |
 |------|------|
-| 工作区根目录 | `xbh-new-api-2026-05-23-172431.sql.gz` |
-| 服务器 | `/opt/easyapi-portal-test/xbh-new-api-2026-05-23-172431.sql.gz` |
+| 仓库 | [`infra/staging-dumps/xbh-new-api-2026-06-09-174203.sql.gz`](../infra/staging-dumps/xbh-new-api-2026-06-09-174203.sql.gz) |
+| 服务器 | `/opt/easyapi-portal-test/xbh-new-api-2026-06-09-174203.sql.gz` |
 
 首次初始化 Postgres 时，compose 通过环境变量 `BACKUP_SQL_GZ` 导入该文件。
 

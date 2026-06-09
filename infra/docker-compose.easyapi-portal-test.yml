@@ -19,7 +19,7 @@ services:
     volumes:
       - easyapi-portal_pg_data_test:/var/lib/postgresql/data
       - type: bind
-        source: ${BACKUP_SQL_GZ:-/opt/easyapi-portal-test/xbh-new-api-2026-05-23-172431.sql.gz}
+        source: ${BACKUP_SQL_GZ:-/opt/easyapi-portal-test/xbh-new-api-2026-06-09-174203.sql.gz}
         target: /docker-entrypoint-initdb.d/10-xbh-new-api.sql.gz
         read_only: true
     cpus: ${POSTGRES_CPU_LIMIT:-1.0}
