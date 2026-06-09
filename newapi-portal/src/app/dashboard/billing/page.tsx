@@ -40,7 +40,10 @@ import {
   statusText,
 } from "@/lib/client/format";
 import { useQuotaFormat } from "@/hooks/use-quota-format";
-import type { QuotaDisplayConfig } from "@/lib/quota/display-config.shared";
+import {
+  remainingQuotaFromSelf,
+  type QuotaDisplayConfig,
+} from "@/lib/quota/display-config.shared";
 
 type Order = {
   id: string;
@@ -131,12 +134,8 @@ export default function BillingPage() {
     return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
   }, [amount]);
 
-  const quota = balance?.self?.quota;
   const usedQuota = balance?.self?.used_quota;
-  const remaining =
-    typeof quota === "number" && typeof usedQuota === "number"
-      ? Math.max(quota - usedQuota, 0)
-      : quota;
+  const remaining = remainingQuotaFromSelf(balance?.self);
 
   async function loadData() {
     setOrdersLoading(true);

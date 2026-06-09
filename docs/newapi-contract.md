@@ -75,6 +75,7 @@ This document tracks the NewAPI surface that `newapi-portal` currently depends o
 - Expected fields used by the portal include:
   - `id`, `username`, `display_name`, `role`, `status`, `email`, `group`.
   - `quota`, `used_quota`, `request_count`.
+  - `quota` is the user's **remaining** balance; `used_quota` is lifetime consumption. The portal must not subtract `used_quota` from `quota`.
 
 ## Admin user and quota
 

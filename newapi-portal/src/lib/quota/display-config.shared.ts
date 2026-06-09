@@ -36,6 +36,18 @@ export function quotaToDisplayAmount(
   return quotaToCny(quota, config);
 }
 
+export type NewApiSelfQuotaFields = {
+  quota?: number;
+  used_quota?: number;
+};
+
+/** NewAPI `/api/user/self` returns remaining balance in `quota`; `used_quota` is lifetime usage. */
+export function remainingQuotaFromSelf(
+  self: NewApiSelfQuotaFields | null | undefined,
+): number | undefined {
+  return typeof self?.quota === "number" ? self.quota : undefined;
+}
+
 export function normalizeQuotaDisplayConfig(
   value: Partial<QuotaDisplayConfig> | null | undefined,
 ): QuotaDisplayConfig {

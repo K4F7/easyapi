@@ -60,6 +60,18 @@ describe("getQuotaDisplayConfig", () => {
 });
 
 describe("quota display helpers", () => {
+  it("treats self.quota as remaining balance without subtracting used_quota", async () => {
+    const { remainingQuotaFromSelf } = await import(
+      "@/lib/quota/display-config.shared"
+    );
+
+    expect(
+      remainingQuotaFromSelf({ quota: 15_805_000, used_quota: 85_360_000 }),
+    ).toBe(15_805_000);
+    expect(remainingQuotaFromSelf({ quota: 0, used_quota: 1_000 })).toBe(0);
+    expect(remainingQuotaFromSelf(null)).toBeUndefined();
+  });
+
   it("converts quota to CNY using quotaPerCny", async () => {
     const { quotaToCny, quotaToDisplayAmount } = await import(
       "@/lib/quota/display-config.shared"

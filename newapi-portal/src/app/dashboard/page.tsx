@@ -33,7 +33,10 @@ import { cn } from "@/lib/utils";
 import { apiFetch, apiPost } from "@/lib/client/api";
 import { formatCount, statusText } from "@/lib/client/format";
 import { useQuotaFormat } from "@/hooks/use-quota-format";
-import type { QuotaDisplayConfig } from "@/lib/quota/display-config.shared";
+import {
+  remainingQuotaFromSelf,
+  type QuotaDisplayConfig,
+} from "@/lib/quota/display-config.shared";
 
 type DashboardSummary = {
   quotaConfig?: QuotaDisplayConfig;
@@ -175,12 +178,8 @@ export default function DashboardPage() {
   }
 
   const ready = summary.newApi.binding === "ready";
-  const quota = summary.newApi.self?.quota;
   const usedQuota = summary.newApi.self?.used_quota;
-  const remaining =
-    typeof quota === "number" && typeof usedQuota === "number"
-      ? Math.max(quota - usedQuota, 0)
-      : quota;
+  const remaining = remainingQuotaFromSelf(summary.newApi.self);
 
   const remainingCny =
     typeof remaining === "number" ? quotaToCny(remaining) : null;
@@ -289,7 +288,9 @@ export default function DashboardPage() {
                 ? "余额即将耗尽，请尽快充值以免请求中断。"
                 : balanceLevel === "low"
                   ? "余额偏低，建议提前充值。"
-                  : `账户总额 ${formatBalance(quota)}`}
+                  : typeof usedQuota === "number"
+                    ? `历史消耗 ${formatBalance(usedQuota)}`
+                    : null}
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
