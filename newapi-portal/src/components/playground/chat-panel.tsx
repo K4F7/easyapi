@@ -81,18 +81,18 @@ type ModelsResponse = {
 type ModelLoadState = "idle" | "loading" | "ready" | "empty" | "error";
 
 const PROMPT_SUGGESTIONS = [
-  "解释一下 RESTful API 设计原则",
-  "帮我写一个 Express 错误处理中间件",
-  "用 TypeScript 实现一个带超时的 fetch 封装",
-  "对比 JWT 与 Session 鉴权的优缺点",
+  "如何设计一套合理的 API 限流策略？",
+  "帮我把这段代码重构得更清晰：\n\n// 粘贴代码到这里",
+  "用最简单的话解释 Transformer 架构",
+  "我的项目遇到瓶颈，帮我梳理一下思路：",
 ];
 
 const QUICK_PILLS = [
-  { label: "写代码", text: "帮我写一段代码：" },
-  { label: "总结文本", text: "帮我总结下面这段文本：\n" },
-  { label: "分析数据", text: "帮我分析这组数据：\n" },
-  { label: "给建议", text: "针对以下问题给我一些建议：" },
-  { label: "给我惊喜", text: "给我讲一个关于编程的冷知识。" },
+  { label: "写代码", text: "帮我写：" },
+  { label: "解释概念", text: "用简单的话解释：" },
+  { label: "总结文本", text: "帮我总结以下内容：\n\n" },
+  { label: "找 Bug", text: "帮我排查这段代码的问题：\n\n" },
+  { label: "给建议", text: "针对以下情况给我一些建议：\n\n" },
 ];
 
 export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
@@ -408,7 +408,7 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
             onPick={fillInput}
           />
 
-          <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-background/80 p-2 shadow-subtle focus-within:ring-2 focus-within:ring-ring sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-background/90 p-2 shadow-md backdrop-blur-md transition-all duration-200 focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/10 sm:flex-row sm:items-end">
             <textarea
               ref={textareaRef}
               value={input}
@@ -417,8 +417,8 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
               rows={1}
               placeholder={
                 tokenId === null
-                  ? "操练场准备中……"
-                  : "随便问……（Enter 发送，Shift+Enter 换行）"
+                  ? "正在准备对话环境……"
+                  : "输入你的问题……（Enter 发送，Shift+Enter 换行）"
               }
               disabled={tokenId === null}
               className="max-h-[200px] min-h-[40px] w-full min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-6 outline-none placeholder:text-muted-foreground disabled:opacity-60"
@@ -436,7 +436,7 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
                   type="button"
                   size="icon"
                   variant="outline"
-                  className="h-9 w-9 shrink-0"
+                  className="h-9 w-9 shrink-0 rounded-full shadow-sm transition-transform active:scale-95"
                   aria-label="停止生成"
                   onClick={handleStop}
                 >
@@ -446,7 +446,7 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
                 <Button
                   type="button"
                   size="icon"
-                  className="h-9 w-9 shrink-0 rounded-full bg-primary"
+                  className="h-9 w-9 shrink-0 rounded-full bg-primary shadow-sm transition-transform active:scale-95"
                   aria-label="发送"
                   onClick={handleSend}
                   disabled={tokenId === null || !activeModel || !input.trim()}
@@ -464,7 +464,7 @@ export function ChatPanel({ tokenId, model, className }: ChatPanelProps) {
           <DialogHeader>
             <DialogTitle>清空对话？</DialogTitle>
             <DialogDescription>
-              当前对话记录将被清除，且无法恢复。
+              所有消息将被清除，此操作无法撤销。
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -492,9 +492,9 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
         <Terminal className="h-7 w-7" />
       </span>
       <div className="space-y-1">
-        <p className="text-base font-semibold">开始一段对话</p>
+        <p className="text-base font-semibold">有什么想聊的？</p>
         <p className="text-sm text-muted-foreground">
-          选择下方建议，或直接在输入框提问。
+          从下方示例开始，或者直接输入你的问题。
         </p>
       </div>
       <div className="grid w-full max-w-xl gap-3 sm:grid-cols-2 mt-4">
@@ -544,7 +544,7 @@ function QuickPills({
           key={pill.label}
           type="button"
           onClick={() => onPick(pill.text)}
-          className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="rounded-full border border-border/60 bg-card/80 px-3 py-1 text-xs text-muted-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:bg-muted hover:text-foreground hover:shadow-md"
         >
           {pill.label}
         </button>
@@ -644,7 +644,7 @@ function ModelDropdown({
             ))
           ) : (
             <div className="px-2 py-6 text-center text-xs text-muted-foreground">
-              没有匹配的模型
+              未找到匹配的模型
             </div>
           )}
         </div>
@@ -666,15 +666,15 @@ function modelStatusMessage(
   modelLoadError: string | null,
 ): string {
   if (modelLoadState === "loading") {
-    return "模型加载中";
+    return "正在加载模型…";
   }
   if (modelLoadState === "empty") {
-    return "没有可用模型";
+    return "暂无可用模型";
   }
   if (modelLoadState === "error") {
     return modelLoadError ?? "模型加载失败";
   }
-  return "请先选择令牌与模型";
+  return "请先选择令牌";
 }
 
 function MessageBubble({
@@ -702,11 +702,11 @@ function MessageBubble({
     >
       {/* 头像 */}
       {isUser ? (
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary text-xs font-bold text-primary-foreground shadow-sm">
           你
         </span>
       ) : (
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/50 bg-foreground text-background shadow-sm">
           <Terminal className="h-4 w-4" />
         </span>
       )}
@@ -719,10 +719,10 @@ function MessageBubble({
       >
         <div
           className={cn(
-            "max-w-full overflow-hidden rounded-2xl px-3.5 py-2.5 text-sm leading-6 [overflow-wrap:anywhere] sm:px-4",
+            "max-w-full overflow-hidden rounded-2xl px-3.5 py-2.5 text-sm leading-6 shadow-sm [overflow-wrap:anywhere] sm:px-4",
             isUser
-              ? "border border-primary/40 bg-primary/5 text-foreground"
-              : "bg-muted text-foreground",
+              ? "rounded-tr-[4px] border border-primary/20 bg-primary/10 text-foreground"
+              : "rounded-tl-[4px] border border-border/40 bg-card text-foreground",
           )}
         >
           {showTyping ? (
