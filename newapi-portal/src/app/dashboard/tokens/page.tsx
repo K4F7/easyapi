@@ -309,28 +309,15 @@ export default function TokensPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl pb-16 relative z-10 page-transition home-enter-1">
-      <header className="mb-14 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-        <div className="space-y-3">
-          <p className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Access Control
-          </p>
-          <div className="flex flex-wrap items-center gap-4">
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 dark:text-foreground">
-              API 令牌
-            </h1>
-          </div>
-          <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-            管理用于访问 API 的鉴权令牌及余额限制。
-          </p>
-        </div>
+      <header className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-normal">API 令牌</h1>
         {tokens.length > 0 ? (
           <div className="flex flex-wrap gap-3">
             <Button
-              className="h-12 px-6 rounded-xl font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 text-base bg-gray-900 text-white hover:bg-gray-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
               disabled={!channelTiersReady}
               onClick={() => setCreateOpen(true)}
             >
-              <Plus className="mr-2 h-5 w-5" />
+              <Plus className="h-4 w-4" />
               创建新令牌
             </Button>
           </div>
@@ -362,11 +349,10 @@ export default function TokensPage() {
             创建您的第一个 API 令牌，开始将我们的服务集成到您的应用中。
           </p>
           <Button
-            className="h-12 px-8 rounded-xl font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 text-base bg-gray-900 text-white hover:bg-gray-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
             disabled={!channelTiersReady}
             onClick={() => setCreateOpen(true)}
           >
-            <Plus className="mr-2 h-5 w-5" />
+            <Plus className="h-4 w-4" />
             创建令牌
           </Button>
         </div>
@@ -374,14 +360,9 @@ export default function TokensPage() {
         <div className="relative overflow-hidden bg-white/80 dark:bg-card/80 backdrop-blur-xl border border-gray-100 dark:border-border/50 shadow-sm dark:shadow-2xl rounded-[2rem] page-transition home-enter-2">
           <div className="relative">
             <div className="flex flex-col gap-4 border-b border-gray-100 dark:border-border/50 bg-transparent p-6 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <h2 className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-foreground">
-                  活动令牌
-                </h2>
-                <p className="text-sm font-medium text-muted-foreground">
-                  出于安全考虑，列表仅显示密钥的掩码。
-                </p>
-              </div>
+              <h2 className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-foreground">
+                活动令牌
+              </h2>
               <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <Input
@@ -1034,16 +1015,15 @@ function CreateTokenDialog({
             type="submit"
             form="create-token-form"
             disabled={creating || !canCreateWithChannel}
-            className="h-10 rounded-xl px-6 font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 bg-gray-900 text-white hover:bg-gray-800 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
           >
             {creating ? (
               <>
-                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-r-transparent" />
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-background border-r-transparent" />
                 创建中…
               </>
             ) : (
               <>
-                <Plus className="mr-2 h-4 w-4" />
+                <Plus className="h-4 w-4" />
                 创建
               </>
             )}
