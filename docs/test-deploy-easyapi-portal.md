@@ -82,6 +82,8 @@
 
 **注意**：每次 `dev` 部署会**清空并重建** staging Postgres（生产快照非实时同步）；`dev` 上在测试期间手工改库的数据会在下次 `dev` push 后丢失。
 
+**签到相关**：恢复库后 NewAPI 根用户的 `access_token` 会随快照变化，但 `/opt/easyapi-portal-test/.env` 中的 `NEWAPI_ADMIN_TOKEN` **不会**自动更新。若出现签到 502（`Unauthorized, invalid access token`），见 [checkin-diagnostics.md — 故障排查](./checkin-diagnostics.md#故障排查签到失败--重试仍失败)。
+
 `workflow_dispatch` 默认只构建；勾选 **Deploy to staging after build** 才会执行部署 job（`dev` 分支手动触发时同样会恢复库+seed）。
 
 ### GitHub Secrets（仓库 Settings → Secrets）
@@ -95,7 +97,7 @@
 | `E2E_PORTAL_IDENTIFIER`（推荐） | `scr@qq.com`；未配置时 CI 使用文档默认账号 |
 | `E2E_PORTAL_PASSWORD`（推荐） | `ScreenshotTest123!`；未配置时 CI 使用文档默认密码 |
 | `STAGING_NEWAPI_BASE_URL`（可选） | seed **admin fallback** 用 NewAPI 地址；须 **GHA runner 可访问**（公网或 runner 可达的管理入口），**不能**填仅 Portal 容器内网可达的 Docker 服务名。`portal-test` 运行时 `NEWAPI_BASE_URL` 在服务器 compose 单独配置 |
-| `STAGING_NEWAPI_ADMIN_TOKEN`（可选） | seed admin fallback 用管理 token |
+| `STAGING_NEWAPI_ADMIN_TOKEN`（可选） | seed admin fallback 用管理 token；**须与服务器 `.env` 中 `NEWAPI_ADMIN_TOKEN` 保持一致**（GHA 不会自动写入服务器，见 [checkin-diagnostics.md](./checkin-diagnostics.md)） |
 
 ### GitHub Variables（仓库 Settings → Variables）
 
