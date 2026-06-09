@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 export type ImagePanelProps = {
   /** 选中的令牌 ID（仅标识，非密钥）。 */
   tokenId: number | null;
+  /** 生图令牌不可用时，回退到对话令牌重试会话签发。 */
+  fallbackTokenId?: number | null;
   /** 选中的模型名，拼入 iframe `?model=`。 */
   model: string | null;
   className?: string;
@@ -25,7 +27,12 @@ export type ImagePanelProps = {
 
 type EmbedMode = "proxy" | null;
 
-export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
+export function ImagePanel({
+  tokenId,
+  fallbackTokenId = null,
+  model,
+  className,
+}: ImagePanelProps) {
   const [loaded, setLoaded] = useState(false);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState(false);
@@ -75,8 +82,6 @@ export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
       return () => controller.abort();
     }
 
-    const selectedTokenId = tokenId;
-
     async function createIframeUrl() {
       try {
         const origin = window.location.origin;
@@ -88,15 +93,13 @@ export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
           "imageApiUrl",
           `${origin}/api/playground/images/generations`,
         );
-        baseUrl.searchParams.set("tokenId", String(selectedTokenId));
-        baseUrl.searchParams.set("portalTokenId", String(selectedTokenId));
         baseUrl.searchParams.set("theme", "light");
         if (model) {
           baseUrl.searchParams.set("model", model);
         }
 
         const sessionToken = await createImageSessionToken(
-          selectedTokenId,
+          [tokenId, fallbackTokenId],
           controller.signal,
         );
 
@@ -118,7 +121,7 @@ export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
 
     void createIframeUrl();
     return () => controller.abort();
-  }, [embedMode, model, tokenId]);
+  }, [embedMode, fallbackTokenId, model, tokenId]);
 
   if (!iframeSrc) {
     const title = sessionError
@@ -171,34 +174,41 @@ export function ImagePanel({ tokenId, model, className }: ImagePanelProps) {
 }
 
 async function createImageSessionToken(
-  tokenId: number,
+  tokenIds: Array<number | null | undefined>,
   signal: AbortSignal,
 ): Promise<string> {
-  const response = await fetch("/api/playground/images/session", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "same-origin",
-    body: JSON.stringify({ tokenId, embedTarget: "proxy" }),
-    signal,
-  });
+  const candidates = [...new Set(tokenIds.filter((id): id is number => typeof id === "number" && id > 0))];
 
-  if (!response.ok) {
-    throw new Error("Failed to create playground image session");
+  if (candidates.length === 0) {
+    throw new Error("缺少有效的操练场令牌");
   }
 
-  const payload = (await response.json()) as {
-    ok?: boolean;
-    data?: {
-      token?: unknown;
-    };
-  };
-  const token = payload.data?.token;
+  let lastError: string | null = null;
 
-  if (payload.ok !== true || typeof token !== "string") {
-    throw new Error("Invalid playground image session response");
+  for (const tokenId of candidates) {
+    const response = await fetch("/api/playground/images/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ tokenId, embedTarget: "proxy" }),
+      signal,
+    });
+
+    const payload = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+      data?: { token?: unknown };
+      error?: { message?: string };
+    } | null;
+    const token = payload?.data?.token;
+
+    if (response.ok && payload?.ok === true && typeof token === "string") {
+      return token;
+    }
+
+    lastError = payload?.error?.message ?? "生图会话签发失败";
   }
 
-  return token;
+  throw new Error(lastError ?? "生图会话签发失败");
 }

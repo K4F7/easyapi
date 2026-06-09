@@ -86,6 +86,7 @@ function PlaygroundContent() {
       ) : (
         <ImagePanel
           tokenId={imageTokenId}
+          fallbackTokenId={chatTokenId}
           model={null}
           className="flex-1 min-h-0 mx-4 md:mx-6"
         />

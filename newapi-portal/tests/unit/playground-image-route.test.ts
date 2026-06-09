@@ -1,13 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockRequireUser = vi.fn();
-const mockGetUserNewApiAuth = vi.fn();
-const mockGetPortalUserForApi = vi.fn();
-const mockResolvePlaygroundKey = vi.fn();
-const mockAssertPlaygroundTokenAccess = vi.fn();
-const mockCreateImageGeneration = vi.fn();
-
-const { MockNewApiError } = vi.hoisted(() => ({
+const {
+  mockRequireUser,
+  mockGetUserNewApiAuth,
+  mockGetPortalUserForApi,
+  mockResolvePlaygroundKey,
+  mockAssertPlaygroundTokenAccess,
+  mockEnsurePlaygroundImageTokenId,
+  mockCreateImageGeneration,
+  MockNewApiError,
+} = vi.hoisted(() => ({
+  mockRequireUser: vi.fn(),
+  mockGetUserNewApiAuth: vi.fn(),
+  mockGetPortalUserForApi: vi.fn(),
+  mockResolvePlaygroundKey: vi.fn(),
+  mockAssertPlaygroundTokenAccess: vi.fn(),
+  mockEnsurePlaygroundImageTokenId: vi.fn(),
+  mockCreateImageGeneration: vi.fn(),
   MockNewApiError: class MockNewApiError extends Error {
     readonly status: number;
     readonly code?: string;
@@ -84,6 +93,13 @@ vi.mock("@/lib/newapi", () => ({
   getNewApiConfig: () => ({ baseUrl: "https://newapi.example.test" }),
 }));
 
+vi.mock("@/lib/playground/ensure-token", () => ({
+  deleteAllPlaygroundTokensByName: vi.fn(),
+  ensurePlaygroundChatTokenId: vi.fn(),
+  ensurePlaygroundImageTokenId: (...args: unknown[]) =>
+    mockEnsurePlaygroundImageTokenId(...args),
+}));
+
 vi.mock("@/lib/newapi/playground", async () => {
   const actual = await vi.importActual<
     typeof import("@/lib/newapi/playground")
@@ -149,6 +165,7 @@ describe("POST playground image session", () => {
       auth: { userId: "99", accessToken: "newapi-access-token" },
     });
     mockAssertPlaygroundTokenAccess.mockResolvedValue(undefined);
+    mockEnsurePlaygroundImageTokenId.mockResolvedValue(101);
   });
 
   it("returns a signed image session token without exposing the real key", async () => {
@@ -169,6 +186,10 @@ describe("POST playground image session", () => {
     expect(mockGetUserNewApiAuth).toHaveBeenCalledWith({
       id: "portal-user-1",
       email: "user@example.com",
+    });
+    expect(mockEnsurePlaygroundImageTokenId).toHaveBeenCalledWith({
+      userId: "99",
+      accessToken: "newapi-access-token",
     });
     expect(mockAssertPlaygroundTokenAccess).toHaveBeenCalledWith(
       { userId: "99", accessToken: "newapi-access-token" },

@@ -1,14 +1,46 @@
 import "server-only";
 
-import { getToken, revealTokenKey } from "@/lib/newapi/tokens";
+import {
+  extractTokenKey,
+  getToken,
+  revealTokenKey,
+} from "@/lib/newapi/tokens";
 import type { NewApiAuth } from "@/lib/newapi/types";
+import {
+  deleteAllPlaygroundTokensByName,
+  ensurePlaygroundChatTokenId,
+  ensurePlaygroundImageTokenId,
+} from "@/lib/playground/ensure-token";
+import {
+  cachePlaygroundKey,
+  forgetCachedPlaygroundKey,
+  getCachedPlaygroundKey,
+} from "@/lib/playground/key-cache";
+import {
+  isManagedPlaygroundToken,
+  PLAYGROUND_IMAGE_TOKEN_NAME,
+} from "@/lib/playground/token-identity";
 
 function isMaskedTokenKey(key: string): boolean {
-  return key.includes("...") || key.includes("*");
+  if (key.includes("...") || key.includes("*")) {
+    return true;
+  }
+
+  const maskedCharCount = (key.match(/[*•·]/g) ?? []).length;
+  return maskedCharCount >= 4 && maskedCharCount / key.length >= 0.3;
 }
 
 function isInlinePlaygroundKey(key: string): boolean {
   return key.length > 0 && !isMaskedTokenKey(key);
+}
+
+function rememberPlaygroundKey(
+  auth: NewApiAuth,
+  tokenId: number,
+  key: string,
+): string {
+  cachePlaygroundKey(auth, tokenId, key);
+  return key;
 }
 
 export class PlaygroundError extends Error {
@@ -31,22 +63,72 @@ export async function assertPlaygroundTokenAccess(
 export async function resolvePlaygroundKey(
   auth: NewApiAuth,
   tokenId: number,
+  options?: { allowRecovery?: boolean },
 ): Promise<string> {
+  const allowRecovery = options?.allowRecovery ?? true;
+  const cachedKey = getCachedPlaygroundKey(auth, tokenId);
+
+  if (cachedKey) {
+    return cachedKey;
+  }
+
   const token = await getToken(auth, tokenId);
 
   if (token.status !== undefined && token.status !== 1) {
     throw new PlaygroundError("所选令牌不可用", 403);
   }
 
-  if (typeof token.key === "string" && isInlinePlaygroundKey(token.key)) {
-    return token.key;
+  const inlineKey = extractTokenKey(token);
+
+  if (typeof inlineKey === "string" && isInlinePlaygroundKey(inlineKey)) {
+    return rememberPlaygroundKey(auth, tokenId, inlineKey);
   }
 
   try {
-    return await revealTokenKey(auth, tokenId);
+    const revealedKey = await revealTokenKey(auth, tokenId);
+    return rememberPlaygroundKey(auth, tokenId, revealedKey);
+  } catch {
+    if (allowRecovery && isManagedPlaygroundToken(token)) {
+      return recoverManagedPlaygroundKey(auth, token);
+    }
+
+    throw new PlaygroundError("所选令牌无法用于 Playground", 409);
+  }
+}
+
+async function recoverManagedPlaygroundKey(
+  auth: NewApiAuth,
+  token: { id?: number; name?: string },
+): Promise<string> {
+  const oldTokenId = token.id;
+  const tokenName = token.name;
+
+  if (typeof oldTokenId !== "number" || typeof tokenName !== "string") {
+    throw new PlaygroundError("所选令牌无法用于 Playground", 409);
+  }
+
+  forgetCachedPlaygroundKey(auth, oldTokenId);
+
+  try {
+    await deleteAllPlaygroundTokensByName(auth, tokenName);
   } catch {
     throw new PlaygroundError("所选令牌无法用于 Playground", 409);
   }
+
+  const newTokenId =
+    tokenName === PLAYGROUND_IMAGE_TOKEN_NAME
+      ? await ensurePlaygroundImageTokenId(auth)
+      : await ensurePlaygroundChatTokenId(auth);
+
+  const key = await resolvePlaygroundKey(auth, newTokenId, {
+    allowRecovery: false,
+  });
+
+  if (oldTokenId !== newTokenId) {
+    cachePlaygroundKey(auth, oldTokenId, key);
+  }
+
+  return key;
 }
 
 function buildOpenAiUrl(baseUrl: string, path: string): string {

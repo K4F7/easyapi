@@ -109,7 +109,7 @@ export async function createTokenAndRevealKey(
 function parseCreateTokenResult(raw: unknown): NewApiCreateTokenResult {
   const unwrapped = unwrapData(raw);
   const token = parseToken(unwrapped);
-  const key = parseTokenKey(unwrapped) ?? parseTokenKey(raw);
+  const key = extractTokenKey(unwrapped) ?? extractTokenKey(raw);
 
   return {
     token,
@@ -132,7 +132,7 @@ function parseToken(value: unknown): NewApiToken | undefined {
   return maybeToken as unknown as NewApiToken;
 }
 
-function parseTokenKey(value: unknown): string | undefined {
+export function extractTokenKey(value: unknown): string | undefined {
   if (!isRecord(value)) {
     return undefined;
   }
@@ -145,7 +145,7 @@ function parseTokenKey(value: unknown): string | undefined {
     }
   }
 
-  return isRecord(value.token) ? parseTokenKey(value.token) : undefined;
+  return isRecord(value.token) ? extractTokenKey(value.token) : undefined;
 }
 
 function unwrapData(value: unknown): unknown {

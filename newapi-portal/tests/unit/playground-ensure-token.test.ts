@@ -3,12 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NewApiAuth, NewApiToken } from "@/lib/newapi/types";
 
 const mockListTokens = vi.fn();
-const mockCreateToken = vi.fn();
+const mockCreateTokenAndRevealKey = vi.fn();
 const mockUpdateToken = vi.fn();
 
 vi.mock("@/lib/newapi", () => ({
   listTokens: (...args: unknown[]) => mockListTokens(...args),
-  createToken: (...args: unknown[]) => mockCreateToken(...args),
+  createTokenAndRevealKey: (...args: unknown[]) =>
+    mockCreateTokenAndRevealKey(...args),
   updateToken: (...args: unknown[]) => mockUpdateToken(...args),
 }));
 
@@ -63,7 +64,7 @@ describe("ensure playground tokens", () => {
       p: 2,
       size: 100,
     });
-    expect(mockCreateToken).not.toHaveBeenCalled();
+    expect(mockCreateTokenAndRevealKey).not.toHaveBeenCalled();
     expect(mockUpdateToken).not.toHaveBeenCalled();
   });
 
@@ -101,7 +102,7 @@ describe("ensure playground tokens", () => {
       model_limits_enabled: false,
       group: "normal",
     });
-    expect(mockCreateToken).not.toHaveBeenCalled();
+    expect(mockCreateTokenAndRevealKey).not.toHaveBeenCalled();
   });
 
   it("does not reuse finite quota playground tokens", async () => {
@@ -116,12 +117,12 @@ describe("ensure playground tokens", () => {
       ],
       total: 1,
     });
-    mockCreateToken.mockResolvedValueOnce({
+    mockCreateTokenAndRevealKey.mockResolvedValueOnce({
       token: { id: 313, name: PLAYGROUND_CHAT_TOKEN_NAME },
     });
 
     await expect(ensurePlaygroundChatTokenId(auth)).resolves.toBe(313);
-    expect(mockCreateToken).toHaveBeenCalledWith(auth, {
+    expect(mockCreateTokenAndRevealKey).toHaveBeenCalledWith(auth, {
       name: PLAYGROUND_CHAT_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
@@ -141,12 +142,12 @@ describe("ensure playground tokens", () => {
       ],
       total: 1,
     });
-    mockCreateToken.mockResolvedValueOnce({
+    mockCreateTokenAndRevealKey.mockResolvedValueOnce({
       token: { id: 323, name: PLAYGROUND_IMAGE_TOKEN_NAME },
     });
 
     await expect(ensurePlaygroundImageTokenId(auth)).resolves.toBe(323);
-    expect(mockCreateToken).toHaveBeenLastCalledWith(auth, {
+    expect(mockCreateTokenAndRevealKey).toHaveBeenLastCalledWith(auth, {
       name: PLAYGROUND_IMAGE_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
@@ -168,7 +169,7 @@ describe("ensure playground tokens", () => {
 
     await expect(ensurePlaygroundChatTokenId(auth)).resolves.toBe(33);
     expect(mockUpdateToken).not.toHaveBeenCalled();
-    expect(mockCreateToken).not.toHaveBeenCalled();
+    expect(mockCreateTokenAndRevealKey).not.toHaveBeenCalled();
   });
 
   it("updates a usable chat token assigned to a non-playground group", async () => {
@@ -192,7 +193,7 @@ describe("ensure playground tokens", () => {
       model_limits_enabled: false,
       group: "general",
     });
-    expect(mockCreateToken).not.toHaveBeenCalled();
+    expect(mockCreateTokenAndRevealKey).not.toHaveBeenCalled();
   });
 
   it("creates chat tokens with the configured general channel group", async () => {
@@ -201,12 +202,12 @@ describe("ensure playground tokens", () => {
       items: [],
       total: 0,
     });
-    mockCreateToken.mockResolvedValueOnce({
+    mockCreateTokenAndRevealKey.mockResolvedValueOnce({
       token: { id: 336, name: PLAYGROUND_CHAT_TOKEN_NAME },
     });
 
     await expect(ensurePlaygroundChatTokenId(auth)).resolves.toBe(336);
-    expect(mockCreateToken).toHaveBeenCalledWith(auth, {
+    expect(mockCreateTokenAndRevealKey).toHaveBeenCalledWith(auth, {
       name: PLAYGROUND_CHAT_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
@@ -236,7 +237,7 @@ describe("ensure playground tokens", () => {
 
     await expect(ensurePlaygroundChatTokenId(auth)).resolves.toBe(37);
     expect(mockUpdateToken).not.toHaveBeenCalled();
-    expect(mockCreateToken).not.toHaveBeenCalled();
+    expect(mockCreateTokenAndRevealKey).not.toHaveBeenCalled();
   });
 
   it("updates the first stale chat token when no qualified token exists", async () => {
@@ -272,7 +273,7 @@ describe("ensure playground tokens", () => {
       model_limits_enabled: false,
       group: "normal",
     });
-    expect(mockCreateToken).not.toHaveBeenCalled();
+    expect(mockCreateTokenAndRevealKey).not.toHaveBeenCalled();
   });
 
   it("updates a stale image token that still has model limits enabled", async () => {
@@ -296,7 +297,7 @@ describe("ensure playground tokens", () => {
       model_limits_enabled: false,
       group: "auto",
     });
-    expect(mockCreateToken).not.toHaveBeenCalled();
+    expect(mockCreateTokenAndRevealKey).not.toHaveBeenCalled();
   });
 
   it("creates a dedicated image token on the auto channel without model limits", async () => {
@@ -304,12 +305,12 @@ describe("ensure playground tokens", () => {
       items: [],
       total: 0,
     });
-    mockCreateToken.mockResolvedValueOnce({
+    mockCreateTokenAndRevealKey.mockResolvedValueOnce({
       token: { id: 404, name: PLAYGROUND_IMAGE_TOKEN_NAME },
     });
 
     await expect(ensurePlaygroundImageTokenId(auth)).resolves.toBe(404);
-    expect(mockCreateToken).toHaveBeenCalledWith(auth, {
+    expect(mockCreateTokenAndRevealKey).toHaveBeenCalledWith(auth, {
       name: PLAYGROUND_IMAGE_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
@@ -338,7 +339,7 @@ describe("ensure playground tokens", () => {
       model_limits_enabled: false,
       group: "auto",
     });
-    expect(mockCreateToken).not.toHaveBeenCalled();
+    expect(mockCreateTokenAndRevealKey).not.toHaveBeenCalled();
   });
 
   it("reuses a qualified image token and creates a separate chat token", async () => {
@@ -357,7 +358,7 @@ describe("ensure playground tokens", () => {
         ],
         total: 1,
       });
-    mockCreateToken.mockResolvedValueOnce({
+    mockCreateTokenAndRevealKey.mockResolvedValueOnce({
       token: { id: 606, name: PLAYGROUND_CHAT_TOKEN_NAME },
     });
 

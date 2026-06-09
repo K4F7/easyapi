@@ -16,6 +16,7 @@ export {
   createToken,
   createTokenAndRevealKey,
   deleteToken,
+  extractTokenKey,
   getToken,
   listTokens,
   revealTokenKey,

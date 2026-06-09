@@ -1,6 +1,15 @@
 import "server-only";
 
-import { createToken, listTokens, updateToken } from "@/lib/newapi";
+import {
+  createTokenAndRevealKey,
+  deleteToken,
+  listTokens,
+  updateToken,
+} from "@/lib/newapi";
+import {
+  cachePlaygroundKey,
+  forgetCachedPlaygroundKey,
+} from "@/lib/playground/key-cache";
 import type {
   NewApiAuth,
   NewApiCreateTokenInput,
@@ -54,6 +63,47 @@ export async function ensurePlaygroundChatTokenId(
   });
 }
 
+export async function deleteAllPlaygroundTokensByName(
+  auth: NewApiAuth,
+  name: string,
+): Promise<void> {
+  let pageNumber = 1;
+  let scanned = 0;
+
+  while (true) {
+    const page = await listTokens(auth, {
+      p: pageNumber,
+      size: TOKEN_PAGE_SIZE,
+    });
+    const items = Array.isArray(page.items) ? page.items : [];
+
+    for (const token of items) {
+      if (token.name !== name || typeof token.id !== "number") {
+        continue;
+      }
+
+      forgetCachedPlaygroundKey(auth, token.id);
+
+      try {
+        await deleteToken(auth, token.id);
+      } catch {
+        // Keep removing other stale playground tokens even if one delete fails.
+      }
+    }
+
+    scanned += items.length;
+
+    if (
+      items.length < TOKEN_PAGE_SIZE ||
+      (typeof page.total === "number" && scanned >= page.total)
+    ) {
+      return;
+    }
+
+    pageNumber += 1;
+  }
+}
+
 export async function ensurePlaygroundImageTokenId(
   auth: NewApiAuth,
 ): Promise<number> {
@@ -100,11 +150,15 @@ async function ensurePlaygroundToken(
     return existing.updatable.id;
   }
 
-  const created = await createToken(auth, options.createInput);
+  const created = await createTokenAndRevealKey(auth, options.createInput);
   const tokenId = created.token?.id;
 
   if (typeof tokenId !== "number") {
     throw new Error("Failed to provision playground token");
+  }
+
+  if (typeof created.key === "string" && created.key.length > 0) {
+    cachePlaygroundKey(auth, tokenId, created.key);
   }
 
   return tokenId;

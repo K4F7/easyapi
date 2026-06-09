@@ -9,6 +9,7 @@ import {
   resolveSessionOrigins,
   type ImageEmbedTarget,
 } from "@/lib/playground/image-playground-origins";
+import { ensurePlaygroundImageTokenId } from "@/lib/playground/ensure-token";
 import {
   imageSessionTokenTtlSeconds,
   signPlaygroundImageSessionToken,
@@ -49,7 +50,8 @@ export async function POST(request: Request) {
     }
 
     const body = await readJson(request, imageSessionSchema);
-    await assertPlaygroundTokenAccess(authResult.auth, body.tokenId);
+    const imageTokenId = await ensurePlaygroundImageTokenId(authResult.auth);
+    await assertPlaygroundTokenAccess(authResult.auth, imageTokenId);
     const embedTarget: ImageEmbedTarget = resolveImageEmbedTarget(
       body.embedTarget,
     );
@@ -73,7 +75,7 @@ export async function POST(request: Request) {
 
     const token = signPlaygroundImageSessionToken({
       userId: user.id,
-      tokenId: body.tokenId,
+      tokenId: imageTokenId,
       portalOrigin,
       playgroundOrigin,
     });
