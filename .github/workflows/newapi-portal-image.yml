@@ -36,5 +36,7 @@ jobs:
           file: ./newapi-portal/Dockerfile
           push: true
           tags: ghcr.io/k4f7/easyapi/newapi-portal:test-latest
+          build-args: |
+            NEXT_PUBLIC_NEWAPI_BASE_URL=${{ vars.STAGING_PUBLIC_NEWAPI_BASE_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

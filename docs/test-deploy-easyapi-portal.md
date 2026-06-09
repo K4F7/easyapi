@@ -91,7 +91,7 @@
 | `GHCR_PULL_TOKEN`（可选） | 若服务器未持久 `docker login ghcr.io`，填只读 PAT（`read:packages`）；workflow 会传给部署脚本临时登录 |
 | `E2E_PORTAL_IDENTIFIER`（推荐） | `scr@qq.com`；未配置时 CI 使用文档默认账号 |
 | `E2E_PORTAL_PASSWORD`（推荐） | `ScreenshotTest123!`；未配置时 CI 使用文档默认密码 |
-| `STAGING_NEWAPI_BASE_URL`（可选） | seed admin fallback 用 NewAPI 地址 |
+| `STAGING_NEWAPI_BASE_URL`（可选） | seed **admin fallback** 用 NewAPI 地址；须 **GHA runner 可访问**（公网或 runner 可达的管理入口），**不能**填仅 Portal 容器内网可达的 Docker 服务名。`portal-test` 运行时 `NEWAPI_BASE_URL` 在服务器 compose 单独配置 |
 | `STAGING_NEWAPI_ADMIN_TOKEN`（可选） | seed admin fallback 用管理 token |
 
 ### GitHub Variables（仓库 Settings → Variables）
