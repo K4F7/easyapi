@@ -116,25 +116,25 @@ describe("GET /api/channels/tiers", () => {
 
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.data?.defaultGroup).toBe("default");
+    expect(body.data?.defaultGroup).toBe("normal");
     expect(body.data?.tiers).toEqual([
       expect.objectContaining({
         id: "low",
         label: "低价渠道",
-        group: "low-cost",
+        group: "budget",
         stability: "~50% 在线",
       }),
       expect.objectContaining({
         id: "standard",
         label: "一般渠道",
-        group: "default",
+        group: "normal",
         stability: "~80% 在线",
         default: true,
       }),
       expect.objectContaining({
         id: "premium",
         label: "高价渠道",
-        group: "premium",
+        group: "stable",
         stability: "~99.9% 在线",
       }),
     ]);
@@ -196,7 +196,7 @@ describe("POST /api/tokens", () => {
         key: "sk-live-created-secret",
         status: 1,
         remain_quota: 1_000_000,
-        group: "premium",
+        group: "stable",
       },
       key: "sk-live-created-secret",
     });
@@ -211,7 +211,7 @@ describe("POST /api/tokens", () => {
         body: JSON.stringify({
           name: "CNY Token",
           remain_quota_cny: 2,
-          group: "premium",
+          group: "stable",
         }),
       }),
     );
@@ -224,7 +224,7 @@ describe("POST /api/tokens", () => {
       name: "CNY Token",
       key: "sk-liv...cret",
       remain_quota: 1_000_000,
-      group: "premium",
+      group: "stable",
     });
     expect(body.data?.key).toBe("sk-live-created-secret");
 
@@ -233,7 +233,7 @@ describe("POST /api/tokens", () => {
       expect.objectContaining({
         name: "CNY Token",
         remain_quota: 1_000_000,
-        group: "premium",
+        group: "stable",
       }),
     );
     const tokenInput = mockCreateTokenAndRevealKey.mock.calls[0]?.[1] as Record<
@@ -251,7 +251,7 @@ describe("POST /api/tokens", () => {
         method: "POST",
         body: JSON.stringify({
           name: "操练场-Image",
-          group: "default",
+          group: "normal",
         }),
       }),
     );
@@ -290,7 +290,7 @@ describe("PUT /api/tokens/:id", () => {
       model_limits_enabled: false,
       model_limits: "",
       allow_ips: null,
-      group: "default",
+      group: "normal",
       cross_group_retry: false,
     });
     mockUpdateToken.mockResolvedValue({
@@ -300,7 +300,7 @@ describe("PUT /api/tokens/:id", () => {
       status: 1,
       remain_quota: 100_000,
       unlimited_quota: false,
-      group: "premium",
+      group: "stable",
       cross_group_retry: false,
     });
   });
@@ -308,7 +308,7 @@ describe("PUT /api/tokens/:id", () => {
   it("sends only the requested patch fields to NewAPI", async () => {
     const { PUT } = await import("@/app/api/tokens/[id]/route");
 
-    const response = await PUT(tokenRequest({ group: "premium" }), routeContext());
+    const response = await PUT(tokenRequest({ group: "stable" }), routeContext());
     const body = await parseResponse(response);
 
     expect(response.status).toBe(200);
@@ -317,7 +317,7 @@ describe("PUT /api/tokens/:id", () => {
       id: 101,
       name: "Existing Token",
       key: "sk-liv...cret",
-      group: "premium",
+      group: "stable",
     });
     expect(mockGetToken).toHaveBeenCalledWith(
       { userId: "99", accessToken: "newapi-token" },
@@ -327,7 +327,7 @@ describe("PUT /api/tokens/:id", () => {
       { userId: "99", accessToken: "newapi-token" },
       {
         id: 101,
-        group: "premium",
+        group: "stable",
       },
     );
   });
@@ -368,11 +368,11 @@ describe("PUT /api/tokens/:id", () => {
       key: "sk-live-playground-secret",
       status: 1,
       unlimited_quota: true,
-      group: "default",
+      group: "normal",
     });
     const { PUT } = await import("@/app/api/tokens/[id]/route");
 
-    const response = await PUT(tokenRequest({ group: "premium" }), routeContext());
+    const response = await PUT(tokenRequest({ group: "stable" }), routeContext());
     const body = await parseResponse(response);
 
     expect(response.status).toBe(403);
@@ -413,7 +413,7 @@ describe("PUT /api/tokens/:id", () => {
       key: "sk-live-legacy-playground-secret",
       status: 1,
       unlimited_quota: true,
-      group: "default",
+      group: "normal",
     });
     const { PUT } = await import("@/app/api/tokens/[id]/route");
 
@@ -490,7 +490,7 @@ describe("PUT /api/tokens/:id", () => {
     });
     const { PUT } = await import("@/app/api/tokens/[id]/route");
 
-    const response = await PUT(tokenRequest({ group: "premium" }), routeContext());
+    const response = await PUT(tokenRequest({ group: "stable" }), routeContext());
     const body = await parseResponse(response);
 
     expect(response.status).toBe(409);
@@ -523,7 +523,7 @@ describe("DELETE /api/tokens/:id", () => {
       model_limits_enabled: false,
       model_limits: "",
       allow_ips: null,
-      group: "default",
+      group: "normal",
       cross_group_retry: false,
     });
     mockDeleteToken.mockResolvedValue(undefined);
@@ -536,7 +536,7 @@ describe("DELETE /api/tokens/:id", () => {
       key: "sk-live-playground-image-secret",
       status: 1,
       unlimited_quota: true,
-      group: "default",
+      group: "normal",
     });
     const { DELETE } = await import("@/app/api/tokens/[id]/route");
 

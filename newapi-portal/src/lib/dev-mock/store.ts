@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PublicUser } from "@/lib/auth";
 import type { NewApiToken } from "@/lib/newapi";
+import { defaultChannelGroup } from "@/lib/channels/tiers";
 import { dateKey, todayDateOnly } from "@/lib/quota/usage";
 
 type MockOrder = {
@@ -55,7 +56,7 @@ function createInitialState(): MockState {
         remain_quota: 500_000,
         used_quota: 17_200,
         unlimited_quota: false,
-        group: "default",
+        group: defaultChannelGroup,
       },
       {
         id: 102,
@@ -66,7 +67,7 @@ function createInitialState(): MockState {
         remain_quota: 250_000,
         used_quota: 5_200,
         unlimited_quota: false,
-        group: "default",
+        group: defaultChannelGroup,
       },
     ],
     orders: [],
@@ -121,7 +122,7 @@ export function createMockToken(input: {
     model_limits_enabled: input.model_limits_enabled,
     model_limits: input.model_limits,
     allow_ips: input.allow_ips,
-    group: input.group ?? "default",
+    group: input.group ?? defaultChannelGroup,
     cross_group_retry: input.cross_group_retry,
   };
   state.tokens.unshift(token);

@@ -201,7 +201,7 @@ describe("dev mock API routes", () => {
 
     const tiersBody = await readJson(await tiers());
     expect(tiersBody.data).toMatchObject({
-      defaultGroup: "default",
+      defaultGroup: "normal",
     });
     expect(JSON.stringify(tiersBody.data)).toContain("低价渠道");
     expect(JSON.stringify(tiersBody.data)).toContain("高价渠道");
@@ -222,13 +222,13 @@ describe("dev mock API routes", () => {
     expect(createResponse.status).toBe(201);
     expect(created).toMatchObject({
       name: "Channel Token",
-      group: "default",
+      group: "normal",
     });
 
     const updateResponse = await PUT(
       new Request(`http://localhost/api/tokens/${created.id}`, {
         method: "PUT",
-        body: JSON.stringify({ group: "premium" }),
+        body: JSON.stringify({ group: "stable" }),
       }),
       { params: Promise.resolve({ id: String(created.id) }) },
     );
@@ -237,13 +237,13 @@ describe("dev mock API routes", () => {
     expect(updateResponse.status).toBe(200);
     expect(updateBody.data?.token).toMatchObject({
       id: created.id,
-      group: "premium",
+      group: "stable",
     });
 
     const listAfterUpdate = await readJson(
       await GET(new Request("http://localhost/api/tokens?p=1&size=20")),
     );
-    expect(JSON.stringify(listAfterUpdate.data)).toContain("premium");
+    expect(JSON.stringify(listAfterUpdate.data)).toContain("stable");
 
     const invalidResponse = await PUT(
       new Request(`http://localhost/api/tokens/${created.id}`, {

@@ -33,14 +33,14 @@ const channelTiers: MockTier[] = [
   {
     id: "low",
     label: "低价渠道",
-    group: "low-cost",
+    group: "budget",
     stability: "~50% 在线",
     description: "低成本，适合非关键任务或可重试场景。",
   },
   {
     id: "standard",
     label: "一般渠道",
-    group: "default",
+    group: "normal",
     stability: "~80% 在线",
     description: "默认推荐，适合日常开发与一般业务调用。",
     default: true,
@@ -48,7 +48,7 @@ const channelTiers: MockTier[] = [
   {
     id: "premium",
     label: "高价渠道",
-    group: "premium",
+    group: "stable",
     stability: "~99.9% 在线",
     description: "高稳定性，适合关键业务和生产调用。",
   },
@@ -119,7 +119,7 @@ test.describe("Token channel tier UI", () => {
         id: 102,
         name: "Frontend Dev",
         key: "sk-dev...tend",
-        group: "default",
+        group: "normal",
         remain_quota: 250000,
         used_quota: 5200,
       }),
@@ -132,13 +132,13 @@ test.describe("Token channel tier UI", () => {
         id: 104,
         name: "操练场-Chat",
         key: "sk-play...chat",
-        group: "default",
+        group: "normal",
       }),
       tokenFixture({
         id: 105,
         name: "操练场-测试",
         key: "sk-user...test",
-        group: "default",
+        group: "normal",
       }),
     ]);
 
@@ -209,7 +209,7 @@ test.describe("Token channel tier UI", () => {
     expect(createRequests[0]).toEqual(
       expect.objectContaining({
         name: "Default Channel Token",
-        group: "default",
+        group: "normal",
       }),
     );
 
@@ -224,7 +224,7 @@ test.describe("Token channel tier UI", () => {
     expect(createRequests[1]).toEqual(
       expect.objectContaining({
         name: "Premium Token",
-        group: "premium",
+        group: "stable",
       }),
     );
   });
@@ -356,7 +356,7 @@ test.describe("Token channel tier UI", () => {
         id: 102,
         name: "Frontend Dev",
         key: "sk-dev...tend",
-        group: "default",
+        group: "normal",
         remain_quota: 250000,
         used_quota: 5200,
       }),
@@ -380,7 +380,7 @@ test.describe("Token channel tier UI", () => {
               id: 102,
               name: "Frontend Dev",
               key: "sk-dev...tend",
-              group: "low-cost",
+              group: "budget",
               remain_quota: 250000,
               used_quota: 5200,
             }),
@@ -399,7 +399,7 @@ test.describe("Token channel tier UI", () => {
     await expect(
       page.getByRole("button", { name: /当前渠道：低价渠道/ }),
     ).toBeVisible();
-    expect(updateRequests).toEqual([{ group: "low-cost" }]);
+    expect(updateRequests).toEqual([{ group: "budget" }]);
   });
 
   test("keeps the previous tier label and shows an error when PUT fails", async ({
@@ -413,7 +413,7 @@ test.describe("Token channel tier UI", () => {
         id: 102,
         name: "Frontend Dev",
         key: "sk-dev...tend",
-        group: "default",
+        group: "normal",
       }),
     ]);
 
@@ -452,7 +452,7 @@ test.describe("Token channel tier UI", () => {
     await expect(
       page.getByRole("button", { name: /当前渠道：高价渠道/ }),
     ).toHaveCount(0);
-    expect(updateRequests).toEqual([{ group: "premium" }]);
+    expect(updateRequests).toEqual([{ group: "stable" }]);
   });
 
   for (const scenario of [
@@ -498,7 +498,7 @@ test.describe("Token channel tier UI", () => {
             ok: true,
             data: {
               tiers: [],
-              defaultGroup: "default",
+              defaultGroup: "normal",
             },
           }),
         });
@@ -517,7 +517,7 @@ test.describe("Token channel tier UI", () => {
           id: 102,
           name: "Frontend Dev",
           key: "sk-dev...tend",
-          group: "default",
+          group: "normal",
         }),
       ]);
 
@@ -568,13 +568,13 @@ test.describe("Token channel tier UI", () => {
         id: 102,
         name: "Frontend Dev",
         key: "sk-dev...tend",
-        group: "default",
+        group: "normal",
       }),
       tokenFixture({
         id: 103,
         name: "Production Token",
         key: "sk-prod...oken",
-        group: "premium",
+        group: "stable",
       }),
     ]);
 
@@ -602,7 +602,7 @@ async function routeChannelTiers(
   page: Page,
   {
     tiers = channelTiers,
-    defaultGroup = "default",
+    defaultGroup = "normal",
   }: {
     tiers?: MockTier[];
     defaultGroup?: string;

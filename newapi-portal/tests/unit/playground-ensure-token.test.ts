@@ -189,7 +189,7 @@ describe("ensure playground tokens", () => {
         token({
           id: 35,
           name: PLAYGROUND_CHAT_TOKEN_NAME,
-          group: "default",
+          group: "normal",
         }),
       ],
       total: 1,
@@ -236,7 +236,7 @@ describe("ensure playground tokens", () => {
             ? token({
                 id: 36,
                 name: PLAYGROUND_CHAT_TOKEN_NAME,
-                group: "default",
+                group: "normal",
               })
             : token({ id: 1000 + index, name: `Token ${index}` }),
         ),
@@ -260,7 +260,7 @@ describe("ensure playground tokens", () => {
             ? token({
                 id: 38,
                 name: PLAYGROUND_CHAT_TOKEN_NAME,
-                group: "default",
+                group: "normal",
               })
             : token({ id: 1100 + index, name: `Token ${index}` }),
         ),
@@ -271,7 +271,7 @@ describe("ensure playground tokens", () => {
           token({
             id: 39,
             name: PLAYGROUND_CHAT_TOKEN_NAME,
-            group: "default",
+            group: "normal",
           }),
         ],
         total: 101,

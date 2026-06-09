@@ -135,17 +135,17 @@ The portal exposes fixed user-facing channel metadata from `GET /api/channels/ti
 
 The labels, descriptions, and stability copy are fixed for the user. The NewAPI `group` values can be overridden by environment variables for operations:
 
-- `NEWAPI_CHANNEL_GROUP_LOW` defaults to `low-cost`.
-- `NEWAPI_CHANNEL_GROUP_STANDARD` defaults to `default`.
-- `NEWAPI_CHANNEL_GROUP_PREMIUM` defaults to `premium`.
+- `NEWAPI_CHANNEL_GROUP_LOW` defaults to `budget`.
+- `NEWAPI_CHANNEL_GROUP_STANDARD` defaults to `normal`.
+- `NEWAPI_CHANNEL_GROUP_PREMIUM` defaults to `stable`.
 
 `GET /api/channels/tiers`, create/update token validation, and dev mock token routes all use the same parsed channel group mapping.
 
 | Label | Group sent to NewAPI | Stability copy | Default |
 |-------|----------------------|----------------|---------|
-| 低价渠道 | `low-cost` | `~50% 在线` | No |
-| 一般渠道 | `default` | `~80% 在线` | Yes |
-| 高价渠道 | `premium` | `~99.9% 在线` | No |
+| 低价渠道 | `budget` | `~50% 在线` | No |
+| 一般渠道 | `normal` | `~80% 在线` | Yes |
+| 高价渠道 | `stable` | `~99.9% 在线` | No |
 
 The response envelope is:
 
@@ -157,12 +157,12 @@ The response envelope is:
       {
         "id": "low",
         "label": "低价渠道",
-        "group": "low-cost",
+        "group": "budget",
         "stability": "~50% 在线",
         "description": "低成本，适合非关键任务或可重试场景。"
       }
     ],
-    "defaultGroup": "default"
+    "defaultGroup": "normal"
   }
 }
 ```
@@ -171,7 +171,7 @@ The response envelope is:
 
 - Portal-managed Chat tokens use the general channel group. The default group value is `auto`; override `PLAYGROUND_CHAT_GROUP` only when the deployed NewAPI/BFF mapping names the general channel differently.
 - Chat tokens must keep `cross_group_retry: true`.
-- Portal does not encode fallback order. Configure NewAPI `auto` so the recommended operational order is general first, then low-cost, then high-stability or other operator-approved fallback groups.
+- Portal does not encode fallback order. Configure NewAPI `auto` so the recommended operational order is `normal` first, then `budget`, then `stable` or other operator-approved fallback groups.
 
 ## Billing and top-up
 

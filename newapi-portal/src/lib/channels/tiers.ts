@@ -15,14 +15,14 @@ const channelTierBases = [
   {
     id: "low",
     label: "低价渠道",
-    defaultGroup: "low-cost",
+    defaultGroup: "budget",
     stability: "~50% 在线",
     description: "低成本，适合非关键任务或可重试场景。",
   },
   {
     id: "standard",
     label: "一般渠道",
-    defaultGroup: "default",
+    defaultGroup: "normal",
     stability: "~80% 在线",
     description: "默认推荐，适合日常开发与一般业务调用。",
     default: true,
@@ -30,7 +30,7 @@ const channelTierBases = [
   {
     id: "premium",
     label: "高价渠道",
-    defaultGroup: "premium",
+    defaultGroup: "stable",
     stability: "~99.9% 在线",
     description: "高稳定性，适合关键业务和生产调用。",
   },

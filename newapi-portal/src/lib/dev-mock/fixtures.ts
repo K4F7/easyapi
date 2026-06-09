@@ -68,7 +68,7 @@ export function mockLogs() {
       prompt_tokens: 640,
       completion_tokens: 220,
       use_time: 880,
-      group: "default",
+      group: "normal",
       request_id: "mock-req-chat-003",
     },
     {
@@ -80,7 +80,7 @@ export function mockLogs() {
       prompt_tokens: 420,
       completion_tokens: 180,
       use_time: 640,
-      group: "default",
+      group: "normal",
       request_id: "mock-req-chat-002",
     },
     {
@@ -92,7 +92,7 @@ export function mockLogs() {
       prompt_tokens: 120,
       completion_tokens: 0,
       use_time: 1420,
-      group: "default",
+      group: "normal",
       request_id: "mock-req-image-001",
     },
   ];
