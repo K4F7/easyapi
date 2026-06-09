@@ -12,7 +12,7 @@ import {
 const quotaFormatter = new Intl.NumberFormat("zh-CN");
 const cnyFormatter = new Intl.NumberFormat("zh-CN", {
   minimumFractionDigits: 2,
-  maximumFractionDigits: 4,
+  maximumFractionDigits: 2,
 });
 
 export function useQuotaFormat() {

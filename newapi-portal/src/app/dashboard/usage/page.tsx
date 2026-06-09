@@ -209,7 +209,7 @@ function exportLogsCsv(
     log.model_name ?? "",
     log.prompt_tokens ?? "",
     log.completion_tokens ?? "",
-    log.quota != null ? quotaToCny(log.quota).toFixed(4) : "",
+    log.quota != null ? quotaToCny(log.quota).toFixed(2) : "",
     log.use_time ?? "",
     log.request_id ?? "",
   ]);
