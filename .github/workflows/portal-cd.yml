@@ -114,6 +114,16 @@ jobs:
           echo "Timed out waiting for stack after DB restore"
           exit 1
 
+      - name: Sync compose file to staging
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          source: infra/docker-compose.easyapi-portal-test.yml
+          target: /opt/easyapi-portal-test/
+          overwrite: true
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.2
         env:

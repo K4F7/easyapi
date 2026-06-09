@@ -1,7 +1,11 @@
 import "server-only";
 
-import { getToken } from "@/lib/newapi/tokens";
+import { getToken, revealTokenKey } from "@/lib/newapi/tokens";
 import type { NewApiAuth } from "@/lib/newapi/types";
+
+function isInlinePlaygroundKey(key: string): boolean {
+  return key.length > 0 && !key.includes("...");
+}
 
 export class PlaygroundError extends Error {
   readonly status: number;
@@ -30,11 +34,15 @@ export async function resolvePlaygroundKey(
     throw new PlaygroundError("所选令牌不可用", 403);
   }
 
-  if (typeof token.key !== "string" || token.key.length === 0) {
-    throw new PlaygroundError("所选令牌无法用于 Playground", 409);
+  if (typeof token.key === "string" && isInlinePlaygroundKey(token.key)) {
+    return token.key;
   }
 
-  return token.key;
+  try {
+    return await revealTokenKey(auth, tokenId);
+  } catch {
+    throw new PlaygroundError("所选令牌无法用于 Playground", 409);
+  }
 }
 
 export async function listUpstreamModels(baseUrl: string, key: string) {

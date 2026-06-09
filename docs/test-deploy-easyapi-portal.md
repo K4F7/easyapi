@@ -14,12 +14,15 @@
 | 对外地址 | https://test.easyapi.work |
 | 服务器 | `root@45.142.115.128` |
 | 编排目录 | `/opt/easyapi-portal-test` |
-| Compose 文件 | `docker-compose.easyapi-portal-test.yml` |
+| Compose 源文件（仓库） | [`infra/docker-compose.easyapi-portal-test.yml`](../infra/docker-compose.easyapi-portal-test.yml) |
+| Compose 文件（服务器） | `docker-compose.easyapi-portal-test.yml`（CD 部署前 SCP 同步） |
 | Compose 项目名 | **`easyapi-portal`**（`-p easyapi-portal`） |
 | Portal 服务名 | `portal-test` |
 | Portal 端口 | `2333`（经反代对外为 443） |
 | 镜像（main） | `ghcr.io/k4f7/easyapi/newapi-portal:test-latest` |
 | 镜像（dev） | `ghcr.io/k4f7/easyapi/newapi-portal:dev-latest` |
+| NewAPI（`new-api-test`） | `calciumion/new-api:latest`（[QuantumNous/new-api](https://github.com/QuantumNous/new-api)） |
+| 生图 Playground（`image-playground-test`） | `ghcr.io/cooksleep/gpt_image_playground:latest`（[CookSleep/gpt_image_playground](https://github.com/CookSleep/gpt_image_playground)） |
 | GHA CI（PR） | [`.github/workflows/portal-ci.yml`](../.github/workflows/portal-ci.yml) |
 | GHA CD（push） | [`.github/workflows/portal-cd.yml`](../.github/workflows/portal-cd.yml) |
 | 部署脚本 | [`scripts/deploy-portal-staging.sh`](../scripts/deploy-portal-staging.sh) |
@@ -48,14 +51,14 @@
 
 | 分支 | 推送的镜像 tag | 部署到 staging |
 |------|----------------|----------------|
-| `dev` | `dev-latest`、`dev-<sha>` | 是：先**从生产快照恢复库**，再部署 `portal-test`，再 **seed** + **Playwright UI 验证** |
-| `main` | `test-latest`、`test-<sha>` | 是：仅 `portal-test`（**不**重建库），同样 **seed** + **Playwright UI 验证** |
+| `dev` | `dev-latest`、`dev-<sha>` | 是：先**从生产快照恢复库**，再同步 compose 并 recreate `new-api-test`、`image-playground-test`、`portal-test`，再 **seed** + **Playwright UI 验证** |
+| `main` | `test-latest`、`test-<sha>` | 是：同步 compose 后 recreate `new-api-test`、`image-playground-test`、`portal-test`（**不**重建库），同样 **seed** + **Playwright UI 验证** |
 
 **dev 专用数据步骤**（每次 push `dev` 且触发 workflow 时）：
 
 1. SSH 执行 [`scripts/restore-staging-production-db.sh`](../scripts/restore-staging-production-db.sh)：`down` → 删除 `easyapi-portal_pg_data_test` volume → 用服务器上的 `xbh-new-api-2026-05-23-172431.sql.gz` 重新 `up` 全栈
 2. 等待 `https://test.easyapi.work/api/health`
-3. 部署新 Portal 镜像（仅 `portal-test`）
+3. 同步 compose 并部署 `new-api-test`、`image-playground-test`、`portal-test`（拉官方 `:latest` + Portal 分支 tag）
 4. [`scripts/seed-staging-via-api.mjs`](../scripts/seed-staging-via-api.mjs) 注册/验证截图账号 `scr@qq.com` / `ScreenshotTest123!`（**dev 与 main 均执行**，幂等：已存在则仅验证登录）
 5. CI 内 POST login 校验该账号
 6. **`verify_ui` job**：先 curl 校验 E2E 账号可登录，再 `pnpm run test:e2e:ci`（[`ui-pages`](../newapi-portal/tests/e2e/ui-pages.spec.ts)、[`portal-smoke`](../newapi-portal/tests/e2e/portal-smoke.spec.ts)、[`playground`](../newapi-portal/tests/e2e/playground.spec.ts)、[`register-billing`](../newapi-portal/tests/e2e/register-billing.spec.ts)）；失败时上传 `playwright-report` artifact
@@ -120,17 +123,24 @@ gh run watch <run-id> --repo K4F7/easyapi --exit-status
 
 ### 服务器 compose 前置（一次性）
 
+Compose 的 **source of truth** 在仓库 [`infra/docker-compose.easyapi-portal-test.yml`](../infra/docker-compose.easyapi-portal-test.yml)。Portal staging CD 在部署前会 SCP 到 `/opt/easyapi-portal-test/`。
+
 `portal-test` 的 `image` 必须支持环境变量覆盖，否则 dev 部署仍会使用写死的 `test-latest`：
 
 ```yaml
 portal-test:
   image: ${PORTAL_IMAGE:-ghcr.io/k4f7/easyapi/newapi-portal:test-latest}
   environment:
-    # 其他 DATABASE_URL / AUTH_SECRET / NEWAPI_* 等既有变量保持不变。
     IMAGE_PLAYGROUND_INTERNAL_URL: ${IMAGE_PLAYGROUND_INTERNAL_URL:-http://image-playground-test}
+
+new-api-test:
+  image: ${NEWAPI_IMAGE:-calciumion/new-api:latest}
+
+image-playground-test:
+  image: ${IMAGE_PLAYGROUND_IMAGE:-ghcr.io/cooksleep/gpt_image_playground:latest}
 ```
 
-部署时 CI 与手动脚本都会 `export PORTAL_IMAGE=...` 再执行 `docker compose up`。`IMAGE_PLAYGROUND_INTERNAL_URL` 须为 `portal-test` 容器在同 compose 网络内可访问的地址；Playground 服务无需再暴露公网反代。
+部署时 CI 与 [`scripts/deploy-portal-staging.sh`](../scripts/deploy-portal-staging.sh) 会 `docker pull` 上述三个镜像，再 `docker compose up -d --no-deps --force-recreate new-api-test image-playground-test portal-test`。`postgres-test` / `redis-test` 与 volume **不动**。
 
 ### image.easyapi.work 反代与安全头（1Panel openresty）
 
@@ -312,7 +322,7 @@ git push origin dev    # 镜像 dev-latest，自动部署 staging
 git push origin main   # 镜像 test-latest，自动部署 staging
 ```
 
-工作流会构建、推送镜像，SSH 仅重建 `portal-test`，并在 runner 上轮询 `https://test.easyapi.work/api/health`。
+工作流会构建、推送 Portal 镜像，SCP compose 到 staging，SSH 重建 `new-api-test`、`image-playground-test`、`portal-test`，并在 runner 上轮询 `https://test.easyapi.work/api/health`。
 
 若 CI 未跑（例如只改了文档），或需回滚到指定 tag，使用 [§1.1 手动 / 应急部署](#11-自动部署ci) 或下方步骤 2。
 
@@ -325,20 +335,20 @@ export PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:test-latest   # main；de
 ssh root@45.142.115.128 'bash -s' < scripts/deploy-portal-staging.sh
 ```
 
-或在服务器上（需已将 `scripts/deploy-portal-staging.sh` 同步到该机，或粘贴脚本内容）：
+或在服务器上（需已将 compose 与 `scripts/deploy-portal-staging.sh` 同步到该机）：
 
 ```bash
 ssh root@45.142.115.128
 export PORTAL_IMAGE=ghcr.io/k4f7/easyapi/newapi-portal:test-latest
+export NEWAPI_IMAGE=calciumion/new-api:latest
+export IMAGE_PLAYGROUND_IMAGE=ghcr.io/cooksleep/gpt_image_playground:latest
 cd /opt/easyapi-portal-test
-docker pull "${PORTAL_IMAGE}"
-docker compose -p easyapi-portal -f docker-compose.easyapi-portal-test.yml \
-  up -d --no-deps --force-recreate portal-test
+bash /path/to/scripts/deploy-portal-staging.sh
 ```
 
 说明：
 
-- **只 recreate `portal-test`**，不要 `down` 整个栈，不要动 `postgres-test`、`new-api-test`、`redis-test`
+- **只 recreate** `new-api-test`、`image-playground-test`、`portal-test`，不要 `down` 整个栈，不要动 `postgres-test`、`redis-test` volume
 - **不要**对其他 compose 项目执行任何命令
 
 ### 步骤 3：Health check
@@ -522,7 +532,7 @@ docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easy
 - [ ] 服务器 `portal-test.environment` 已注入：`IMAGE_PLAYGROUND_INTERNAL_URL`
 - [ ] 服务器 `/opt/easyapi-portal-test/.env` 已配置签到变量：`NEWAPI_ADMIN_TOKEN`（NewAPI 根用户 token）、`NEWAPI_BASE_URL=http://new-api-test:3000`、`CHECKIN_QUOTA`（见 [checkin-diagnostics.md](./checkin-diagnostics.md)）
 - [ ] 若仍暴露公网 `image.easyapi.work`：openresty 已配置 `frame-ancestors` / `no-store` / `no-referrer`（见 **image.easyapi.work 反代与安全头**）
-- [ ] 服务器 **仅** `portal-test` 已 recreate，镜像 tag 与分支一致（`dev-latest` / `test-latest`）
+- [ ] 服务器 **已 recreate** `new-api-test`、`image-playground-test`、`portal-test`（NewAPI / 生图 Playground 为官方 `:latest`，Portal tag 与分支一致）
 - [ ] `curl https://test.easyapi.work/api/health` → `ok: true`
 - [ ] `pnpm seed:screenshot-user` 成功
 - [ ] `https://test.easyapi.work/dashboard/playground?tab=image` 在配置 `STAGING_IMAGE_PLAYGROUND_INTERNAL_URL` 时出现生图 iframe，`src` 为同源 `/playground/embed/`
