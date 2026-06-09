@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-type ChannelTierId = "low" | "standard" | "premium";
+type ChannelTierId = "auto" | "low" | "activity" | "standard" | "premium";
 
 type ChannelTierBase = {
   id: ChannelTierId;
@@ -13,11 +13,25 @@ type ChannelTierBase = {
 
 const channelTierBases = [
   {
+    id: "auto",
+    label: "自动选择",
+    defaultGroup: "auto",
+    stability: "自动跳组",
+    description: "自动选择，从低价到高价逐级选择。",
+  },
+  {
     id: "low",
     label: "低价渠道",
     defaultGroup: "budget",
     stability: "~50% 在线",
     description: "低成本，适合非关键任务或可重试场景。",
+  },
+  {
+    id: "activity",
+    label: "活动分组",
+    defaultGroup: "free",
+    stability: "极低价格",
+    description: "偶尔会有，请关注群组了解什么时候会有。",
   },
   {
     id: "standard",
@@ -37,7 +51,9 @@ const channelTierBases = [
 ] as const satisfies readonly ChannelTierBase[];
 
 const channelGroupEnvById: Record<ChannelTierId, string> = {
+  auto: "NEWAPI_CHANNEL_GROUP_AUTO",
   low: "NEWAPI_CHANNEL_GROUP_LOW",
+  activity: "NEWAPI_CHANNEL_GROUP_ACTIVITY",
   standard: "NEWAPI_CHANNEL_GROUP_STANDARD",
   premium: "NEWAPI_CHANNEL_GROUP_PREMIUM",
 };

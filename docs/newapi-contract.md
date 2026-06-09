@@ -135,15 +135,21 @@ The portal exposes fixed user-facing channel metadata from `GET /api/channels/ti
 
 The labels, descriptions, and stability copy are fixed for the user. The NewAPI `group` values can be overridden by environment variables for operations:
 
+- `NEWAPI_CHANNEL_GROUP_AUTO` defaults to `auto`.
 - `NEWAPI_CHANNEL_GROUP_LOW` defaults to `budget`.
+- `NEWAPI_CHANNEL_GROUP_ACTIVITY` defaults to `free`.
 - `NEWAPI_CHANNEL_GROUP_STANDARD` defaults to `normal`.
 - `NEWAPI_CHANNEL_GROUP_PREMIUM` defaults to `stable`.
 
 `GET /api/channels/tiers`, create/update token validation, and dev mock token routes all use the same parsed channel group mapping.
 
+On token create, the portal validates `group` against this list and forwards it to NewAPI unchanged. Routing, failover, and multiplier behavior are configured in NewAPI; the portal does not inject `cross_group_retry`.
+
 | Label | Group sent to NewAPI | Stability copy | Default |
 |-------|----------------------|----------------|---------|
+| 自动选择 | `auto` | `自动跳组` | No |
 | 低价渠道 | `budget` | `~50% 在线` | No |
+| 活动分组 | `free` | `极低价格` | No |
 | 一般渠道 | `normal` | `~80% 在线` | Yes |
 | 高价渠道 | `stable` | `~99.9% 在线` | No |
 

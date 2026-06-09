@@ -205,6 +205,8 @@ describe("dev mock API routes", () => {
     });
     expect(JSON.stringify(tiersBody.data)).toContain("低价渠道");
     expect(JSON.stringify(tiersBody.data)).toContain("高价渠道");
+    expect(JSON.stringify(tiersBody.data)).toContain("自动选择");
+    expect(JSON.stringify(tiersBody.data)).toContain("活动分组");
 
     const createResponse = await POST(
       new Request("http://localhost/api/tokens", {

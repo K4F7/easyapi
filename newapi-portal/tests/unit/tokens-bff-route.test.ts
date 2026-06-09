@@ -104,7 +104,9 @@ describe("GET /api/channels/tiers", () => {
   });
 
   it("returns the fixed channel tier metadata", async () => {
+    vi.stubEnv("NEWAPI_CHANNEL_GROUP_AUTO", undefined);
     vi.stubEnv("NEWAPI_CHANNEL_GROUP_LOW", undefined);
+    vi.stubEnv("NEWAPI_CHANNEL_GROUP_ACTIVITY", undefined);
     vi.stubEnv("NEWAPI_CHANNEL_GROUP_STANDARD", undefined);
     vi.stubEnv("NEWAPI_CHANNEL_GROUP_PREMIUM", undefined);
     vi.resetModules();
@@ -117,12 +119,25 @@ describe("GET /api/channels/tiers", () => {
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.data?.defaultGroup).toBe("normal");
+    expect(body.data?.tiers).toHaveLength(5);
     expect(body.data?.tiers).toEqual([
+      expect.objectContaining({
+        id: "auto",
+        label: "自动选择",
+        group: "auto",
+        stability: "自动跳组",
+      }),
       expect.objectContaining({
         id: "low",
         label: "低价渠道",
         group: "budget",
         stability: "~50% 在线",
+      }),
+      expect.objectContaining({
+        id: "activity",
+        label: "活动分组",
+        group: "free",
+        stability: "极低价格",
       }),
       expect.objectContaining({
         id: "standard",
@@ -153,11 +168,22 @@ describe("GET /api/channels/tiers", () => {
 
     expect(response.status).toBe(200);
     expect(body.data?.defaultGroup).toBe("ops-standard");
+    expect(body.data?.tiers).toHaveLength(5);
     expect(body.data?.tiers).toEqual([
+      expect.objectContaining({
+        id: "auto",
+        label: "自动选择",
+        group: "auto",
+      }),
       expect.objectContaining({
         id: "low",
         label: "低价渠道",
         group: "ops-low",
+      }),
+      expect.objectContaining({
+        id: "activity",
+        label: "活动分组",
+        group: "free",
       }),
       expect.objectContaining({
         id: "standard",
@@ -241,6 +267,51 @@ describe("POST /api/tokens", () => {
       unknown
     >;
     expect(tokenInput).not.toHaveProperty("remain_quota_cny");
+  });
+
+  it.each([
+    { group: "auto", label: "auto" },
+    { group: "free", label: "free" },
+  ])("forwards group=$label to NewAPI on create", async ({ group }) => {
+    mockCreateTokenAndRevealKey.mockResolvedValueOnce({
+      token: {
+        id: 203,
+        name: "Group Token",
+        key: "sk-live-created-secret",
+        status: 1,
+        remain_quota: 0,
+        group,
+      },
+      key: "sk-live-created-secret",
+    });
+
+    const { POST } = await import("@/app/api/tokens/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/tokens", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Group Token",
+          group,
+        }),
+      }),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(201);
+    expect(body.ok).toBe(true);
+    expect(mockCreateTokenAndRevealKey).toHaveBeenCalledWith(
+      { userId: "99", accessToken: "newapi-token" },
+      expect.objectContaining({
+        name: "Group Token",
+        group,
+      }),
+    );
+    const tokenInput = mockCreateTokenAndRevealKey.mock.calls.at(-1)?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(tokenInput).not.toHaveProperty("cross_group_retry");
   });
 
   it("rejects creating tokens with reserved playground names", async () => {

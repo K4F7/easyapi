@@ -25,9 +25,9 @@
 
 ## 运维核对清单（发布前/后）
 
-1. NewAPI 分组存在且与门户一致：`auto`、`budget`、`normal`、`stable`（`free` 为活动组，门户三档不映射）。
-2. 环境变量（未设置则用代码默认）：`NEWAPI_CHANNEL_GROUP_LOW=budget`，`STANDARD=normal`，`PREMIUM=stable`；`PLAYGROUND_CHAT_GROUP=auto`。
-3. Staging 抽检：`GET /api/channels/tiers` → `budget` / `normal` / `stable`；各档创建 Token 后 `group` 与 NewAPI 一致。
+1. NewAPI 分组存在且与门户一致：`auto`、`budget`、`free`、`normal`、`stable`。
+2. 环境变量（未设置则用代码默认）：`NEWAPI_CHANNEL_GROUP_AUTO=auto`，`LOW=budget`，`ACTIVITY=free`，`STANDARD=normal`，`PREMIUM=stable`；`PLAYGROUND_CHAT_GROUP=auto`。
+3. Staging 抽检：`GET /api/channels/tiers` → 5 档 group；各档创建 Token 后 `group` 与 NewAPI 一致。
 4. 模型别名：`gpt-latest` 已验证；`claude-latest` 待 `/v1/models` 暴露后复验。
 
 ---

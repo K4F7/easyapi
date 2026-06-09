@@ -31,11 +31,25 @@ type MockTier = {
 
 const channelTiers: MockTier[] = [
   {
+    id: "auto",
+    label: "自动选择",
+    group: "auto",
+    stability: "自动跳组",
+    description: "自动选择，从低价到高价逐级选择。",
+  },
+  {
     id: "low",
     label: "低价渠道",
     group: "budget",
     stability: "~50% 在线",
     description: "低成本，适合非关键任务或可重试场景。",
+  },
+  {
+    id: "activity",
+    label: "活动分组",
+    group: "free",
+    stability: "极低价格",
+    description: "偶尔会有，请关注群组了解什么时候会有。",
   },
   {
     id: "standard",
@@ -225,6 +239,21 @@ test.describe("Token channel tier UI", () => {
       expect.objectContaining({
         name: "Premium Token",
         group: "stable",
+      }),
+    );
+
+    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("heading", { name: "令牌已创建" }),
+    ).toBeHidden();
+    await page.getByRole("button", { name: "创建新令牌" }).click();
+    await page.getByRole("radio", { name: /自动选择/ }).click();
+    await page.getByLabel("名称").fill("Auto Channel Token");
+    await page.getByRole("button", { name: "创建", exact: true }).click();
+    expect(createRequests[2]).toEqual(
+      expect.objectContaining({
+        name: "Auto Channel Token",
+        group: "auto",
       }),
     );
   });
