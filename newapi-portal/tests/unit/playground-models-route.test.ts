@@ -110,7 +110,7 @@ describe("GET playground models", () => {
 
   it("returns an error instead of fixed fallback models when upstream fails", async () => {
     mockListUpstreamModels.mockRejectedValue(
-      new PlaygroundError("上游模型列表不可用", 503),
+      new PlaygroundError("无法获取模型列表（上游 HTTP 503）", 502),
     );
 
     const response = await GET(
@@ -120,10 +120,10 @@ describe("GET playground models", () => {
     );
     const body = await parseResponse(response);
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(502);
     expect(body.error).toMatchObject({
       code: "PLAYGROUND_ERROR",
-      message: "上游模型列表不可用",
+      message: "无法获取模型列表（上游 HTTP 503）",
     });
     expect(JSON.stringify(body)).not.toMatch(/gpt-4o|deepseek|claude/);
   });

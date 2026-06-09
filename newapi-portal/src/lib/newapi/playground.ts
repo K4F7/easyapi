@@ -49,16 +49,44 @@ export async function resolvePlaygroundKey(
   }
 }
 
+function buildOpenAiUrl(baseUrl: string, path: string): string {
+  return `${baseUrl.replace(/\/+$/, "")}${path}`;
+}
+
+function isJsonResponse(response: Response): boolean {
+  const contentType = response.headers.get("content-type") ?? "";
+  return contentType.includes("application/json");
+}
+
 export async function listUpstreamModels(baseUrl: string, key: string) {
-  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/v1/models`, {
+  const response = await fetch(buildOpenAiUrl(baseUrl, "/v1/models"), {
     headers: {
       Authorization: `Bearer ${key}`,
     },
     cache: "no-store",
+    redirect: "manual",
   });
 
+  if (response.status >= 300 && response.status < 400) {
+    throw new PlaygroundError(
+      "NEWAPI_BASE_URL 未指向 OpenAI 兼容 API（/v1/models 被重定向，请检查是否误用了 Portal 公网地址）",
+      502,
+    );
+  }
+
   if (!response.ok) {
-    throw new PlaygroundError("无法获取模型列表", 502);
+    if (response.status === 401 || response.status === 403) {
+      throw new PlaygroundError("令牌密钥无效或无权访问模型列表", 502);
+    }
+
+    throw new PlaygroundError(`无法获取模型列表（上游 HTTP ${response.status}）`, 502);
+  }
+
+  if (!isJsonResponse(response)) {
+    throw new PlaygroundError(
+      "NEWAPI_BASE_URL 返回非 JSON，请检查是否指向 NewAPI 上游而非 Portal 页面",
+      502,
+    );
   }
 
   const payload = await response.json().catch(() => ({}));
@@ -85,7 +113,7 @@ export function streamChatCompletion(
   body: unknown,
   signal?: AbortSignal,
 ) {
-  return fetch(`${baseUrl.replace(/\/+$/, "")}/v1/chat/completions`, {
+  return fetch(buildOpenAiUrl(baseUrl, "/v1/chat/completions"), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
@@ -103,7 +131,7 @@ export function createImageGeneration(
   body: unknown,
   signal?: AbortSignal,
 ) {
-  return fetch(`${baseUrl.replace(/\/+$/, "")}/v1/images/generations`, {
+  return fetch(buildOpenAiUrl(baseUrl, "/v1/images/generations"), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
