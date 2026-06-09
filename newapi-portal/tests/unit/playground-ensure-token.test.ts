@@ -150,7 +150,7 @@ describe("ensure playground tokens", () => {
       name: PLAYGROUND_IMAGE_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
-      group: "normal",
+      group: "auto",
     });
   });
 
@@ -294,12 +294,12 @@ describe("ensure playground tokens", () => {
       name: PLAYGROUND_IMAGE_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
-      group: "normal",
+      group: "auto",
     });
     expect(mockCreateToken).not.toHaveBeenCalled();
   });
 
-  it("creates a dedicated image token on the normal channel without model limits", async () => {
+  it("creates a dedicated image token on the auto channel without model limits", async () => {
     mockListTokens.mockResolvedValueOnce({
       items: [],
       total: 0,
@@ -313,8 +313,32 @@ describe("ensure playground tokens", () => {
       name: PLAYGROUND_IMAGE_TOKEN_NAME,
       unlimited_quota: true,
       model_limits_enabled: false,
-      group: "normal",
+      group: "auto",
     });
+  });
+
+  it("updates a usable image token assigned to a non-playground group", async () => {
+    vi.stubEnv("PLAYGROUND_IMAGE_GROUP", "auto");
+    mockListTokens.mockResolvedValueOnce({
+      items: [
+        token({
+          id: 40,
+          name: PLAYGROUND_IMAGE_TOKEN_NAME,
+          group: "normal",
+        }),
+      ],
+      total: 1,
+    });
+
+    await expect(ensurePlaygroundImageTokenId(auth)).resolves.toBe(40);
+    expect(mockUpdateToken).toHaveBeenCalledWith(auth, {
+      id: 40,
+      name: PLAYGROUND_IMAGE_TOKEN_NAME,
+      unlimited_quota: true,
+      model_limits_enabled: false,
+      group: "auto",
+    });
+    expect(mockCreateToken).not.toHaveBeenCalled();
   });
 
   it("reuses a qualified image token and creates a separate chat token", async () => {
@@ -328,6 +352,7 @@ describe("ensure playground tokens", () => {
           token({
             id: 505,
             name: PLAYGROUND_IMAGE_TOKEN_NAME,
+            group: "auto",
           }),
         ],
         total: 1,

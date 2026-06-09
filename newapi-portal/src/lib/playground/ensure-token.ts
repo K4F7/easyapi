@@ -10,7 +10,7 @@ import {
   PLAYGROUND_CHAT_TOKEN_NAME,
   PLAYGROUND_IMAGE_TOKEN_NAME,
 } from "@/lib/playground/token-identity";
-import { getPlaygroundChatGroup } from "@/lib/playground/channel-policy";
+import { getPlaygroundChatGroup, getPlaygroundImageGroup } from "@/lib/playground/channel-policy";
 
 export { PLAYGROUND_CHAT_TOKEN_NAME, PLAYGROUND_IMAGE_TOKEN_NAME };
 
@@ -57,7 +57,7 @@ export async function ensurePlaygroundChatTokenId(
 export async function ensurePlaygroundImageTokenId(
   auth: NewApiAuth,
 ): Promise<number> {
-  const group = getPlaygroundChatGroup();
+  const group = getPlaygroundImageGroup();
 
   return ensurePlaygroundToken(auth, {
     name: PLAYGROUND_IMAGE_TOKEN_NAME,
@@ -171,7 +171,7 @@ function isQualifiedImageToken(token: NewApiToken): boolean {
   return (
     isUsableToken(token) &&
     token.model_limits_enabled !== true &&
-    token.group === getPlaygroundChatGroup()
+    token.group === getPlaygroundImageGroup()
   );
 }
 
