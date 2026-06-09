@@ -520,6 +520,7 @@ docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easy
 - [ ] `dev` 或 `main` 已 push（`newapi-portal/` 有变更），GHA **Portal staging CD** 构建与 deploy 均为绿色
 - [ ] GitHub Variables 已配置：`STAGING_IMAGE_PLAYGROUND_INTERNAL_URL`、`STAGING_PUBLIC_NEWAPI_BASE_URL`
 - [ ] 服务器 `portal-test.environment` 已注入：`IMAGE_PLAYGROUND_INTERNAL_URL`
+- [ ] 服务器 `/opt/easyapi-portal-test/.env` 已配置签到变量：`NEWAPI_ADMIN_TOKEN`（NewAPI 根用户 token）、`NEWAPI_BASE_URL=http://new-api-test:3000`、`CHECKIN_QUOTA`（见 [checkin-diagnostics.md](./checkin-diagnostics.md)）
 - [ ] 若仍暴露公网 `image.easyapi.work`：openresty 已配置 `frame-ancestors` / `no-store` / `no-referrer`（见 **image.easyapi.work 反代与安全头**）
 - [ ] 服务器 **仅** `portal-test` 已 recreate，镜像 tag 与分支一致（`dev-latest` / `test-latest`）
 - [ ] `curl https://test.easyapi.work/api/health` → `ok: true`

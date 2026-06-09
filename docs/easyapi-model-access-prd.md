@@ -19,7 +19,6 @@
 | 项 | 负责 | 说明 |
 |----|------|------|
 | **`claude-latest` 别名可见性** | NewAPI 运营 | Fastboot 已发布别名；`/v1/models` 不暴露 `claude-latest`，无法从公开模型列表验收 |
-| **签到诊断验收** | DevOps | Portal 代码已合并；独立 workflow 未全绿 → 见 [checkin-diagnostics.md](./checkin-diagnostics.md) |
 | **`auto` 跳组顺序文档** | NewAPI 运营 | 操练场 Chat Token 使用 `group=auto` + `cross_group_retry`；门户不硬编码顺序。需在运维文档中记录 NewAPI 后台推荐顺序（自下而上：如 `budget` → `normal` → `stable`），并完成一次后台确认 |
 
 ---
