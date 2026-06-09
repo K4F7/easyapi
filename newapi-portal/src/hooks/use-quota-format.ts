@@ -72,5 +72,6 @@ export function useQuotaFormat() {
     quotaToCny,
     formatQuota,
     formatCnyFromQuota,
+    formatBalance: formatCnyFromQuota,
   };
 }

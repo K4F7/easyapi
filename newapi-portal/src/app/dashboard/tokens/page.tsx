@@ -320,7 +320,7 @@ export default function TokensPage() {
             </h1>
           </div>
           <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-            管理用于访问 API 的鉴权令牌及额度。
+            管理用于访问 API 的鉴权令牌及余额限制。
           </p>
         </div>
         {tokens.length > 0 ? (
@@ -424,7 +424,7 @@ export default function TokensPage() {
                           渠道
                         </TableHead>
                         <TableHead className="h-12 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          使用额度
+                          消费 / 限额
                         </TableHead>
                         <TableHead className="h-12 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
                           到期时间
@@ -515,7 +515,7 @@ function TokenRow({
   onChannelChange: (group: string) => void;
   onDelete: () => void;
 }) {
-  const { formatQuota } = useQuotaFormat();
+  const { formatBalance } = useQuotaFormat();
   const status = deriveStatus(token);
   const unlimited = Boolean(token.unlimited_quota);
   const remain = token.remain_quota ?? 0;
@@ -593,10 +593,10 @@ function TokenRow({
           <div className="ml-auto w-32 space-y-1.5">
             <div className="flex justify-between gap-2 font-mono text-[11px] font-bold leading-none tabular-nums">
               <span className="text-gray-900 dark:text-foreground">
-                {formatQuota(used)}
+                {formatBalance(used)}
               </span>
               <span className="text-muted-foreground">
-                {formatQuota(total)}
+                {formatBalance(total)}
               </span>
             </div>
             <div
@@ -912,7 +912,7 @@ function CreateTokenDialog({
             创建新令牌
           </DialogTitle>
           <DialogDescription className="text-sm font-medium text-muted-foreground">
-            配置令牌的名称、额度限制和有效期。
+            配置令牌的名称、余额限制和有效期。
           </DialogDescription>
         </DialogHeader>
 

@@ -113,13 +113,7 @@ function StatItem({
 }
 
 export default function BillingPage() {
-  const {
-    formatQuota,
-    quotaPerCny,
-    config: quotaConfig,
-    applyConfig,
-    refresh,
-  } = useQuotaFormat();
+  const { formatBalance, applyConfig, refresh } = useQuotaFormat();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
@@ -137,32 +131,12 @@ export default function BillingPage() {
     return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
   }, [amount]);
 
-  const derivedRate = useMemo(() => {
-    for (const order of orders) {
-      if (
-        order.status.toUpperCase() === "PAID" &&
-        typeof order.quotaAmount === "number" &&
-        order.quotaAmount > 0 &&
-        order.amountCents > 0
-      ) {
-        return {
-          rate: order.quotaAmount / (order.amountCents / 100),
-          real: true,
-        };
-      }
-    }
-    return { rate: quotaPerCny, real: quotaConfig.source === "newapi" };
-  }, [orders, quotaPerCny, quotaConfig.source]);
-
   const quota = balance?.self?.quota;
   const usedQuota = balance?.self?.used_quota;
   const remaining =
     typeof quota === "number" && typeof usedQuota === "number"
       ? Math.max(quota - usedQuota, 0)
       : quota;
-
-  const quotaPreview =
-    amountValue !== null ? Math.round(amountValue * derivedRate.rate) : null;
 
   async function loadData() {
     setOrdersLoading(true);
@@ -237,7 +211,7 @@ export default function BillingPage() {
       const result = await apiPost<RedeemResponse>("/api/billing/redeem", {
         code: redeemCode.trim(),
       });
-      const amountText = formatQuota(
+      const amountText = formatBalance(
         result.quotaAmount ?? result.ledger?.amount,
       );
       toast.success(
@@ -261,19 +235,19 @@ export default function BillingPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
           <CardHeader className="pb-3">
-            <CardTitle>额度充值</CardTitle>
-            <CardDescription>查看可用额度并完成充值。</CardDescription>
+            <CardTitle>余额充值</CardTitle>
+            <CardDescription>查看可用余额并完成充值。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border/60 bg-muted/30 p-3 sm:grid-cols-3">
               <StatItem
-                label="可用额度"
-                value={formatQuota(remaining)}
+                label="可用余额"
+                value={formatBalance(remaining)}
                 loading={balanceLoading}
               />
               <StatItem
-                label="历史消耗"
-                value={formatQuota(usedQuota)}
+                label="历史消费"
+                value={formatBalance(usedQuota)}
                 loading={balanceLoading}
               />
               <StatItem
@@ -310,8 +284,7 @@ export default function BillingPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                ¥{amountValue || 0} → 约 {formatQuota(quotaPreview || 0)}{" "}
-                额度（预估，以实际到账为准）
+                充值 ¥{amountValue || 0}，预计到账 ¥{amountValue || 0}（以实际到账为准）
               </p>
             </div>
 
@@ -347,7 +320,7 @@ export default function BillingPage() {
         <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
           <CardHeader className="pb-3">
             <CardTitle>兑换码</CardTitle>
-            <CardDescription>输入兑换码获取额度。</CardDescription>
+            <CardDescription>输入兑换码获取余额。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             <Label htmlFor="redeemCode">兑换码</Label>
@@ -369,7 +342,7 @@ export default function BillingPage() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              兑换成功后额度会即时加入可用额度。
+              兑换成功后余额会即时加入可用余额。
             </p>
           </CardContent>
         </Card>
@@ -401,7 +374,7 @@ export default function BillingPage() {
                     <TableHead>金额</TableHead>
                     <TableHead>支付方式</TableHead>
                     <TableHead>状态</TableHead>
-                    <TableHead className="text-right">额度变化</TableHead>
+                    <TableHead className="text-right">到账金额</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -426,7 +399,7 @@ export default function BillingPage() {
                       </TableCell>
                       <TableCell className="text-right font-mono text-success tabular-nums">
                         {order.quotaAmount !== null
-                          ? `+${formatQuota(order.quotaAmount)}`
+                          ? `+${formatBalance(order.quotaAmount)}`
                           : "—"}
                       </TableCell>
                     </TableRow>

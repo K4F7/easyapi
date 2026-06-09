@@ -78,6 +78,17 @@ vi.mock("@/lib/env", () => ({
   getServerEnv: () => ({ CHECKIN_QUOTA: 1000 }),
 }));
 
+vi.mock("@/lib/quota/get-display-config", () => ({
+  getQuotaDisplayConfig: vi.fn(async () => ({
+    quotaPerCny: 500_000,
+    source: "default",
+  })),
+  quotaDisplayConfigForClient: (config: {
+    quotaPerCny: number;
+    source: string;
+  }) => config,
+}));
+
 vi.mock("@/lib/db", () => ({
   db: {
     checkin: {
@@ -115,6 +126,10 @@ async function readJson(response: Response) {
         checkedInToday?: boolean;
         quotaApplied?: boolean | null;
         quotaPending?: boolean;
+      };
+      quotaConfig?: {
+        quotaPerCny?: number;
+        source?: string;
       };
     };
   }>;
@@ -156,6 +171,10 @@ describe("GET /api/dashboard/summary", () => {
     const body = await readJson(response);
 
     expect(response.status).toBe(200);
+    expect(body.data?.quotaConfig).toMatchObject({
+      quotaPerCny: 500_000,
+      source: "default",
+    });
     expect(body.data?.checkin).toMatchObject({
       checkedInToday: false,
       quotaApplied: null,

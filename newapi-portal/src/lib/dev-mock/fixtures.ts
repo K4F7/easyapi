@@ -9,8 +9,11 @@ import {
 
 export const mockQuotaConfig = {
   ...DEFAULT_QUOTA_DISPLAY_CONFIG,
-  quotaPerCny: 71_428.5,
-  source: "default" as const,
+  quotaPerCny: 71_428.57142857143,
+  quotaPerUnit: 500_000,
+  usdExchangeRate: 7,
+  displayType: "CNY" as const,
+  source: "newapi" as const,
 };
 
 export const mockModels = [

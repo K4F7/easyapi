@@ -1,6 +1,11 @@
+export type QuotaDisplayType = "USD" | "CNY" | "TOKENS" | "CUSTOM";
+
 export type QuotaDisplayConfig = {
   quotaPerCny: number;
   source: "default" | "env" | "newapi";
+  quotaPerUnit?: number;
+  usdExchangeRate?: number;
+  displayType?: QuotaDisplayType;
 };
 
 export const DEFAULT_QUOTA_PER_CNY = 500_000;
@@ -24,16 +29,45 @@ export function quotaToCny(
   return quota / config.quotaPerCny;
 }
 
+export function quotaToDisplayAmount(
+  quota: number,
+  config: QuotaDisplayConfig = DEFAULT_QUOTA_DISPLAY_CONFIG,
+): number {
+  return quotaToCny(quota, config);
+}
+
 export function normalizeQuotaDisplayConfig(
   value: Partial<QuotaDisplayConfig> | null | undefined,
 ): QuotaDisplayConfig {
   const quotaPerCny =
     typeof value?.quotaPerCny === "number" && Number.isFinite(value.quotaPerCny)
-      ? Math.max(1, Math.round(value.quotaPerCny))
+      ? Math.max(0.001, value.quotaPerCny)
       : DEFAULT_QUOTA_PER_CNY;
 
   const source =
-    value?.source === "env" || value?.source === "newapi" ? value.source : "default";
+    value?.source === "env" || value?.source === "newapi"
+      ? value.source
+      : "default";
 
-  return { quotaPerCny, source };
+  const displayType =
+    value?.displayType === "USD" ||
+    value?.displayType === "CNY" ||
+    value?.displayType === "TOKENS" ||
+    value?.displayType === "CUSTOM"
+      ? value.displayType
+      : undefined;
+
+  return {
+    quotaPerCny,
+    source,
+    ...(typeof value?.quotaPerUnit === "number" &&
+    Number.isFinite(value.quotaPerUnit)
+      ? { quotaPerUnit: value.quotaPerUnit }
+      : {}),
+    ...(typeof value?.usdExchangeRate === "number" &&
+    Number.isFinite(value.usdExchangeRate)
+      ? { usdExchangeRate: value.usdExchangeRate }
+      : {}),
+    ...(displayType ? { displayType } : {}),
+  };
 }

@@ -11,6 +11,21 @@ This document tracks the NewAPI surface that `newapi-portal` currently depends o
 - Admin operations use `NEWAPI_ADMIN_TOKEN` and `NEWAPI_ADMIN_USER_ID` through the same two headers.
 - The portal expects JSON responses and accepts either plain payloads or envelopes with `success`, `message`, `data`, `code`, or `error`.
 
+## Public status and quota display
+
+### Status
+
+- Endpoint: `GET /api/status`
+- Authentication: none
+- Expected fields used by the portal:
+  - `quota_per_unit`: number of NewAPI quota units equivalent to one USD (default upstream value is `500000`).
+  - `usd_exchange_rate`: USD-to-CNY rate used for user-facing balance display.
+  - `quota_display_type`: optional upstream display mode (`USD`, `CNY`, `TOKENS`, `CUSTOM`).
+- Portal behavior:
+  - Computes user-facing CNY as `quota / quota_per_unit * usd_exchange_rate`.
+  - Exposes the derived config to the browser through `GET /api/quota/config` and `GET /api/dashboard/summary` as `quotaConfig`.
+  - Falls back to `QUOTA_PER_CNY` only when `/api/status` cannot be loaded.
+
 ## User auth and profile
 
 ### Register

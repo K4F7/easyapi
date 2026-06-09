@@ -22,6 +22,12 @@ export {
   updateToken,
 } from "./tokens";
 export { adminAddQuota, adminCreateUser, getSelf } from "./users";
+export {
+  clearNewApiStatusCacheForTests,
+  getNewApiStatus,
+  type NewApiQuotaDisplayType,
+  type NewApiStatus,
+} from "./status";
 export type {
   NewApiAdminAddQuotaInput,
   NewApiAdminCreateUserInput,

@@ -112,9 +112,11 @@ test.describe("Token channel tier UI", () => {
           ok: true,
           data: {
             config: {
-              unit: "CNY",
-              quotaPerCny: 71428.5,
-              minimumAmountCny: 1,
+              quotaPerCny: 71428.57142857143,
+              quotaPerUnit: 500_000,
+              usdExchangeRate: 7,
+              displayType: "CNY",
+              source: "newapi",
             },
           },
         }),

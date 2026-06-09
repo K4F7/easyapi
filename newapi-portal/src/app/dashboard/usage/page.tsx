@@ -228,7 +228,7 @@ function exportLogsCsv(
 const PAGE_SIZE = 30;
 
 export default function UsagePage() {
-  const { formatQuota, quotaToCny, refresh } = useQuotaFormat();
+  const { formatBalance, quotaToCny, refresh } = useQuotaFormat();
   const initialRange = useMemo(() => presetRange("7d"), []);
   const [startDate, setStartDate] = useState(initialRange.start);
   const [endDate, setEndDate] = useState(initialRange.end);
@@ -428,7 +428,7 @@ export default function UsagePage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Metric
               title="消费金额"
-              value={formatQuota(usage?.totals.quota)}
+              value={formatBalance(usage?.totals.quota)}
               hint="所选范围内累计扣费（人民币）"
             />
             <Metric
@@ -590,7 +590,7 @@ export default function UsagePage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="tabular-nums">
-                              {formatQuota(log.quota)}
+                              {formatBalance(log.quota)}
                             </TableCell>
                             <TableCell className="tabular-nums text-muted-foreground">
                               {log.use_time

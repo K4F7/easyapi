@@ -100,7 +100,7 @@ const API_BASE_URL = (
 const API_ENDPOINT = `${API_BASE_URL}/v1`;
 
 export default function DashboardPage() {
-  const { formatQuota, quotaToCny, applyConfig, refresh } = useQuotaFormat();
+  const { formatBalance, quotaToCny, applyConfig, refresh } = useQuotaFormat();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
@@ -260,7 +260,7 @@ export default function DashboardPage() {
             </div>
             <div className="mt-1 flex items-baseline gap-1.5">
               <span className="truncate text-3xl font-semibold tabular-nums">
-                {formatQuota(remaining)}
+                {formatBalance(remaining)}
               </span>
             </div>
             <p
@@ -277,7 +277,7 @@ export default function DashboardPage() {
                 ? "余额即将耗尽，请尽快充值以免请求中断。"
                 : balanceLevel === "low"
                   ? "余额偏低，建议提前充值。"
-                  : `账户总额 ${formatQuota(quota)}`}
+                  : `账户总额 ${formatBalance(quota)}`}
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
@@ -339,9 +339,9 @@ export default function DashboardPage() {
         />
         <MetricCard
           href="/dashboard/usage"
-          title="近 7 日用量"
-          value={formatQuota(weekQuota)}
-          hint={`日均约 ${formatQuota(weekDailyAvg)}`}
+          title="近 7 日消费"
+          value={formatBalance(weekQuota)}
+          hint={`日均约 ${formatBalance(weekDailyAvg)}`}
           icon={BadgeCheck}
           trend={hasUsageTrend ? trendData : undefined}
         />
@@ -409,7 +409,7 @@ export default function DashboardPage() {
                 }
               >
                 {summary.checkin.quotaPending
-                  ? "额度待发放"
+                  ? "余额待发放"
                   : summary.checkin.checkedInToday
                     ? "今日已签到"
                     : "今日可签到"}
@@ -426,7 +426,7 @@ export default function DashboardPage() {
               <div className="min-w-0">
                 <div className="text-sm font-medium">
                   {summary.checkin.quotaPending
-                    ? "签到成功，额度发放中"
+                    ? "签到成功，余额发放中"
                     : summary.checkin.checkedInToday
                       ? "今日已签到"
                       : "今日可签到"}

@@ -18,6 +18,10 @@ import {
   type NewApiToken,
 } from "@/lib/newapi";
 import {
+  getQuotaDisplayConfig,
+  quotaDisplayConfigForClient,
+} from "@/lib/quota/get-display-config";
+import {
   dateKey,
   normalizePage,
   nowTimestamp,
@@ -42,6 +46,7 @@ export async function GET(request: Request) {
     const authResult = await getUserNewApiAuth(user);
     const portalUser = authResult.user;
     const checkinQuota = getServerEnv().CHECKIN_QUOTA;
+    const quotaConfig = quotaDisplayConfigForClient(await getQuotaDisplayConfig());
     const [checkin] = await Promise.all([
       db.checkin.findUnique({
         where: {
@@ -65,6 +70,7 @@ export async function GET(request: Request) {
 
     if (!authResult.ok) {
       return jsonOk({
+        quotaConfig,
         user: publicUserFromPortalUser(portalUser),
         newApi: {
           binding: "pending",
@@ -109,6 +115,7 @@ export async function GET(request: Request) {
       const tokensPage = normalizePage<NewApiToken>(tokensPageRaw, 1, 1);
 
       return jsonOk({
+        quotaConfig,
         user: publicUserFromPortalUser(portalUser),
         newApi: {
           binding: "ready",
@@ -145,6 +152,7 @@ export async function GET(request: Request) {
       );
 
       return jsonOk({
+        quotaConfig,
         user: publicUserFromPortalUser(portalUser),
         newApi: {
           binding: "ready",
