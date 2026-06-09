@@ -30,6 +30,7 @@ type DbClient = PrismaClient;
 export type PublicUser = {
   id: string;
   email: string;
+  username: string | null;
   inviteCode: string;
   newApiUserId: string | null;
   newApiBinding: "ready" | "pending";
@@ -46,10 +47,11 @@ export class AuthError extends Error {
   }
 }
 
-export function toPublicUser(user: Pick<User, "id" | "email" | "inviteCode" | "newApiUserId" | "createdAt">): PublicUser {
+export function toPublicUser(user: Pick<User, "id" | "email" | "username" | "inviteCode" | "newApiUserId" | "createdAt">): PublicUser {
   return {
     id: user.id,
     email: user.email,
+    username: user.username,
     inviteCode: user.inviteCode,
     newApiUserId: user.newApiUserId,
     newApiBinding: user.newApiUserId ? "ready" : "pending",

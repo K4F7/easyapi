@@ -15,11 +15,11 @@ import { cn } from "@/lib/utils";
 const SIDEBAR_STORAGE_KEY = "dashboard-sidebar-open";
 
 type DashboardShellProps = {
-  email: string;
+  username: string;
   children: React.ReactNode;
 };
 
-export function DashboardShell({ email, children }: DashboardShellProps) {
+export function DashboardShell({ username, children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(true);
   const docsNav = getDocsNavConfig();
@@ -135,7 +135,7 @@ export function DashboardShell({ email, children }: DashboardShellProps) {
                 )}
               </Button>
               <NotificationBell />
-              <UserMenu email={email} />
+              <UserMenu username={username} />
             </div>
           </header>
           {mobileNavOpen ? (

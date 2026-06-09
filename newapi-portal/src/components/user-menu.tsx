@@ -15,10 +15,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 type UserMenuProps = {
-  email: string;
+  username: string;
 };
 
-export function UserMenu({ email }: UserMenuProps) {
+export function UserMenu({ username }: UserMenuProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -38,7 +38,7 @@ export function UserMenu({ email }: UserMenuProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" disabled={loading}>
-          {email}
+          {username}
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>

@@ -41,6 +41,7 @@ function createInitialState(): MockState {
     user: {
       id: "dev-mock-user",
       email: "scr@qq.com",
+      username: "dev-mock",
       inviteCode: "DEVMOCK",
       newApiUserId: "10001",
       newApiBinding: "ready",

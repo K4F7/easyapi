@@ -42,7 +42,10 @@ export async function upsertPortalUserFromNewApiIdentity(
   if (existingLinkedUser) {
     return db.user.update({
       where: { id: existingLinkedUser.id },
-      data: tokenUpdateData(encryptedToken, now),
+      data: {
+        username: identity.username,
+        ...tokenUpdateData(encryptedToken, now),
+      },
     });
   }
 
@@ -62,7 +65,10 @@ export async function upsertPortalUserFromNewApiIdentity(
       if (linkedUser) {
         return db.user.update({
           where: { id: linkedUser.id },
-          data: tokenUpdateData(encryptedToken, now),
+          data: {
+            username: identity.username,
+            ...tokenUpdateData(encryptedToken, now),
+          },
         });
       }
     }
@@ -81,6 +87,7 @@ async function createNewApiBackedPortalUser(input: {
   return db.user.create({
     data: {
       email,
+      username: input.identity.username,
       passwordHash: await hashUnusablePassword(),
       inviteCode: await generateUniqueInviteCode(),
       newApiUserId: input.identity.userId,

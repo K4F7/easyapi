@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { Toaster } from "@/components/ui/sonner";
+import { getUserDisplayName } from "@/lib/auth/display-name";
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function DashboardLayout({
@@ -18,7 +19,9 @@ export default async function DashboardLayout({
 
   return (
     <>
-      <DashboardShell email={user.email}>{children}</DashboardShell>
+      <DashboardShell username={getUserDisplayName(user)}>
+        {children}
+      </DashboardShell>
       <OnboardingTour />
       <Toaster position="top-center" richColors closeButton />
     </>

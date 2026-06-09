@@ -15,10 +15,14 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getUserContactEmail } from "@/lib/auth/display-name";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ email: string } | null>(null);
+  const [user, setUser] = useState<{
+    email: string;
+    username: string | null;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Email form state
@@ -117,6 +121,8 @@ export default function ProfilePage() {
     );
   }
 
+  const contactEmail = user ? getUserContactEmail(user) : null;
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 page-transition">
       <h1 className="text-2xl font-semibold tracking-normal">个人资料</h1>
@@ -140,9 +146,9 @@ export default function ProfilePage() {
               </Label>
               <div
                 className="mt-2 truncate text-lg font-medium"
-                title={user?.email}
+                title={contactEmail ?? undefined}
               >
-                {user?.email}
+                {contactEmail ?? "未绑定邮箱"}
               </div>
             </div>
 
@@ -161,7 +167,7 @@ export default function ProfilePage() {
               </div>
               <Button
                 type="submit"
-                disabled={emailLoading || !newEmail || newEmail === user?.email}
+                disabled={emailLoading || !newEmail || newEmail === contactEmail}
                 className="h-12 w-full text-base font-medium"
               >
                 {emailLoading && (

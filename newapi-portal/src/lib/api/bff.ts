@@ -17,6 +17,7 @@ import { NewApiError, type NewApiAuth } from "@/lib/newapi";
 export type PortalUserForApi = {
   id: string;
   email: string;
+  username: string | null;
   inviteCode: string;
   newApiUserId: string | null;
   newApiAccessTokenCiphertext: string | null;
@@ -44,6 +45,7 @@ export async function getPortalUserForApi(
     select: {
       id: true,
       email: true,
+      username: true,
       inviteCode: true,
       newApiUserId: true,
       newApiAccessTokenCiphertext: true,
@@ -105,6 +107,7 @@ export function publicUserFromPortalUser(user: PortalUserForApi): PublicUser {
   return {
     id: user.id,
     email: user.email,
+    username: user.username,
     inviteCode: user.inviteCode,
     newApiUserId: user.newApiUserId,
     newApiBinding: user.newApiUserId ? "ready" : "pending",

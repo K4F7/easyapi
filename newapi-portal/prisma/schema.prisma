@@ -56,6 +56,7 @@ enum AuditActorType {
 model User {
   id                            String    @id @default(cuid())
   email                         String    @unique
+  username                      String?   @unique
   passwordHash                  String    @map("password_hash")
   inviteCode                    String    @unique @map("invite_code")
   newApiUserId                  String?   @unique @map("newapi_user_id")
