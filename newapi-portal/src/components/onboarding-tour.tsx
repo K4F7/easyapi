@@ -1,68 +1,69 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowRight,
-  Check,
-  KeyRound,
-  Play,
-  RotateCcw,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
+import { ArrowRight, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "ezapi:onboarding:v1";
 const RESTART_EVENT = "ezapi:onboarding:restart";
 
+const POPOVER_WIDTH = 300;
+const VIEWPORT_PADDING = 16;
+const ANCHOR_GAP = 12;
+
 type OnboardingStatus = "pending" | "skipped" | "completed";
+
+type PopoverPlacement =
+  | "bottom-start"
+  | "bottom-end"
+  | "top-start"
+  | "top-end"
+  | "right-start"
+  | "left-start";
+
+type AnchorPosition = {
+  top: number;
+  left: number;
+  placement: PopoverPlacement;
+};
 
 type OnboardingStep = {
   title: string;
   description: string;
-  targetLabel: string;
-  href: string;
-  actionLabel: string;
-  icon: LucideIcon;
+  target: "access-copy" | "token-create" | "playground-entry";
+  preferredPlacement: PopoverPlacement;
 };
 
 const steps: OnboardingStep[] = [
   {
     title: "复制接入信息",
     description: "先确认 API 地址，后续在 SDK、curl 或你的服务端配置里使用它。",
-    targetLabel: "接入信息",
-    href: "/dashboard",
-    actionLabel: "查看接入信息",
-    icon: Check,
+    target: "access-copy",
+    preferredPlacement: "bottom-start",
   },
   {
     title: "创建 API Token",
     description:
       "进入令牌页创建密钥。渠道档位功能合入后，新建令牌会默认选择一般渠道。",
-    targetLabel: "创建 Token",
-    href: "/dashboard/tokens",
-    actionLabel: "去创建令牌",
-    icon: KeyRound,
+    target: "token-create",
+    preferredPlacement: "bottom-end",
   },
   {
     title: "打开操练场验证调用",
     description: "用 Chat 或生图操练场跑一次请求，确认余额、Token 和模型接入可用。",
-    targetLabel: "Playground",
-    href: "/dashboard/playground",
-    actionLabel: "打开操练场",
-    icon: Play,
+    target: "playground-entry",
+    preferredPlacement: "right-start",
   },
 ];
 
@@ -79,13 +80,353 @@ function writeStatus(status: OnboardingStatus) {
   window.localStorage.setItem(STORAGE_KEY, status);
 }
 
+function getTargetSelector(target: OnboardingStep["target"]) {
+  if (target === "playground-entry") {
+    return `#dashboard-sidebar [data-onboarding-target="${target}"]`;
+  }
+  return `[data-onboarding-target="${target}"]`;
+}
+
+function getFlipPlacement(placement: PopoverPlacement): PopoverPlacement {
+  if (placement.startsWith("bottom")) {
+    return placement.replace("bottom", "top") as PopoverPlacement;
+  }
+  if (placement.startsWith("top")) {
+    return placement.replace("top", "bottom") as PopoverPlacement;
+  }
+  if (placement.startsWith("right")) {
+    return placement.replace("right", "left") as PopoverPlacement;
+  }
+  return placement.replace("left", "right") as PopoverPlacement;
+}
+
+function getPlacementCandidates(
+  preferred: PopoverPlacement,
+): PopoverPlacement[] {
+  const flip = getFlipPlacement(preferred);
+  if (preferred.startsWith("bottom") || preferred.startsWith("top")) {
+    const align = preferred.endsWith("end") ? "end" : "start";
+    const oppositeAlign = align === "end" ? "start" : "end";
+    const base = preferred.startsWith("bottom") ? "bottom" : "top";
+    const flipBase = base === "bottom" ? "top" : "bottom";
+    return [
+      preferred,
+      flip,
+      `${base}-${oppositeAlign}` as PopoverPlacement,
+      `${flipBase}-${align}` as PopoverPlacement,
+      `${flipBase}-${oppositeAlign}` as PopoverPlacement,
+      "right-start",
+      "left-start",
+    ];
+  }
+
+  return [preferred, flip, "bottom-start", "bottom-end", "top-start", "top-end"];
+}
+
+function computeCoords(
+  targetRect: DOMRect,
+  popoverSize: { width: number; height: number },
+  placement: PopoverPlacement,
+): { top: number; left: number } {
+  const { width, height } = popoverSize;
+
+  switch (placement) {
+    case "bottom-start":
+      return {
+        top: targetRect.bottom + ANCHOR_GAP,
+        left: targetRect.left,
+      };
+    case "bottom-end":
+      return {
+        top: targetRect.bottom + ANCHOR_GAP,
+        left: targetRect.right - width,
+      };
+    case "top-start":
+      return {
+        top: targetRect.top - height - ANCHOR_GAP,
+        left: targetRect.left,
+      };
+    case "top-end":
+      return {
+        top: targetRect.top - height - ANCHOR_GAP,
+        left: targetRect.right - width,
+      };
+    case "right-start":
+      return {
+        top: targetRect.top,
+        left: targetRect.right + ANCHOR_GAP,
+      };
+    case "left-start":
+      return {
+        top: targetRect.top,
+        left: targetRect.left - width - ANCHOR_GAP,
+      };
+  }
+}
+
+function fitsViewport(
+  coords: { top: number; left: number },
+  popoverSize: { width: number; height: number },
+) {
+  const { top, left, width, height } = {
+    top: coords.top,
+    left: coords.left,
+    ...popoverSize,
+  };
+
+  return (
+    top >= VIEWPORT_PADDING &&
+    left >= VIEWPORT_PADDING &&
+    top + height <= window.innerHeight - VIEWPORT_PADDING &&
+    left + width <= window.innerWidth - VIEWPORT_PADDING
+  );
+}
+
+function clampCoords(
+  coords: { top: number; left: number },
+  popoverSize: { width: number; height: number },
+) {
+  const maxLeft = Math.max(
+    VIEWPORT_PADDING,
+    window.innerWidth - popoverSize.width - VIEWPORT_PADDING,
+  );
+  const maxTop = Math.max(
+    VIEWPORT_PADDING,
+    window.innerHeight - popoverSize.height - VIEWPORT_PADDING,
+  );
+
+  return {
+    top: Math.min(Math.max(coords.top, VIEWPORT_PADDING), maxTop),
+    left: Math.min(Math.max(coords.left, VIEWPORT_PADDING), maxLeft),
+  };
+}
+
+function resolveAnchorPosition(
+  targetRect: DOMRect,
+  popoverSize: { width: number; height: number },
+  preferred: PopoverPlacement,
+): AnchorPosition {
+  const candidates = getPlacementCandidates(preferred);
+
+  for (const placement of candidates) {
+    const coords = computeCoords(targetRect, popoverSize, placement);
+    if (fitsViewport(coords, popoverSize)) {
+      return { ...coords, placement };
+    }
+  }
+
+  const fallbackCoords = computeCoords(targetRect, popoverSize, preferred);
+  const clamped = clampCoords(fallbackCoords, popoverSize);
+  return { ...clamped, placement: preferred };
+}
+
+function useAnchorPosition(
+  selector: string | null,
+  preferredPlacement: PopoverPlacement,
+  enabled: boolean,
+) {
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<AnchorPosition | null>(null);
+
+  const updatePosition = useCallback(() => {
+    if (!enabled || !selector) {
+      setPosition(null);
+      return;
+    }
+
+    const target = document.querySelector<HTMLElement>(selector);
+    if (!target) {
+      setPosition(null);
+      return;
+    }
+
+    const targetRect = target.getBoundingClientRect();
+    const measured = popoverRef.current?.getBoundingClientRect();
+    const popoverSize = {
+      width: measured?.width ?? POPOVER_WIDTH,
+      height: measured?.height ?? 180,
+    };
+
+    setPosition(resolveAnchorPosition(targetRect, popoverSize, preferredPlacement));
+  }, [enabled, preferredPlacement, selector]);
+
+  useLayoutEffect(() => {
+    updatePosition();
+  }, [updatePosition]);
+
+  useEffect(() => {
+    if (!enabled || !selector) {
+      return;
+    }
+
+    const handleChange = () => updatePosition();
+
+    window.addEventListener("resize", handleChange);
+    window.addEventListener("scroll", handleChange, true);
+
+    const target = document.querySelector<HTMLElement>(selector);
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(handleChange)
+        : null;
+
+    if (target && resizeObserver) {
+      resizeObserver.observe(target);
+    }
+    if (popoverRef.current && resizeObserver) {
+      resizeObserver.observe(popoverRef.current);
+    }
+
+    return () => {
+      window.removeEventListener("resize", handleChange);
+      window.removeEventListener("scroll", handleChange, true);
+      resizeObserver?.disconnect();
+    };
+  }, [enabled, selector, updatePosition]);
+
+  return { popoverRef, position };
+}
+
+type OnboardingPopoverProps = {
+  open: boolean;
+  stepIndex: number;
+  currentStep: OnboardingStep;
+  progressLabel: string;
+  targetSelector: string;
+  onSkip: () => void;
+  onNext: () => void;
+};
+
+function OnboardingPopover({
+  open,
+  stepIndex,
+  currentStep,
+  progressLabel,
+  targetSelector,
+  onSkip,
+  onNext,
+}: OnboardingPopoverProps) {
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
+  const titleId = "onboarding-popover-title";
+  const descriptionId = "onboarding-popover-description";
+  const { popoverRef, position } = useAnchorPosition(
+    targetSelector,
+    currentStep.preferredPlacement,
+    open,
+  );
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    nextButtonRef.current?.focus();
+  }, [open, stepIndex]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onSkip();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onSkip, open]);
+
+  if (!open || typeof document === "undefined") {
+    return null;
+  }
+
+  const isLastStep = stepIndex >= steps.length - 1;
+
+  return createPortal(
+    <div
+      ref={popoverRef}
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+      data-testid="onboarding-dialog"
+      data-placement={position?.placement ?? currentStep.preferredPlacement}
+      className="onboarding-popover fixed z-[70] w-[min(300px,calc(100vw-2rem))] rounded-xl border border-border bg-card p-4 shadow-subtle"
+      style={
+        position
+          ? { top: position.top, left: position.left }
+          : {
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              visibility: "hidden",
+            }
+      }
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
+          新手引导 {progressLabel}
+        </div>
+      </div>
+
+      <h2 id={titleId} className="text-base font-semibold leading-snug">
+        {currentStep.title}
+      </h2>
+      <p
+        id={descriptionId}
+        className="mt-1 text-sm leading-5 text-muted-foreground"
+      >
+        {currentStep.description}
+      </p>
+
+      <div
+        className="mt-3 flex items-center gap-1.5"
+        aria-label={`步骤 ${progressLabel}`}
+      >
+        {steps.map((step, index) => (
+          <span
+            key={step.target}
+            className={cn(
+              "h-2 w-2 rounded-full transition-colors",
+              index === stepIndex
+                ? "bg-primary"
+                : index < stepIndex
+                  ? "bg-primary/40"
+                  : "bg-muted-foreground/25",
+            )}
+          />
+        ))}
+      </div>
+
+      <div className="mt-4 flex items-center justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onSkip}>
+          跳过引导
+        </Button>
+        <Button
+          ref={nextButtonRef}
+          type="button"
+          size="sm"
+          data-testid="onboarding-next"
+          onClick={onNext}
+        >
+          {isLastStep ? "完成引导" : "下一步"}
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function OnboardingTour() {
   const pathname = usePathname();
   const [hydrated, setHydrated] = useState(false);
   const [status, setStatus] = useState<OnboardingStatus>("pending");
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
-  const firstInteractiveRef = useRef<HTMLButtonElement>(null);
 
   const isDashboardHome = pathname === "/dashboard";
   const currentStep = steps[stepIndex];
@@ -114,21 +455,22 @@ export function OnboardingTour() {
     if (!isDashboardHome || !open) {
       return null;
     }
-    if (stepIndex === 0) {
-      return "access-copy";
+    return currentStep.target;
+  }, [currentStep.target, isDashboardHome, open]);
+
+  const targetSelector = useMemo(() => {
+    if (!highlightedTarget) {
+      return "";
     }
-    if (stepIndex === 1) {
-      return "token-create";
-    }
-    return "playground-entry";
-  }, [isDashboardHome, open, stepIndex]);
+    return getTargetSelector(highlightedTarget);
+  }, [highlightedTarget]);
 
   useEffect(() => {
     if (!highlightedTarget) {
       return;
     }
 
-    const selector = `[data-onboarding-target="${highlightedTarget}"]`;
+    const selector = getTargetSelector(highlightedTarget);
     let highlightedElement: HTMLElement | null = null;
     let observer: MutationObserver | null = null;
     let pollTimeout: number | null = null;
@@ -241,108 +583,15 @@ export function OnboardingTour() {
         </Button>
       ) : null}
 
-      <Dialog
+      <OnboardingPopover
         open={open}
-        onOpenChange={(next) => {
-          if (!next) {
-            skip();
-            return;
-          }
-          setOpen(true);
-        }}
-      >
-        <DialogContent
-          overlayClassName="bg-foreground/10 backdrop-blur-none"
-          className="fixed bottom-6 right-6 left-auto top-auto max-h-[calc(100vh-3rem)] w-[calc(100%-2rem)] max-w-md translate-x-0 translate-y-0 overflow-y-auto sm:max-w-md"
-          data-testid="onboarding-dialog"
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            firstInteractiveRef.current?.focus();
-          }}
-        >
-          <DialogHeader>
-            <div className="mb-2 flex items-center justify-between gap-3 pr-8">
-              <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                新手引导 {progressLabel}
-              </div>
-              <button
-                ref={firstInteractiveRef}
-                type="button"
-                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={skip}
-              >
-                <X className="h-3.5 w-3.5" />
-                跳过
-              </button>
-            </div>
-            <DialogTitle className="text-xl">{currentStep.title}</DialogTitle>
-            <DialogDescription className="leading-6">
-              {currentStep.description}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const active = index === stepIndex;
-              return (
-                <button
-                  key={step.title}
-                  type="button"
-                  className={cn(
-                    "flex min-h-24 flex-col items-start gap-2 rounded-xl border p-3 text-left transition-[background-color,border-color,box-shadow]",
-                    active
-                      ? "border-primary/50 bg-primary/10 shadow-sm"
-                      : "border-border bg-muted/30 hover:bg-muted",
-                  )}
-                  onClick={() => setStepIndex(index)}
-                >
-                  <Icon
-                    className={cn(
-                      "h-4 w-4",
-                      active ? "text-primary" : "text-muted-foreground",
-                    )}
-                  />
-                  <span className="text-sm font-semibold">
-                    {step.targetLabel}
-                  </span>
-                  <span className="text-xs leading-5 text-muted-foreground">
-                    {step.title}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <DialogFooter className="sm:justify-between">
-            <Button type="button" variant="ghost" onClick={skip}>
-              跳过引导
-            </Button>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={stepIndex === 0}
-                data-testid="onboarding-prev"
-                onClick={() => setStepIndex((index) => Math.max(index - 1, 0))}
-              >
-                上一步
-              </Button>
-              <Button type="button" asChild variant="outline">
-                <Link href={currentStep.href}>{currentStep.actionLabel}</Link>
-              </Button>
-              <Button
-                type="button"
-                data-testid="onboarding-next"
-                onClick={goNext}
-              >
-                {stepIndex === steps.length - 1 ? "完成引导" : "下一步"}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        stepIndex={stepIndex}
+        currentStep={currentStep}
+        progressLabel={progressLabel}
+        targetSelector={targetSelector}
+        onSkip={skip}
+        onNext={goNext}
+      />
     </>
   );
 }

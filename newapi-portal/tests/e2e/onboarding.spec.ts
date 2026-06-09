@@ -125,22 +125,68 @@ test.describe("onboarding tour", () => {
   }, testInfo) => {
     await loginWithFreshOnboarding(page, testInfo.project.name);
 
-    await expect(
-      page.locator('[data-onboarding-target="access-copy"]'),
-    ).toHaveClass(/onboarding-highlight/);
+    const popover = page.getByTestId("onboarding-dialog");
+    const accessCopy = page.locator('[data-onboarding-target="access-copy"]');
+
+    await expect(accessCopy).toHaveClass(/onboarding-highlight/);
+    await expectPopoverAnchoredNearTarget(page, popover, accessCopy);
 
     await page.getByTestId("onboarding-next").click();
     await expect(page.getByRole("heading", { name: "创建 API Token" })).toBeVisible();
-    await expect(
-      page.locator('[data-onboarding-target="token-create"]'),
-    ).toHaveClass(/onboarding-highlight/);
+
+    const tokenCreate = page.locator('[data-onboarding-target="token-create"]');
+    await expect(tokenCreate).toHaveClass(/onboarding-highlight/);
+    await expectPopoverAnchoredNearTarget(page, popover, tokenCreate);
 
     await page.getByTestId("onboarding-next").click();
     await expect(
       page.getByRole("heading", { name: "打开操练场验证调用" }),
     ).toBeVisible();
-    await expect(
-      page.locator('[data-onboarding-target="playground-entry"]'),
-    ).toHaveClass(/onboarding-highlight/);
+
+    const playgroundEntry = page.locator(
+      '#dashboard-sidebar [data-onboarding-target="playground-entry"]',
+    );
+    await expect(playgroundEntry).toHaveClass(/onboarding-highlight/);
+    await expectPopoverAnchoredNearTarget(page, popover, playgroundEntry);
   });
 });
+
+async function expectPopoverAnchoredNearTarget(
+  page: Page,
+  popover: ReturnType<Page["getByTestId"]>,
+  target: ReturnType<Page["locator"]>,
+) {
+  const [popoverBox, targetBox] = await Promise.all([
+    popover.boundingBox(),
+    target.boundingBox(),
+  ]);
+
+  expect(popoverBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+
+  if (!popoverBox || !targetBox) {
+    return;
+  }
+
+  const horizontalGap = Math.max(
+    targetBox.x - (popoverBox.x + popoverBox.width),
+    popoverBox.x - (targetBox.x + targetBox.width),
+    0,
+  );
+  const verticalGap = Math.max(
+    targetBox.y - (popoverBox.y + popoverBox.height),
+    popoverBox.y - (targetBox.y + targetBox.height),
+    0,
+  );
+  const minEdgeDistance = Math.min(
+    horizontalGap > 0 ? horizontalGap : Number.POSITIVE_INFINITY,
+    verticalGap > 0 ? verticalGap : Number.POSITIVE_INFINITY,
+    Math.abs(popoverBox.x + popoverBox.width - targetBox.x),
+    Math.abs(targetBox.x + targetBox.width - popoverBox.x),
+    Math.abs(popoverBox.y + popoverBox.height - targetBox.y),
+    Math.abs(targetBox.y + targetBox.height - popoverBox.y),
+  );
+
+  expect(minEdgeDistance).toBeLessThan(48);
+  expect(popoverBox.width).toBeLessThanOrEqual(320);
+}

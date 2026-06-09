@@ -38,9 +38,13 @@ const navItems: NavItem[] = [
 
 type DashboardNavProps = {
   collapsed?: boolean;
+  includeOnboardingTargets?: boolean;
 };
 
-export function DashboardNav({ collapsed = false }: DashboardNavProps) {
+export function DashboardNav({
+  collapsed = false,
+  includeOnboardingTargets = true,
+}: DashboardNavProps) {
   const pathname = usePathname();
 
   return (
@@ -65,7 +69,9 @@ export function DashboardNav({ collapsed = false }: DashboardNavProps) {
           <Link
             key={item.href}
             href={item.href}
-            data-onboarding-target={item.onboardingTarget}
+            data-onboarding-target={
+              includeOnboardingTargets ? item.onboardingTarget : undefined
+            }
             className={className}
             aria-current={active ? "page" : undefined}
             title={collapsed ? item.label : undefined}
