@@ -90,14 +90,21 @@ type DashboardSummary = {
 const BALANCE_LOW_CNY = 1;
 const BALANCE_CRITICAL_CNY = 0.2;
 
-/**
- * 对外 API 地址。优先读公开环境变量（构建期注入），否则回退到默认网关域名。
- * 注：summary 接口当前未返回该地址，已在交接报告中标注建议由接口下发。
- */
-const API_BASE_URL = (
+const DEFAULT_PUBLIC_API_BASE = (
   process.env.NEXT_PUBLIC_NEWAPI_BASE_URL || "https://easyapi.work"
 ).replace(/\/+$/, "");
-const API_ENDPOINT = `${API_BASE_URL}/v1`;
+
+/** 对外 API 地址：与门户同域（如 https://easyapi.work/v1），本地开发回退到公开环境变量。 */
+function resolvePublicApiEndpoint(): string {
+  if (typeof window === "undefined") {
+    return `${DEFAULT_PUBLIC_API_BASE}/v1`;
+  }
+
+  const { origin, hostname } = window.location;
+  const isLocalDev = hostname === "localhost" || hostname === "127.0.0.1";
+  const base = isLocalDev ? DEFAULT_PUBLIC_API_BASE : origin.replace(/\/+$/, "");
+  return `${base}/v1`;
+}
 
 export default function DashboardPage() {
   const { formatBalance, quotaToCny, applyConfig, refresh } = useQuotaFormat();
@@ -105,6 +112,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiEndpoint, setApiEndpoint] = useState(() => resolvePublicApiEndpoint());
 
   const loadSummary = useCallback(async () => {
     setError(null);
@@ -144,6 +152,10 @@ export default function DashboardPage() {
   useEffect(() => {
     void loadSummary();
   }, [loadSummary]);
+
+  useEffect(() => {
+    setApiEndpoint(resolvePublicApiEndpoint());
+  }, []);
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -311,10 +323,10 @@ export default function DashboardPage() {
             <div className="text-xs text-muted-foreground">API 地址</div>
             <div className="mt-1 flex items-center gap-2">
               <code className="truncate rounded-md bg-muted px-2 py-1 font-mono text-sm">
-                {API_ENDPOINT}
+                {apiEndpoint}
               </code>
               <CopyButton
-                value={API_ENDPOINT}
+                value={apiEndpoint}
                 label="一键复制"
                 data-onboarding-target="access-copy"
               />
