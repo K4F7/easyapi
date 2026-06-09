@@ -120,6 +120,40 @@ test.describe("onboarding tour", () => {
     await expect(page.getByRole("heading", { name: "复制接入信息" })).toBeVisible();
   });
 
+  test("hides restart button after completing onboarding", async ({
+    page,
+  }, testInfo) => {
+    await loginWithFreshOnboarding(page, testInfo.project.name);
+
+    await page.getByTestId("onboarding-next").click();
+    await page.getByTestId("onboarding-next").click();
+    await page.getByTestId("onboarding-next").click();
+
+    await expect(page.getByTestId("onboarding-dialog")).toHaveCount(0);
+    await expect(page.getByTestId("onboarding-restart")).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.getByTestId("onboarding-restart")).toHaveCount(0);
+  });
+
+  test("can dismiss restart button with hover close control", async ({
+    page,
+  }, testInfo) => {
+    await loginWithFreshOnboarding(page, testInfo.project.name);
+
+    await page.getByRole("button", { name: "跳过引导" }).click();
+    const restartButton = page.getByTestId("onboarding-restart");
+    await expect(restartButton).toBeVisible();
+
+    await restartButton.hover();
+    await page.getByTestId("onboarding-restart-dismiss").click();
+
+    await expect(restartButton).toHaveCount(0);
+
+    await page.reload();
+    await expect(restartButton).toHaveCount(0);
+  });
+
   test("steps cover access info, token creation, and playground", async ({
     page,
   }, testInfo) => {

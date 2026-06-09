@@ -10,12 +10,13 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { ArrowRight, RotateCcw } from "lucide-react";
+import { ArrowRight, RotateCcw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "ezapi:onboarding:v1";
+const RESTART_HIDDEN_KEY = "ezapi:onboarding:restart-hidden";
 const RESTART_EVENT = "ezapi:onboarding:restart";
 
 const POPOVER_WIDTH = 300;
@@ -78,6 +79,23 @@ function readStatus(): OnboardingStatus {
 
 function writeStatus(status: OnboardingStatus) {
   window.localStorage.setItem(STORAGE_KEY, status);
+}
+
+function readRestartHidden(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.localStorage.getItem(RESTART_HIDDEN_KEY) === "1";
+}
+
+function writeRestartHidden(hidden: boolean) {
+  if (hidden) {
+    window.localStorage.setItem(RESTART_HIDDEN_KEY, "1");
+    return;
+  }
+
+  window.localStorage.removeItem(RESTART_HIDDEN_KEY);
 }
 
 function getTargetSelector(target: OnboardingStep["target"]) {
@@ -425,6 +443,7 @@ export function OnboardingTour() {
   const pathname = usePathname();
   const [hydrated, setHydrated] = useState(false);
   const [status, setStatus] = useState<OnboardingStatus>("pending");
+  const [restartHidden, setRestartHidden] = useState(false);
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
 
@@ -435,15 +454,23 @@ export function OnboardingTour() {
   useEffect(() => {
     const stored = readStatus();
     setStatus(stored);
+    setRestartHidden(readRestartHidden());
     setOpen(stored === "pending" && isDashboardHome);
     setHydrated(true);
   }, [isDashboardHome]);
 
   const restart = useCallback(() => {
+    writeRestartHidden(false);
+    setRestartHidden(false);
     writeStatus("pending");
     setStatus("pending");
     setStepIndex(0);
     setOpen(true);
+  }, []);
+
+  const dismissRestart = useCallback(() => {
+    writeRestartHidden(true);
+    setRestartHidden(true);
   }, []);
 
   useEffect(() => {
@@ -569,18 +596,32 @@ export function OnboardingTour() {
 
   return (
     <>
-      {status !== "pending" ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          data-testid="onboarding-restart"
-          className="fixed bottom-4 right-4 z-40 rounded-xl bg-card/95 shadow-md backdrop-blur"
-          onClick={restart}
-        >
-          <RotateCcw className="h-4 w-4" />
-          继续引导
-        </Button>
+      {status === "skipped" && !restartHidden ? (
+        <div className="group fixed bottom-4 right-4 z-40">
+          <button
+            type="button"
+            data-testid="onboarding-restart-dismiss"
+            aria-label="关闭继续引导"
+            className="absolute -left-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-card text-muted-foreground opacity-0 shadow-sm transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+            onClick={(event) => {
+              event.stopPropagation();
+              dismissRestart();
+            }}
+          >
+            <X className="h-3 w-3" />
+          </button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="onboarding-restart"
+            className="rounded-xl bg-card/95 shadow-md backdrop-blur"
+            onClick={restart}
+          >
+            <RotateCcw className="h-4 w-4" />
+            继续引导
+          </Button>
+        </div>
       ) : null}
 
       <OnboardingPopover
