@@ -139,6 +139,7 @@ export function createImageGeneration(
     },
     body: JSON.stringify(body),
     cache: "no-store",
+    redirect: "manual",
     signal,
   });
 }

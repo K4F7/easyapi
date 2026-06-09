@@ -17,7 +17,6 @@ import {
   ensurePlaygroundImageTokenId,
   ensurePlaygroundTokenIds,
   PLAYGROUND_CHAT_TOKEN_NAME,
-  PLAYGROUND_IMAGE_MODEL_LIMITS,
   PLAYGROUND_IMAGE_TOKEN_NAME,
 } from "@/lib/playground/ensure-token";
 
@@ -150,8 +149,8 @@ describe("ensure playground tokens", () => {
     expect(mockCreateToken).toHaveBeenLastCalledWith(auth, {
       name: PLAYGROUND_IMAGE_TOKEN_NAME,
       unlimited_quota: true,
-      model_limits_enabled: true,
-      model_limits: PLAYGROUND_IMAGE_MODEL_LIMITS,
+      model_limits_enabled: false,
+      group: "normal",
     });
   });
 
@@ -276,7 +275,7 @@ describe("ensure playground tokens", () => {
     expect(mockCreateToken).not.toHaveBeenCalled();
   });
 
-  it("does not reuse an image token that includes non gpt-image-2 models", async () => {
+  it("updates a stale image token that still has model limits enabled", async () => {
     mockListTokens.mockResolvedValueOnce({
       items: [
         token({
@@ -288,20 +287,19 @@ describe("ensure playground tokens", () => {
       ],
       total: 1,
     });
-    mockCreateToken.mockResolvedValueOnce({
-      token: { id: 343, name: PLAYGROUND_IMAGE_TOKEN_NAME },
-    });
 
-    await expect(ensurePlaygroundImageTokenId(auth)).resolves.toBe(343);
-    expect(mockCreateToken).toHaveBeenCalledWith(auth, {
+    await expect(ensurePlaygroundImageTokenId(auth)).resolves.toBe(34);
+    expect(mockUpdateToken).toHaveBeenCalledWith(auth, {
+      id: 34,
       name: PLAYGROUND_IMAGE_TOKEN_NAME,
       unlimited_quota: true,
-      model_limits_enabled: true,
-      model_limits: PLAYGROUND_IMAGE_MODEL_LIMITS,
+      model_limits_enabled: false,
+      group: "normal",
     });
+    expect(mockCreateToken).not.toHaveBeenCalled();
   });
 
-  it("creates a dedicated image token with only gpt-image-2 model limits", async () => {
+  it("creates a dedicated image token on the normal channel without model limits", async () => {
     mockListTokens.mockResolvedValueOnce({
       items: [],
       total: 0,
@@ -314,8 +312,8 @@ describe("ensure playground tokens", () => {
     expect(mockCreateToken).toHaveBeenCalledWith(auth, {
       name: PLAYGROUND_IMAGE_TOKEN_NAME,
       unlimited_quota: true,
-      model_limits_enabled: true,
-      model_limits: PLAYGROUND_IMAGE_MODEL_LIMITS,
+      model_limits_enabled: false,
+      group: "normal",
     });
   });
 
@@ -330,8 +328,6 @@ describe("ensure playground tokens", () => {
           token({
             id: 505,
             name: PLAYGROUND_IMAGE_TOKEN_NAME,
-            model_limits_enabled: true,
-            model_limits: "gpt-image-2,gpt-image-2-mini",
           }),
         ],
         total: 1,

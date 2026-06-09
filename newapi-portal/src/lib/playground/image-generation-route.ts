@@ -73,7 +73,7 @@ export async function handleImageGeneration(request: Request) {
         jsonError(
           {
             code: "UPSTREAM_ERROR",
-            message: "上游生图接口返回错误，请稍后重试",
+            message: resolveImageUpstreamErrorMessage(upstream.status),
             details: { status: upstream.status },
           },
           502,
@@ -360,4 +360,20 @@ function resolveAllowedOrigin(request: Request): string | null {
   }
 
   return null;
+}
+
+function resolveImageUpstreamErrorMessage(status: number): string {
+  if (status >= 300 && status < 400) {
+    return "NEWAPI_BASE_URL 未指向 OpenAI 兼容 API（生图请求被重定向，请检查是否误用了 Portal 公网地址）";
+  }
+
+  if (status === 401 || status === 403) {
+    return "令牌密钥无效或无权访问生图接口";
+  }
+
+  if (status === 503) {
+    return "上游生图服务暂不可用，请稍后重试";
+  }
+
+  return `上游生图接口返回错误（HTTP ${status}），请稍后重试`;
 }

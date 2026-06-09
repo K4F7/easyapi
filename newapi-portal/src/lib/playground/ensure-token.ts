@@ -57,14 +57,17 @@ export async function ensurePlaygroundChatTokenId(
 export async function ensurePlaygroundImageTokenId(
   auth: NewApiAuth,
 ): Promise<number> {
+  const group = getPlaygroundChatGroup();
+
   return ensurePlaygroundToken(auth, {
     name: PLAYGROUND_IMAGE_TOKEN_NAME,
     isQualified: isQualifiedImageToken,
+    canUpdate: (token) => isUsableToken(token),
     createInput: {
       name: PLAYGROUND_IMAGE_TOKEN_NAME,
       unlimited_quota: true,
-      model_limits_enabled: true,
-      model_limits: PLAYGROUND_IMAGE_MODEL_LIMITS,
+      model_limits_enabled: false,
+      group,
     },
   });
 }
@@ -167,8 +170,8 @@ function isQualifiedChatToken(token: NewApiToken): boolean {
 function isQualifiedImageToken(token: NewApiToken): boolean {
   return (
     isUsableToken(token) &&
-    token.model_limits_enabled === true &&
-    modelLimitsOnlyIncludeImageModels(token.model_limits)
+    token.model_limits_enabled !== true &&
+    token.group === getPlaygroundChatGroup()
   );
 }
 
@@ -191,22 +194,3 @@ function isUsableToken(token: NewApiToken): boolean {
   return true;
 }
 
-function modelLimitsOnlyIncludeImageModels(
-  modelLimits: string | undefined,
-): boolean {
-  if (!modelLimits) {
-    return false;
-  }
-
-  const models = modelLimits
-    .split(/[\s,;|]+/)
-    .map((model) => model.trim())
-    .filter(Boolean);
-
-  return (
-    models.length > 0 &&
-    models.every(
-      (model) => model === "gpt-image-2" || model.startsWith("gpt-image-2"),
-    )
-  );
-}

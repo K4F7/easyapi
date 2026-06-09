@@ -117,11 +117,70 @@ async function fetchPlaygroundToken(sessionCookie) {
   }
 
   const chatTokenId = json.data.chatTokenId ?? json.data.tokenId;
-  if (!chatTokenId) {
-    throw new Error("Playground chatTokenId missing");
+  const imageTokenId = json.data.imageTokenId ?? json.data.tokenId;
+  if (!chatTokenId || !imageTokenId) {
+    throw new Error("Playground chatTokenId or imageTokenId missing");
   }
 
-  return chatTokenId;
+  return { chatTokenId, imageTokenId };
+}
+
+async function fetchImageEmbedConfig(sessionCookie) {
+  logSection("Image embed config");
+  const { response, json } = await requestJson(
+    `${portalBaseUrl}/api/playground/images/embed-config`,
+    { headers: { Cookie: sessionCookie } },
+  );
+
+  console.log(`HTTP ${response.status}`);
+  console.log(JSON.stringify(json?.data ?? json?.error ?? null, null, 2));
+
+  if (!response.ok || !json?.ok) {
+    throw new Error(json?.error?.message ?? "Failed to load image embed config");
+  }
+
+  return json.data;
+}
+
+async function probeImageGeneration(sessionCookie, tokenId) {
+  logSection(`Portal BFF image generation (tokenId=${tokenId})`);
+  const { response, json, text } = await requestJson(
+    `${portalBaseUrl}/api/playground/images/generations`,
+    {
+      method: "POST",
+      headers: {
+        Cookie: sessionCookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        tokenId,
+        prompt: "diagnostic red apple on white background",
+        model: "gpt-image-2",
+        size: "1024x1024",
+      }),
+    },
+  );
+
+  console.log(`HTTP ${response.status}`);
+
+  if (!response.ok) {
+    console.log(JSON.stringify(json?.error ?? json ?? summarizeBody(text), null, 2));
+    throw new Error(json?.error?.message ?? "Portal image generation failed");
+  }
+
+  const payload = json;
+  const firstItem = Array.isArray(payload?.data) ? payload.data[0] : null;
+  console.log(
+    JSON.stringify(
+      {
+        created: payload?.created ?? null,
+        hasUrl: Boolean(firstItem?.url),
+        hasB64: Boolean(firstItem?.b64_json),
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 async function fetchPlaygroundModels(sessionCookie, chatTokenId) {
@@ -198,11 +257,30 @@ async function main() {
   console.log(`identifier=${identifier}`);
 
   const sessionCookie = await loginPortal();
-  const chatTokenId = await fetchPlaygroundToken(sessionCookie);
+  const { chatTokenId, imageTokenId } = await fetchPlaygroundToken(sessionCookie);
   const models = await fetchPlaygroundModels(sessionCookie, chatTokenId);
+  const embedConfig = await fetchImageEmbedConfig(sessionCookie);
 
   logSection("Result");
-  console.log(`Loaded ${models.length} model(s) through portal BFF.`);
+  console.log(`Loaded ${models.length} chat model(s) through portal BFF.`);
+
+  if (embedConfig.configured) {
+    try {
+      await probeImageGeneration(sessionCookie, imageTokenId);
+      console.log("Image generation through portal BFF succeeded.");
+    } catch (error) {
+      console.log(
+        `Image generation failed with image token: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      console.log("Retrying image generation with chat token for comparison...");
+      await probeImageGeneration(sessionCookie, chatTokenId);
+      console.log("Image generation with chat token succeeded.");
+    }
+  } else {
+    console.log("Image embed proxy is not configured on this portal.");
+  }
 
   if (upstreamBaseUrl && upstreamApiKey) {
     await probeDirectUpstream(upstreamBaseUrl, upstreamApiKey);

@@ -495,7 +495,7 @@ describe("POST playground image generations", () => {
     expect(response.status).toBe(502);
     expect(body.error).toMatchObject({
       code: "UPSTREAM_ERROR",
-      message: "上游生图接口返回错误，请稍后重试",
+      message: "上游生图接口返回错误（HTTP 400），请稍后重试",
       details: { status: 400 },
     });
     expect(JSON.stringify(body)).not.toMatch(/sk-live|secret-provider/);
