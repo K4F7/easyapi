@@ -50,30 +50,38 @@ export function DashboardShell({ email, children }: DashboardShellProps) {
       <aside
         id="dashboard-sidebar"
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border bg-card/80 shadow-sm shadow-primary/10 backdrop-blur-md transition-transform duration-200 md:block",
-          !sidebarOpen && "-translate-x-full",
+          "fixed inset-y-0 left-0 z-30 hidden border-r border-border bg-card/80 shadow-sm shadow-primary/10 backdrop-blur-md transition-[width] duration-200 md:block",
+          sidebarOpen ? "w-64" : "w-16",
         )}
-        aria-hidden={!sidebarOpen}
       >
         <Link
           href="/"
           aria-label="返回 EasyAPI 首页"
-          className="flex h-16 items-center gap-3 border-b border-border px-5 outline-none transition-[background-color,box-shadow] duration-200 hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          title={sidebarOpen ? undefined : "EasyAPI"}
+          className={cn(
+            "flex h-16 items-center border-b border-border outline-none transition-[background-color,box-shadow,padding] duration-200 hover:bg-secondary/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            sidebarOpen ? "gap-3 px-5" : "justify-center px-0",
+          )}
         >
-          <DuckLogo />
-          <span className="text-sm font-semibold tracking-tight text-foreground">
+          <DuckLogo className={sidebarOpen ? undefined : "h-8 w-8"} />
+          <span
+            className={cn(
+              "text-sm font-semibold tracking-tight text-foreground",
+              !sidebarOpen && "sr-only",
+            )}
+          >
             EasyAPI
           </span>
         </Link>
-        <div className="px-3 py-3">
-          <DashboardNav />
+        <div className={cn("py-3", sidebarOpen ? "px-3" : "px-2")}>
+          <DashboardNav collapsed={!sidebarOpen} />
         </div>
       </aside>
 
       <div
         className={cn(
           "transition-[padding] duration-200",
-          sidebarOpen ? "md:pl-64" : "md:pl-0",
+          sidebarOpen ? "md:pl-64" : "md:pl-16",
         )}
       >
         <div className="sticky top-0 z-20 border-b border-border bg-card/85 shadow-sm shadow-primary/10 backdrop-blur-md md:border-b">
