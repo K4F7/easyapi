@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Bell, BookOpen, PanelLeft } from "lucide-react";
+import { BookOpen, PanelLeft } from "lucide-react";
 
 import { DashboardNav } from "@/components/dashboard-nav";
 import { DuckLogo } from "@/components/duck-logo";
+import { NotificationBell } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { Button } from "@/components/ui/button";
 import { getDocsNavConfig } from "@/lib/docs-site";
@@ -133,14 +134,7 @@ export function DashboardShell({ email, children }: DashboardShellProps) {
                   </Link>
                 )}
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="通知"
-                className="rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
-              >
-                <Bell className="h-4 w-4" />
-              </Button>
+              <NotificationBell />
               <UserMenu email={email} />
             </div>
           </header>

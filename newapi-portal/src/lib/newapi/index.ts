@@ -28,6 +28,13 @@ export {
   type NewApiQuotaDisplayType,
   type NewApiStatus,
 } from "./status";
+export {
+  clearNewApiNoticeCacheForTests,
+  getNewApiNotice,
+  hashNoticeContent,
+  parseNoticePayload,
+  type NewApiNotice,
+} from "./notice";
 export type {
   NewApiAdminAddQuotaInput,
   NewApiAdminCreateUserInput,

@@ -327,6 +327,16 @@ export function mockQuotaConfigResponse() {
   return jsonOk({ config: mockQuotaConfig });
 }
 
+export function mockNotificationsResponse() {
+  const content =
+    "# 系统公告\n\n欢迎使用 EasyAPI。当前为 **Dev Mock** 环境，公告内容来自 NewAPI `/api/notice` 同步。";
+
+  return jsonOk({
+    content,
+    contentHash: "dev-mock-notice",
+  });
+}
+
 export function mockPlaygroundTokenResponse() {
   const tokenId = getMockState().tokens[0]?.id ?? 101;
   return jsonOk({ chatTokenId: tokenId, imageTokenId: tokenId, tokenId });
