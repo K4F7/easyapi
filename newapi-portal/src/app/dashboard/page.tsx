@@ -143,9 +143,14 @@ export default function DashboardPage() {
         alreadyCheckedIn?: boolean;
         quotaAmount?: number;
       }>("/api/checkin");
-      toast.success(
-        result.alreadyCheckedIn ? "今日已签到" : "签到完成",
-      );
+
+      if (result.alreadyCheckedIn) {
+        toast.success("今日已签到");
+      } else if (typeof result.quotaAmount === "number" && result.quotaAmount > 0) {
+        toast.success(`签到完成，获得 ${formatBalance(result.quotaAmount)}`);
+      } else {
+        toast.success("签到完成");
+      }
     } catch (checkinError) {
       toast.error(
         checkinError instanceof Error ? checkinError.message : "签到失败",
@@ -397,7 +402,7 @@ export default function DashboardPage() {
             <QuickLink
               href="/dashboard/billing"
               title="充值与兑换"
-              description="在线充值、核销兑换码、刷新余额。"
+              description="在线充值、核销兑换码、查充值记录。"
             />
             <QuickLink
               href="/dashboard/usage"
@@ -442,7 +447,7 @@ export default function DashboardPage() {
                       : "今日可签到"}
                   </div>
                   <p className="truncate text-xs text-muted-foreground">
-                    每天签到领余额，奖励由 NewAPI 直接发放到账户。
+                    每天签到领余额，奖励直接加到你的账户里。
                   </p>
                 </div>
               </div>

@@ -154,20 +154,6 @@ function shouldRetryNewApiLogin(
 }
 
 function mapNewApiLoginError(error: NewApiPasswordLoginError): NewApiLoginFailure {
-  if (error.code === "NEWAPI_2FA_REQUIRED") {
-    return {
-      ok: false as const,
-      response: jsonError(
-        {
-          code: "NEWAPI_2FA_REQUIRED",
-          message:
-            "This NewAPI account requires 2FA. Please sign in through NewAPI and disable 2FA or complete 2FA there first.",
-        },
-        403,
-      ),
-    };
-  }
-
   if (error.code === "NEWAPI_VERIFICATION_REQUIRED") {
     return {
       ok: false as const,

@@ -80,14 +80,6 @@ export async function loginUser(
   });
   const parsed = parseLoginUser(login.payload, input.username);
 
-  if (parsed.require2fa) {
-    throw new NewApiError("NewAPI account requires two-factor authentication", {
-      status: 401,
-      code: "NEWAPI_2FA_REQUIRED",
-      payload: login.payload,
-    });
-  }
-
   const accessToken = parsed.accessToken ??
     (login.cookie && parsed.id !== undefined
       ? await fetchAccessToken(login.cookie, parsed.id)

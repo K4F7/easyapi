@@ -39,7 +39,6 @@ const registerSchema = z.object({
     .transform((value) => value.toLowerCase()),
   password: z.string().min(8).max(20),
   affCode: affiliateCodeSchema,
-  inviteCode: affiliateCodeSchema,
   verificationCode: z.string().trim().max(32).optional(),
   turnstile: z.string().trim().max(2048).optional(),
 });
@@ -51,7 +50,7 @@ export async function POST(request: Request) {
 
   try {
     const input = await readJson(request, registerSchema);
-    const affCode = normalizeAffCode(input.affCode ?? input.inviteCode);
+    const affCode = normalizeAffCode(input.affCode);
     const existingPortalUser = await db.user.findUnique({
       where: { email: input.email },
       select: { id: true, newApiUserId: true },

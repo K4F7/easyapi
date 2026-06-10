@@ -4,7 +4,6 @@ import { getNewApiConfig } from "./client";
 
 export class NewApiNativeAuthError extends Error {
   readonly code:
-    | "NEWAPI_2FA_REQUIRED"
     | "NEWAPI_INVALID_CREDENTIALS"
     | "NEWAPI_VERIFICATION_REQUIRED"
     | "NEWAPI_VERIFICATION_SEND_FAILED"

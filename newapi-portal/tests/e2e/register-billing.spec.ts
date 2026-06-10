@@ -68,36 +68,7 @@ test.describe("Register page", () => {
     expect(registerRequests[0]).not.toHaveProperty("inviteCode");
   });
 
-  test("legacy inviteCode query is still accepted for one release cycle", async ({
-    page,
-  }) => {
-    await page.goto("/register?inviteCode=LEGACY99");
-    await page.getByLabel("用户名").fill("testuser");
-    await page.getByLabel("邮箱").fill("user@example.com");
-    await page.getByLabel("密码", { exact: true }).fill("MyPassword8!");
-    await page.getByLabel("确认密码").fill("MyPassword8!");
-    await page.getByLabel("验证码").fill("654321");
-
-    const registerRequests: Array<Record<string, unknown>> = [];
-    await page.route("**/api/auth/register", async (route) => {
-      registerRequests.push(JSON.parse(route.request().postData() ?? "{}"));
-      await route.fulfill({
-        status: 202,
-        contentType: "application/json",
-        body: JSON.stringify({ ok: true, data: { message: "ok" } }),
-      });
-    });
-
-    await page.getByRole("button", { name: "注册", exact: true }).click();
-    expect(registerRequests[0]).toEqual(
-      expect.objectContaining({
-        affCode: "LEGACY99",
-      }),
-    );
-    expect(registerRequests[0]).not.toHaveProperty("inviteCode");
-  });
-
-  test("legacy aff query is not used for invite link format", async ({
+  test("aff query is not used for invite link format", async ({
     page,
   }) => {
     await page.goto("/register?aff=OLDSTYLE");

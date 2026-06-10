@@ -43,11 +43,7 @@ function FieldError({ message }: { message?: string }) {
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const refCode =
-    searchParams.get("aff_code") ??
-    searchParams.get("inviteCode") ??
-    searchParams.get("ref") ??
-    "";
+  const refCode = searchParams.get("aff_code") ?? searchParams.get("ref") ?? "";
 
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -384,12 +380,11 @@ function RegisterForm() {
           id="affCode"
           label={
             <>
-              邀请码（aff_code）{" "}
-              <span className="font-normal text-muted-foreground">(可选)</span>
+              邀请码 <span className="font-normal text-muted-foreground">(可选)</span>
             </>
           }
           icon={Ticket}
-          placeholder="如有 aff_code 可填写"
+          placeholder="如有邀请码可填写"
           value={affCode}
           onChange={(value) => setAffCode(value.toUpperCase())}
         />

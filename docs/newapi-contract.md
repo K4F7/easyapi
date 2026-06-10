@@ -94,7 +94,7 @@ This document tracks the NewAPI surface that `newapi-portal` currently depends o
 - Info: `GET /api/user/aff` → `aff_code` (string or generated code).
 - Transfer rebate quota: `POST /api/user/aff_transfer`.
 - Portal BFF: `GET/POST /api/aff`.
-- Registration passes `aff_code`; legacy `inviteCode` query param is accepted one release cycle.
+- Registration passes `aff_code` via `/register?aff_code={code}`.
 
 ## Admin user and quota
 

@@ -118,7 +118,7 @@ export default function BillingPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("payment") === "return") {
-        toast.info("支付已返回，正在刷新余额…");
+        toast.info("正在刷新余额与充值记录…");
         loadData();
         params.delete("payment");
         const next =
@@ -146,7 +146,7 @@ export default function BillingPage() {
           name: "EasyAPI 余额充值",
         },
       );
-      toast.success("支付链接已生成，正在前往支付");
+      toast.success("订单已创建，正在前往支付");
       window.location.href = data.payment.url;
     } catch (createError) {
       toast.error(

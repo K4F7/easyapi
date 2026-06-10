@@ -21,7 +21,6 @@ type NewApiPasswordLoginResult = {
 
 export class NewApiPasswordLoginError extends Error {
   readonly code:
-    | "NEWAPI_2FA_REQUIRED"
     | "NEWAPI_INVALID_CREDENTIALS"
     | "NEWAPI_UPSTREAM_DISABLED"
     | "NEWAPI_VERIFICATION_REQUIRED"
@@ -68,14 +67,6 @@ export async function loginNewApiWithPassword(input: {
   }
 
   const loginData = extractData(loginPayload);
-
-  if (loginData.require_2fa || loginData.require2fa) {
-    throw new NewApiPasswordLoginError(
-      "NEWAPI_2FA_REQUIRED",
-      "NewAPI account requires 2FA verification",
-      { status: loginResponse.status, payload: loginPayload },
-    );
-  }
 
   const rawUserId = loginData.id ?? loginData.user_id ?? loginData.userId;
   const userId = rawUserId === undefined ? null : String(rawUserId);
