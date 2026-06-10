@@ -111,14 +111,6 @@ test.describe("check-in diagnostics", () => {
     ).toBe(true);
 
     expect(
-      afterCheckin?.quotaPending,
-      diagnostic("POST /api/checkin succeeded but summary quotaPending is not false", {
-        ...diagnostics,
-        afterCheckin,
-      }),
-    ).toBe(false);
-
-    expect(
       afterCheckin?.quotaApplied,
       diagnostic("POST /api/checkin succeeded but summary quotaApplied is not true", {
         ...diagnostics,
@@ -179,12 +171,11 @@ function summarizeCheckin(body: unknown) {
   }
 
   return {
+    enabled: checkin.enabled,
     checkedInToday: checkin.checkedInToday,
     checkedInOn: checkin.checkedInOn,
     status: checkin.status,
-    checkinId: checkin.checkinId,
     quotaApplied: checkin.quotaApplied,
-    quotaPending: checkin.quotaPending,
   };
 }
 

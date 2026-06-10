@@ -56,13 +56,13 @@ vi.mock("@/lib/api/bff", () => ({
   publicUserFromPortalUser: (user: {
     id: string;
     email: string;
-    inviteCode: string;
+    username?: string | null;
     newApiUserId: string | null;
     createdAt: Date;
   }) => ({
     id: user.id,
     email: user.email,
-    inviteCode: user.inviteCode,
+    username: user.username ?? null,
     newApiUserId: user.newApiUserId,
     newApiBinding: user.newApiUserId ? "ready" : "pending",
     createdAt: user.createdAt.toISOString(),
@@ -282,7 +282,6 @@ describe("POST playground image generations", () => {
     mockGetPortalUserForApi.mockResolvedValue({
       id: "portal-user-1",
       email: "user@example.com",
-      inviteCode: "INVITE1",
       newApiUserId: "99",
       newApiAccessTokenCiphertext: "newapi-access-token",
       createdAt: new Date("2026-06-01T00:00:00.000Z"),

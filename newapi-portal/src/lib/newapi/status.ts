@@ -10,6 +10,7 @@ export type NewApiStatus = {
   displayType: NewApiQuotaDisplayType;
   customCurrencySymbol?: string;
   customCurrencyExchangeRate?: number;
+  checkinEnabled: boolean;
 };
 
 const DEFAULT_QUOTA_PER_UNIT = 500_000;
@@ -77,6 +78,8 @@ function parseStatusPayload(data: Record<string, unknown>): NewApiStatus {
       ["custom_currency_exchange_rate", "customCurrencyExchangeRate"],
       1,
     ),
+    checkinEnabled:
+      data.checkin_enabled === true || data.checkinEnabled === true,
   };
 }
 

@@ -44,14 +44,17 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const refCode =
-    searchParams.get("inviteCode") ?? searchParams.get("ref") ?? "";
+    searchParams.get("aff_code") ??
+    searchParams.get("inviteCode") ??
+    searchParams.get("ref") ??
+    "";
 
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [inviteCode, setInviteCode] = useState("");
+  const [affCode, setAffCode] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -64,6 +67,12 @@ function RegisterForm() {
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const emailValid = EMAIL_RE.test(email);
+
+  useEffect(() => {
+    if (refCode) {
+      setAffCode(refCode.toUpperCase());
+    }
+  }, [refCode]);
 
   useEffect(() => {
     return () => {
@@ -164,7 +173,7 @@ function RegisterForm() {
         email: string;
         password: string;
         verificationCode: string;
-        inviteCode?: string;
+        affCode?: string;
       } = {
         username: username.trim(),
         email,
@@ -172,8 +181,8 @@ function RegisterForm() {
         verificationCode: verificationCode.trim(),
       };
 
-      const effectiveInviteCode = inviteCode.trim() || refCode.trim();
-      if (effectiveInviteCode) body.inviteCode = effectiveInviteCode;
+      const effectiveAffCode = affCode.trim() || refCode.trim();
+      if (effectiveAffCode) body.affCode = effectiveAffCode;
 
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -372,16 +381,17 @@ function RegisterForm() {
         />
 
         <AuthInput
-          id="inviteCode"
+          id="affCode"
           label={
             <>
-              邀请码 <span className="font-normal text-muted-foreground">(可选)</span>
+              邀请码（aff_code）{" "}
+              <span className="font-normal text-muted-foreground">(可选)</span>
             </>
           }
           icon={Ticket}
-          placeholder="如有邀请码可填写"
-          value={inviteCode}
-          onChange={(value) => setInviteCode(value.toUpperCase())}
+          placeholder="如有 aff_code 可填写"
+          value={affCode}
+          onChange={(value) => setAffCode(value.toUpperCase())}
         />
 
         <Button

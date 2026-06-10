@@ -85,7 +85,7 @@ test.describe("NewAPI Portal smoke", () => {
     await expect(page.getByLabel("验证码")).toBeVisible();
     await expect(page.getByLabel(/邀请码/)).toBeVisible();
     await expect(page.getByText(/服务条款|隐私政策|我同意/)).toHaveCount(0);
-    await page.goto("/register?inviteCode=ABC123");
+    await page.goto("/register?aff_code=ABC123");
     await expect(
       page.getByRole("button", { name: "获取验证码" }),
     ).toBeDisabled();
@@ -133,10 +133,11 @@ test.describe("NewAPI Portal smoke", () => {
         username: "testuser",
         email: "user@example.com",
         password: "MyPassword8!",
-        inviteCode: "ABC123",
+        affCode: "ABC123",
         verificationCode: "654321",
       }),
     ]);
+    expect(registerRequests[0]).not.toHaveProperty("inviteCode");
     expect(registerRequests[0]).not.toHaveProperty("turnstile");
     expect(registerRequests[0]).not.toHaveProperty("acceptedTerms");
     await expect(page.getByRole("link", { name: "登录" })).toHaveAttribute(

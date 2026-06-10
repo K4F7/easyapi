@@ -22,6 +22,15 @@ export {
   revealTokenKey,
   updateToken,
 } from "./tokens";
+export { getAffInfo, parseAffFromSelf, transferAffQuota } from "./aff";
+export type { NewApiAffInfo, NewApiAffTransferResult } from "./aff";
+export { doCheckin, getCheckinStatus } from "./checkin";
+export type {
+  NewApiCheckinRecord,
+  NewApiCheckinStats,
+  NewApiCheckinStatus,
+  NewApiDoCheckinResult,
+} from "./checkin";
 export { adminAddQuota, adminCreateUser, getSelf } from "./users";
 export {
   clearNewApiStatusCacheForTests,

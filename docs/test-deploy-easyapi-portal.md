@@ -76,13 +76,13 @@
 
 每条路由检查：关键标题/文案可见、无 5xx 响应、无页面级 JS 错误；dashboard 页额外断言无「加载失败」类错误文案。
 
-**专项 E2E（`playground` + `register-billing` spec）** — 操练场 tab/URL/令牌脱敏与 Chat 交互（含 mock 流式）、注册自设密码与校验、财务页 `inviteCode` 邀请链接与奖励说明等；详见各 spec 文件内用例名。
+**专项 E2E（`playground` + `register-billing` spec）** — 操练场 tab/URL/令牌脱敏与 Chat 交互（含 mock 流式）、注册自设密码与校验、财务页 `aff_code` 邀请链接与奖励说明等；详见各 spec 文件内用例名。
 
 `main` 部署不会清空测试库；若只需更新 Portal 代码用 `main`，需要可重复的生产+测试数据用 `dev`。
 
 **注意**：每次 `dev` 部署会**清空并重建** staging Postgres（生产快照非实时同步）；`dev` 上在测试期间手工改库的数据会在下次 `dev` push 后丢失。
 
-**签到相关**：恢复库后 NewAPI 根用户的 `access_token` 会随快照变化，但 `/opt/easyapi-portal-test/.env` 中的 `NEWAPI_ADMIN_TOKEN` **不会**自动更新。若出现签到 502（`Unauthorized, invalid access token`），见 [checkin-diagnostics.md — 故障排查](./checkin-diagnostics.md#故障排查签到失败--重试仍失败)。
+**签到相关**：签到额度由 NewAPI 原生 API 发放，不依赖 `NEWAPI_ADMIN_TOKEN`。若签到失败，见 [checkin-diagnostics.md](./checkin-diagnostics.md) 检查上游 `checkin_enabled` 与用户 token 绑定。
 
 `workflow_dispatch` 默认只构建；勾选 **Deploy to staging after build** 才会执行部署 job（`dev` 分支手动触发时同样会恢复库+seed）。
 
@@ -532,7 +532,7 @@ docker compose -p easyapi-portal -f /opt/easyapi-portal-test/docker-compose.easy
 - [ ] `dev` 或 `main` 已 push（`newapi-portal/` 有变更），GHA **Portal staging CD** 构建与 deploy 均为绿色
 - [ ] GitHub Variables 已配置：`STAGING_IMAGE_PLAYGROUND_INTERNAL_URL`、`STAGING_PUBLIC_NEWAPI_BASE_URL`
 - [ ] 服务器 `portal-test.environment` 已注入：`IMAGE_PLAYGROUND_INTERNAL_URL`
-- [ ] 服务器 `/opt/easyapi-portal-test/.env` 已配置签到变量：`NEWAPI_ADMIN_TOKEN`（NewAPI 根用户 token）、`NEWAPI_BASE_URL=http://new-api-test:3000`、`CHECKIN_QUOTA`（见 [checkin-diagnostics.md](./checkin-diagnostics.md)）
+- [ ] 服务器 `/opt/easyapi-portal-test/.env` 已配置 `NEWAPI_BASE_URL=http://new-api-test:3000`；上游 NewAPI 已启用 `checkin_enabled`（见 [checkin-diagnostics.md](./checkin-diagnostics.md)）
 - [ ] 若仍暴露公网 `image.easyapi.work`：openresty 已配置 `frame-ancestors` / `no-store` / `no-referrer`（见 **image.easyapi.work 反代与安全头**）
 - [ ] 服务器 **已 recreate** `new-api-test`、`image-playground-test`、`portal-test`（NewAPI / 生图 Playground 为官方 `:latest`，Portal tag 与分支一致）
 - [ ] `curl https://test.easyapi.work/api/health` → `ok: true`

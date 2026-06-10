@@ -1,9 +1,7 @@
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { AuthError, jsonError, jsonOk, readJson, requireUser, zodErrorResponse } from "@/lib/auth";
 import { getUserNewApiAuth } from "@/lib/api/bff";
-import { db } from "@/lib/db";
 import { isDevMockEnabled, mockBillingEpayCreateResponse } from "@/lib/dev-mock";
 import { getServerEnv } from "@/lib/env";
 import { newApiUserRequest } from "@/lib/newapi";
@@ -20,7 +18,6 @@ const createOrderSchema = z.object({
   paymentMethod: z.string().trim().min(1).max(32).optional(),
   productCode: z.string().trim().min(1).max(64).optional(),
   name: z.string().trim().min(1).max(128).optional(),
-  idempotencyKey: z.string().trim().min(1).max(128).optional(),
 }).refine((value) => value.amount !== undefined || value.amountCents !== undefined, {
   message: "amount or amountCents is required",
   path: ["amount"],
@@ -68,41 +65,6 @@ export async function POST(request: Request) {
     const env = getServerEnv();
     const paymentMethod = input.payment_method ?? input.paymentMethod ?? input.payType ?? input.type ?? "alipay";
     const returnUrl = new URL("/dashboard/billing?payment=return", env.APP_URL).toString();
-    const idempotencyKey = buildIdempotencyKey(publicUser.id, input.idempotencyKey ?? request.headers.get("Idempotency-Key"));
-    const existingOrder = idempotencyKey
-      ? await db.order.findUnique({
-          where: { idempotencyKey },
-        })
-      : null;
-
-    if (existingOrder) {
-      if (existingOrder.userId !== publicUser.id || existingOrder.amountCents !== amountResult.amountCents) {
-        return jsonError(
-          {
-            code: "IDEMPOTENCY_CONFLICT",
-            message: "Idempotency key was already used for a different payment request",
-          },
-          409,
-        );
-      }
-
-      const cachedPayment = readCachedPayment(existingOrder.metadata);
-
-      if (!cachedPayment) {
-        return jsonError(
-          {
-            code: "PAYMENT_CACHE_MISSING",
-            message: "Payment request was already recorded but no payment URL is cached",
-          },
-          409,
-        );
-      }
-
-      return jsonOk({
-        order: serializeOrder(existingOrder),
-        payment: cachedPayment,
-      });
-    }
 
     const upstream = await newApiUserRequest<NewApiPayResponse>(authResult.auth, "/api/user/pay", {
       method: "POST",
@@ -135,35 +97,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const order = await db.order.create({
-      data: {
-        userId: publicUser.id,
-        status: "PENDING",
-        amountCents: amountResult.amountCents,
-        currency: "CNY",
-        productCode: input.productCode ?? "quota",
-        quotaAmount: null,
-        idempotencyKey,
-        provider: "newapi:epay",
-        metadata: {
-          source: "newapi_user_pay",
-          paymentMethod,
-          newApiAmount: amountResult.amount,
-          returnUrl,
-          payment,
-          upstream: {
-            message: upstream.message ?? null,
-            url: upstream.url ?? null,
-            data: recordFromUnknown(upstream.data),
-          },
-        } satisfies Prisma.InputJsonObject,
-      },
-    });
-
     return jsonOk(
       {
-        order: serializeOrder(order),
         payment,
+        amountCents: amountResult.amountCents,
+        paymentMethod,
       },
       { status: 201 },
     );
@@ -183,16 +121,6 @@ export async function POST(request: Request) {
           message: error.message || "NewAPI failed to create payment",
         },
         error.status && error.status >= 400 ? error.status : 502,
-      );
-    }
-
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return jsonError(
-        {
-          code: "ORDER_CONFLICT",
-          message: "Payment request idempotency key already exists",
-        },
-        409,
       );
     }
 
@@ -278,69 +206,6 @@ function recordFromUnknown(value: unknown): Record<string, string> {
   }
 
   return params;
-}
-
-function readCachedPayment(metadata: Prisma.JsonValue) {
-  if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) {
-    return null;
-  }
-
-  const payment = metadata.payment;
-
-  if (typeof payment !== "object" || payment === null || Array.isArray(payment)) {
-    return null;
-  }
-
-  const method = payment.method;
-  const action = payment.action;
-  const url = payment.url;
-
-  if (method !== "GET" || typeof action !== "string" || typeof url !== "string") {
-    return null;
-  }
-
-  return {
-    method,
-    action,
-    params: recordFromUnknown(payment.params),
-    url,
-  };
-}
-
-function serializeOrder(order: {
-  id: string;
-  status: string;
-  amountCents: number;
-  currency: string;
-  productCode: string | null;
-  quotaAmount: number | null;
-  provider: string | null;
-  paidAt: Date | null;
-  expiresAt: Date | null;
-  createdAt: Date;
-}) {
-  return {
-    id: order.id,
-    status: order.status,
-    amountCents: order.amountCents,
-    currency: order.currency,
-    productCode: order.productCode,
-    quotaAmount: order.quotaAmount,
-    provider: order.provider,
-    paidAt: order.paidAt?.toISOString() ?? null,
-    expiresAt: order.expiresAt?.toISOString() ?? null,
-    createdAt: order.createdAt.toISOString(),
-  };
-}
-
-function buildIdempotencyKey(userId: string, key: string | null | undefined): string | null {
-  const normalized = key?.trim();
-
-  if (!normalized) {
-    return null;
-  }
-
-  return `newapi:epay:create:${userId}:${normalized}`;
 }
 
 function extractUpstreamMessage(upstream: NewApiPayResponse): string | null {

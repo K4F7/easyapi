@@ -2,11 +2,7 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 
-import {
-  encryptSecret,
-  generateInviteCode,
-  hashPassword,
-} from "@/lib/auth";
+import { encryptSecret } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getAuthSecret } from "@/lib/env";
 
@@ -88,8 +84,6 @@ async function createNewApiBackedPortalUser(input: {
     data: {
       email,
       username: input.identity.username,
-      passwordHash: await hashUnusablePassword(),
-      inviteCode: await generateUniqueInviteCode(),
       newApiUserId: input.identity.userId,
       ...tokenUpdateData(input.encryptedToken, input.now),
     },
@@ -126,24 +120,4 @@ function tokenUpdateData(encryptedToken: string, now: Date) {
     newApiAccessTokenUpdatedAt: now,
     lastLoginAt: now,
   };
-}
-
-async function generateUniqueInviteCode(): Promise<string> {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const inviteCode = generateInviteCode();
-    const existing = await db.user.findUnique({
-      where: { inviteCode },
-      select: { id: true },
-    });
-
-    if (!existing) {
-      return inviteCode;
-    }
-  }
-
-  return generateInviteCode();
-}
-
-async function hashUnusablePassword(): Promise<string> {
-  return hashPassword(crypto.randomUUID());
 }

@@ -2,16 +2,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockRequireUser = vi.fn();
 const mockGetUserNewApiAuth = vi.fn();
-const mockFindUnique = vi.fn();
-const mockTransaction = vi.fn();
-const mockApplyCheckinQuota = vi.fn();
+const mockGetNewApiStatus = vi.fn();
+const mockDoCheckin = vi.fn();
 
 vi.mock("@/lib/auth", () => ({
   requireUser: () => mockRequireUser(),
+  readJson: async (request: Request, schema: { parse: (value: unknown) => unknown }) => {
+    if (request.headers.get("content-type")?.includes("application/json")) {
+      return schema.parse(await request.json());
+    }
+
+    return schema.parse({});
+  },
   jsonOk: (data: unknown, init?: ResponseInit) =>
     Response.json({ ok: true, data }, init),
   jsonError: (error: unknown, status?: number) =>
     Response.json({ ok: false, error }, { status: status ?? 400 }),
+  zodErrorResponse: () =>
+    Response.json({ ok: false, error: { code: "VALIDATION_ERROR" } }, { status: 400 }),
 }));
 
 vi.mock("@/lib/api/bff", () => ({
@@ -29,39 +37,42 @@ vi.mock("@/lib/api/bff", () => ({
     ),
 }));
 
-vi.mock("@/lib/env", () => ({
-  getServerEnv: () => ({ CHECKIN_QUOTA: 1000 }),
+vi.mock("@/lib/dev-mock", () => ({
+  isDevMockEnabled: () => false,
+  mockCheckinResponse: vi.fn(),
 }));
 
-vi.mock("@/lib/db", () => ({
-  db: {
-    checkin: {
-      findUnique: (...args: unknown[]) => mockFindUnique(...args),
-    },
-    $transaction: (...args: unknown[]) => mockTransaction(...args),
-  },
+vi.mock("@/lib/newapi/status", () => ({
+  getNewApiStatus: () => mockGetNewApiStatus(),
 }));
 
-vi.mock("@/lib/checkin/quota", () => ({
-  isCheckinQuotaApplied: (metadata: unknown) =>
-    typeof metadata === "object" &&
-    metadata !== null &&
-    !Array.isArray(metadata) &&
-    (metadata as { quotaApplied?: boolean }).quotaApplied === true,
-  describeCheckinQuotaError: (error: unknown) => ({
-    status: (error as { status?: number })?.status,
-    code: (error as { code?: string | number | boolean })?.code,
-    message: error instanceof Error ? error.message : String(error),
-  }),
-  applyCheckinQuota: (...args: unknown[]) => mockApplyCheckinQuota(...args),
+vi.mock("@/lib/newapi/checkin", () => ({
+  doCheckin: (...args: unknown[]) => mockDoCheckin(...args),
 }));
 
 import { POST } from "@/app/api/checkin/route";
 
-function checkinRequest(headers?: HeadersInit) {
-  return new Request("http://localhost/api/checkin", {
+function checkinRequest(options?: {
+  headers?: HeadersInit;
+  body?: Record<string, unknown>;
+  query?: string;
+}) {
+  const url = new URL("http://localhost/api/checkin");
+  if (options?.query) {
+    url.search = options.query;
+  }
+
+  const headers = new Headers(options?.headers);
+  const body = options?.body;
+
+  if (body) {
+    headers.set("content-type", "application/json");
+  }
+
+  return new Request(url.toString(), {
     method: "POST",
     headers,
+    body: body ? JSON.stringify(body) : undefined,
   });
 }
 
@@ -88,24 +99,11 @@ describe("POST /api/checkin", () => {
       ok: true,
       auth: { userId: "99", accessToken: "token" },
     });
-    mockFindUnique.mockResolvedValue(null);
-    mockApplyCheckinQuota.mockResolvedValue(undefined);
-    mockTransaction.mockImplementation(
-      async (callback: (tx: {
-        checkin: { create: ReturnType<typeof vi.fn> };
-        walletLedger: { create: ReturnType<typeof vi.fn> };
-      }) => unknown) => {
-        const tx = {
-          checkin: {
-            create: vi.fn().mockResolvedValue({ id: "checkin-1" }),
-          },
-          walletLedger: {
-            create: vi.fn().mockResolvedValue({ id: "ledger-1" }),
-          },
-        };
-        return callback(tx);
-      },
-    );
+    mockGetNewApiStatus.mockResolvedValue({ checkinEnabled: true });
+    mockDoCheckin.mockResolvedValue({
+      quota_awarded: 1500,
+      checkin_date: "2026-06-10",
+    });
   });
 
   it("returns 409 when NewAPI binding is not ready", async () => {
@@ -121,10 +119,21 @@ describe("POST /api/checkin", () => {
     expect(response.status).toBe(409);
     expect(body.ok).toBe(false);
     expect(body.error?.code).toBe("NEWAPI_BINDING_PENDING");
-    expect(mockTransaction).not.toHaveBeenCalled();
+    expect(mockDoCheckin).not.toHaveBeenCalled();
   });
 
-  it("creates check-in and applies quota on first success", async () => {
+  it("returns 403 when check-in is disabled upstream", async () => {
+    mockGetNewApiStatus.mockResolvedValue({ checkinEnabled: false });
+
+    const response = await POST(checkinRequest());
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(403);
+    expect(body.error?.code).toBe("CHECKIN_DISABLED");
+    expect(mockDoCheckin).not.toHaveBeenCalled();
+  });
+
+  it("proxies check-in to NewAPI on first success", async () => {
     const response = await POST(checkinRequest());
     const body = await parseResponse(response);
 
@@ -133,87 +142,19 @@ describe("POST /api/checkin", () => {
     expect(body.data).toMatchObject({
       checkedIn: true,
       alreadyCheckedIn: false,
+      checkedInOn: "2026-06-10",
+      quotaAmount: 1500,
       quotaApplied: true,
-      quotaAmount: 1000,
-      checkinId: "checkin-1",
-      ledgerId: "ledger-1",
     });
-    expect(mockApplyCheckinQuota).toHaveBeenCalledWith({
-      newApiUserId: "99",
-      quotaAmount: 1000,
-      ledgerId: "ledger-1",
-      checkedInKey: expect.any(String),
-    });
+    expect(mockDoCheckin).toHaveBeenCalledWith(
+      { userId: "99", accessToken: "token" },
+      { turnstile: undefined },
+    );
   });
 
-  it("returns 502 when quota apply fails after check-in is recorded", async () => {
-    mockApplyCheckinQuota.mockRejectedValue(new Error("upstream down"));
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
-
-    try {
-      const response = await POST(
-        checkinRequest({ "x-request-id": "unit-request-id" }),
-      );
-      const body = await parseResponse(response);
-
-      expect(response.status).toBe(502);
-      expect(body.ok).toBe(false);
-      expect(body.error?.code).toBe("CHECKIN_QUOTA_APPLY_FAILED");
-      expect(body.error?.message).toContain("请再次点击签到重试");
-      expect(body.error?.details?.requestId).toBe("unit-request-id");
-      expect(mockTransaction).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "checkin: adminAddQuota failed",
-        expect.objectContaining({
-          requestId: "unit-request-id",
-          userId: "portal-user-1",
-          ledgerId: "ledger-1",
-          checkedInOn: expect.any(String),
-          newApiUserId: "99",
-          newApiPath: "/api/user/manage",
-          quotaAmount: 1000,
-          elapsedMs: expect.any(Number),
-          upstreamStatus: undefined,
-          upstreamCode: undefined,
-          upstreamMessage: "upstream down",
-        }),
-      );
-
-      const logDetails = consoleErrorSpy.mock.calls[0]?.[1];
-
-      expect(isRecord(logDetails)).toBe(true);
-      expect(Object.keys(logDetails as Record<string, unknown>)).toEqual(
-        expect.arrayContaining([
-          "requestId",
-          "userId",
-          "ledgerId",
-          "checkedInOn",
-          "newApiUserId",
-          "newApiPath",
-          "quotaAmount",
-          "elapsedMs",
-          "upstreamStatus",
-          "upstreamCode",
-          "upstreamMessage",
-        ]),
-      );
-    } finally {
-      consoleErrorSpy.mockRestore();
-    }
-  });
-
-  it("retries quota for an existing check-in with pending ledger metadata", async () => {
-    mockFindUnique.mockResolvedValue({
-      id: "checkin-existing",
-      ledgerEntries: [
-        {
-          id: "ledger-existing",
-          metadata: { quotaApplied: false, source: "checkin" },
-        },
-      ],
-    });
+  it("returns idempotent success when upstream reports already checked in", async () => {
+    const { NewApiError } = await import("@/lib/newapi/client");
+    mockDoCheckin.mockRejectedValue(new NewApiError("今日已签到", { status: 200 }));
 
     const response = await POST(checkinRequest());
     const body = await parseResponse(response);
@@ -224,45 +165,34 @@ describe("POST /api/checkin", () => {
       checkedIn: true,
       alreadyCheckedIn: true,
       quotaApplied: true,
-      quotaAmount: 1000,
-      checkinId: "checkin-existing",
-      ledgerId: "ledger-existing",
-    });
-    expect(mockTransaction).not.toHaveBeenCalled();
-    expect(mockApplyCheckinQuota).toHaveBeenCalledWith({
-      newApiUserId: "99",
-      quotaAmount: 1000,
-      ledgerId: "ledger-existing",
-      checkedInKey: expect.any(String),
     });
   });
 
-  it("skips quota apply when today's check-in already has quota applied", async () => {
-    mockFindUnique.mockResolvedValue({
-      id: "checkin-existing",
-      ledgerEntries: [
-        {
-          id: "ledger-existing",
-          metadata: { quotaApplied: true, source: "checkin" },
-        },
-      ],
-    });
-
-    const response = await POST(checkinRequest());
+  it("forwards turnstile from JSON body to upstream check-in", async () => {
+    const response = await POST(
+      checkinRequest({ body: { turnstile: "turnstile-body-token" } }),
+    );
     const body = await parseResponse(response);
 
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.data).toMatchObject({
-      alreadyCheckedIn: true,
-      quotaApplied: true,
-      quotaAmount: 1000,
-    });
-    expect(mockApplyCheckinQuota).not.toHaveBeenCalled();
-    expect(mockTransaction).not.toHaveBeenCalled();
+    expect(mockDoCheckin).toHaveBeenCalledWith(
+      { userId: "99", accessToken: "token" },
+      { turnstile: "turnstile-body-token" },
+    );
+  });
+
+  it("forwards turnstile from query string when body omits it", async () => {
+    const response = await POST(
+      checkinRequest({ query: "turnstile=turnstile-query-token" }),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(mockDoCheckin).toHaveBeenCalledWith(
+      { userId: "99", accessToken: "token" },
+      { turnstile: "turnstile-query-token" },
+    );
   });
 });
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}

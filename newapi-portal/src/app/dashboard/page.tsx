@@ -37,12 +37,10 @@ import {
   remainingQuotaFromSelf,
   type QuotaDisplayConfig,
 } from "@/lib/quota/display-config.shared";
-
 type DashboardSummary = {
   quotaConfig?: QuotaDisplayConfig;
   user: {
     email: string;
-    inviteCode: string;
     newApiBinding: "ready" | "pending";
   };
   newApi: {
@@ -81,11 +79,11 @@ type DashboardSummary = {
     status: string;
   };
   checkin: {
+    enabled: boolean;
     checkedInToday: boolean;
     checkedInOn: string;
     status: string;
     quotaApplied?: boolean | null;
-    quotaPending?: boolean;
   };
 };
 
@@ -129,6 +127,7 @@ export default function DashboardPage() {
       } else {
         await refresh();
       }
+
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "概览加载失败");
     } finally {
@@ -140,8 +139,13 @@ export default function DashboardPage() {
     setCheckingIn(true);
 
     try {
-      await apiPost("/api/checkin");
-      toast.success("签到完成");
+      const result = await apiPost<{
+        alreadyCheckedIn?: boolean;
+        quotaAmount?: number;
+      }>("/api/checkin");
+      toast.success(
+        result.alreadyCheckedIn ? "今日已签到" : "签到完成",
+      );
     } catch (checkinError) {
       toast.error(
         checkinError instanceof Error ? checkinError.message : "签到失败",
@@ -393,7 +397,7 @@ export default function DashboardPage() {
             <QuickLink
               href="/dashboard/billing"
               title="充值与兑换"
-              description="在线充值、核销兑换码、查充值记录。"
+              description="在线充值、核销兑换码、刷新余额。"
             />
             <QuickLink
               href="/dashboard/usage"
@@ -408,68 +412,57 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle>每日签到</CardTitle>
-              <Badge
-                variant={
-                  summary.checkin.quotaPending
-                    ? "warning"
-                    : summary.checkin.checkedInToday
-                      ? "success"
-                      : "neutral"
-                }
-              >
-                {summary.checkin.quotaPending
-                  ? "余额待发放"
-                  : summary.checkin.checkedInToday
+        {summary.checkin.enabled ? (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle>每日签到</CardTitle>
+                <Badge
+                  variant={
+                    summary.checkin.checkedInToday ? "success" : "neutral"
+                  }
+                >
+                  {summary.checkin.checkedInToday
                     ? "今日已签到"
                     : "今日可签到"}
-              </Badge>
-            </div>
-            <CardDescription>
-              {summary.checkin.checkedInOn} ·{" "}
-              {statusText(summary.checkin.status)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 p-3">
-              <Gift className="h-5 w-5 text-muted-foreground" />
-              <div className="min-w-0">
-                <div className="text-sm font-medium">
-                  {summary.checkin.quotaPending
-                    ? "签到成功，余额发放中"
-                    : summary.checkin.checkedInToday
+                </Badge>
+              </div>
+              <CardDescription>
+                {summary.checkin.checkedInOn} ·{" "}
+                {statusText(summary.checkin.status)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 p-3">
+                <Gift className="h-5 w-5 text-muted-foreground" />
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">
+                    {summary.checkin.checkedInToday
                       ? "今日已签到"
                       : "今日可签到"}
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">
+                    每天签到领余额，奖励由 NewAPI 直接发放到账户。
+                  </p>
                 </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  每天签到领余额，奖励直接加到你的账户里。
-                </p>
               </div>
-            </div>
-            <Button
-              className="w-full"
-              variant="outline"
-              disabled={
-                (summary.checkin.checkedInToday &&
-                  !summary.checkin.quotaPending) ||
-                !ready ||
-                checkingIn
-              }
-              onClick={handleCheckin}
-            >
-              {checkingIn
-                ? "签到中…"
-                : summary.checkin.quotaPending
-                  ? "重试发放"
+              <Button
+                className="w-full"
+                variant="outline"
+                disabled={
+                  summary.checkin.checkedInToday || !ready || checkingIn
+                }
+                onClick={handleCheckin}
+              >
+                {checkingIn
+                  ? "签到中…"
                   : summary.checkin.checkedInToday
                     ? "已完成"
                     : "签到领取"}
-            </Button>
-          </CardContent>
-        </Card>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </div>
   );

@@ -1,27 +1,22 @@
-import { Prisma } from "@prisma/client";
+import { z } from "zod";
 
 import { getUserNewApiAuth, handleApiError } from "@/lib/api/bff";
-import { jsonError, jsonOk, requireUser } from "@/lib/auth";
-import {
-  applyCheckinQuota,
-  describeCheckinQuotaError,
-  isCheckinQuotaApplied,
-} from "@/lib/checkin/quota";
-import { db } from "@/lib/db";
+import { jsonError, jsonOk, readJson, requireUser, zodErrorResponse } from "@/lib/auth";
 import { isDevMockEnabled, mockCheckinResponse } from "@/lib/dev-mock";
-import { getServerEnv } from "@/lib/env";
-import { dateKey, todayDateOnly } from "@/lib/quota/usage";
+import { doCheckin } from "@/lib/newapi/checkin";
+import { NewApiError } from "@/lib/newapi/client";
+import { getNewApiStatus } from "@/lib/newapi/status";
 
 export const runtime = "nodejs";
 
-const CHECKIN_QUOTA_NEWAPI_PATH = "/api/user/manage";
+const checkinSchema = z.object({
+  turnstile: z.string().trim().max(2048).optional(),
+});
 
 export async function POST(request: Request) {
   if (isDevMockEnabled()) {
     return mockCheckinResponse();
   }
-
-  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
 
   try {
     const user = await requireUser();
@@ -37,250 +32,74 @@ export async function POST(request: Request) {
       );
     }
 
-    const env = getServerEnv();
-    const checkedInOn = todayDateOnly();
-    const checkedInKey = dateKey(checkedInOn);
-    const idempotencyKey = `checkin:${user.id}:${checkedInKey}`;
-    const existing = await findExistingCheckin(user.id, checkedInOn);
+    const status = await getNewApiStatus();
 
-    if (existing) {
-      return respondForExistingCheckin({
-        existing,
-        checkedInKey,
-        requestId,
-        userId: user.id,
-        newApiUserId: String(authResult.auth.userId),
-        quotaAmount: env.CHECKIN_QUOTA,
-      });
+    if (status && !status.checkinEnabled) {
+      return jsonError(
+        {
+          code: "CHECKIN_DISABLED",
+          message: "签到功能未启用",
+        },
+        403,
+      );
     }
 
-    let created: {
-      checkinId: string;
-      ledgerId: string;
-    };
+    const turnstileFromQuery = new URL(request.url).searchParams.get("turnstile");
+    let turnstile = turnstileFromQuery ?? undefined;
 
-    try {
-      created = await db.$transaction(async (tx) => {
-        const checkin = await tx.checkin.create({
-          data: {
-            userId: user.id,
-            checkedInOn,
-          },
-        });
-        const ledger = await tx.walletLedger.create({
-          data: {
-            userId: user.id,
-            type: "CREDIT",
-            amount: env.CHECKIN_QUOTA,
-            reason: "daily_checkin",
-            idempotencyKey,
-            checkinId: checkin.id,
-            metadata: {
-              source: "checkin",
-              checkedInOn: checkedInKey,
-              newApiUserId: authResult.auth.userId,
-              quotaAmount: env.CHECKIN_QUOTA,
-              quotaApplied: false,
-            },
-          },
-        });
+    if (request.headers.get("content-type")?.includes("application/json")) {
+      const input = await readJson(request, checkinSchema);
+      turnstile = input.turnstile ?? turnstile;
+    }
 
-        return {
-          checkinId: checkin.id,
-          ledgerId: ledger.id,
-        };
-      });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        const duplicate = await findExistingCheckin(user.id, checkedInOn);
+    const result = await doCheckin(authResult.auth, { turnstile });
 
-        if (duplicate) {
-          return respondForExistingCheckin({
-            existing: duplicate,
-            checkedInKey,
-            requestId,
-            userId: user.id,
-            newApiUserId: String(authResult.auth.userId),
-            quotaAmount: env.CHECKIN_QUOTA,
-          });
-        }
+    return jsonOk({
+      checkedIn: true,
+      alreadyCheckedIn: false,
+      checkedInOn: result.checkin_date,
+      quotaAmount: result.quota_awarded,
+      quotaApplied: true,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return zodErrorResponse(error);
+    }
 
+    if (error instanceof NewApiError) {
+      const message = error.message || "签到失败";
+
+      if (message.includes("今日已签到") || message.includes("already")) {
         return jsonOk({
           checkedIn: true,
           alreadyCheckedIn: true,
-          checkedInOn: checkedInKey,
+          checkedInOn: new Date().toISOString().slice(0, 10),
           quotaAmount: 0,
-          quotaApplied: false,
-          ledgerId: null,
+          quotaApplied: true,
         });
       }
 
-      throw error;
-    }
-
-    const quotaStartedAt = Date.now();
-
-    try {
-      if (env.CHECKIN_QUOTA > 0) {
-        await applyCheckinQuota({
-          newApiUserId: String(authResult.auth.userId),
-          quotaAmount: env.CHECKIN_QUOTA,
-          ledgerId: created.ledgerId,
-          checkedInKey,
-        });
+      if (message.includes("未启用")) {
+        return jsonError(
+          {
+            code: "CHECKIN_DISABLED",
+            message,
+          },
+          403,
+        );
       }
-
-      return jsonOk({
-        checkedIn: true,
-        alreadyCheckedIn: false,
-        checkedInOn: checkedInKey,
-        quotaAmount: env.CHECKIN_QUOTA,
-        quotaApplied: env.CHECKIN_QUOTA > 0,
-        checkinId: created.checkinId,
-        ledgerId: created.ledgerId,
-      });
-    } catch (error) {
-      const upstream = describeCheckinQuotaError(error);
-
-      console.error("checkin: adminAddQuota failed", {
-        requestId,
-        userId: user.id,
-        ledgerId: created.ledgerId,
-        checkedInOn: checkedInKey,
-        newApiUserId: authResult.auth.userId,
-        newApiPath: CHECKIN_QUOTA_NEWAPI_PATH,
-        quotaAmount: env.CHECKIN_QUOTA,
-        elapsedMs: Date.now() - quotaStartedAt,
-        upstreamStatus: upstream.status,
-        upstreamCode: upstream.code,
-        upstreamMessage: upstream.message,
-      });
 
       return jsonError(
         {
-          code: "CHECKIN_QUOTA_APPLY_FAILED",
-          message: "签到已记录，但额度发放失败，请再次点击签到重试",
-          details: {
-            requestId,
-            checkedInOn: checkedInKey,
-            ledgerId: created.ledgerId,
-            upstreamStatus: upstream.status,
-            upstreamCode: upstream.code,
-          },
+          code: "CHECKIN_FAILED",
+          message,
         },
-        502,
+        error.status && error.status >= 400 && error.status < 500
+          ? error.status
+          : 502,
       );
     }
-  } catch (error) {
+
     return handleApiError(error, "Failed to check in");
   }
-}
-
-async function respondForExistingCheckin(input: {
-  existing: NonNullable<Awaited<ReturnType<typeof findExistingCheckin>>>;
-  checkedInKey: string;
-  requestId: string;
-  userId: string;
-  newApiUserId: string;
-  quotaAmount: number;
-}) {
-  const { existing, checkedInKey, requestId, userId, newApiUserId, quotaAmount } =
-    input;
-  const quotaApplied = isCheckinQuotaApplied(existing.ledgerMetadata);
-
-  if (quotaAmount > 0 && existing.ledgerId && !quotaApplied) {
-    const quotaStartedAt = Date.now();
-
-    try {
-      await applyCheckinQuota({
-        newApiUserId,
-        quotaAmount,
-        ledgerId: existing.ledgerId,
-        checkedInKey,
-      });
-
-      return jsonOk({
-        checkedIn: true,
-        alreadyCheckedIn: true,
-        checkedInOn: checkedInKey,
-        quotaAmount,
-        quotaApplied: true,
-        checkinId: existing.checkinId,
-        ledgerId: existing.ledgerId,
-      });
-    } catch (error) {
-      const upstream = describeCheckinQuotaError(error);
-
-      console.error("checkin: retry adminAddQuota failed", {
-        requestId,
-        userId,
-        ledgerId: existing.ledgerId,
-        checkedInOn: checkedInKey,
-        newApiUserId,
-        newApiPath: CHECKIN_QUOTA_NEWAPI_PATH,
-        quotaAmount,
-        elapsedMs: Date.now() - quotaStartedAt,
-        upstreamStatus: upstream.status,
-        upstreamCode: upstream.code,
-        upstreamMessage: upstream.message,
-      });
-
-      return jsonError(
-        {
-          code: "CHECKIN_QUOTA_APPLY_FAILED",
-          message: "今日已签到，但额度发放失败，请稍后重试或联系客服",
-          details: {
-            requestId,
-            checkedInOn: checkedInKey,
-            ledgerId: existing.ledgerId,
-            upstreamStatus: upstream.status,
-            upstreamCode: upstream.code,
-          },
-        },
-        502,
-      );
-    }
-  }
-
-  return jsonOk({
-    checkedIn: true,
-    alreadyCheckedIn: true,
-    checkedInOn: checkedInKey,
-    quotaAmount: quotaApplied ? quotaAmount : 0,
-    quotaApplied,
-    checkinId: existing.checkinId,
-    ledgerId: existing.ledgerId,
-  });
-}
-
-async function findExistingCheckin(userId: string, checkedInOn: Date) {
-  const checkin = await db.checkin.findUnique({
-    where: {
-      userId_checkedInOn: {
-        userId,
-        checkedInOn,
-      },
-    },
-    include: {
-      ledgerEntries: {
-        select: { id: true, metadata: true },
-        take: 1,
-      },
-    },
-  });
-
-  if (!checkin) {
-    return null;
-  }
-
-  const ledger = checkin.ledgerEntries[0];
-
-  return {
-    checkinId: checkin.id,
-    ledgerId: ledger?.id ?? null,
-    ledgerMetadata: ledger?.metadata ?? null,
-  };
 }

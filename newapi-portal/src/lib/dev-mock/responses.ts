@@ -5,7 +5,6 @@ import { NextResponse } from "next/server";
 
 import { jsonError, jsonOk, sessionCookieName, sessionMaxAgeSeconds } from "@/lib/auth";
 import {
-  createMockOrder,
   createMockToken,
   deleteMockToken,
   getMockSessionToken,
@@ -24,7 +23,7 @@ import {
   type ChannelGroup,
 } from "@/lib/channels/tiers";
 import { cnyToQuota } from "@/lib/quota/display-config.shared";
-import { maskToken } from "@/lib/quota/usage";
+import { dateKey, maskToken, todayDateOnly } from "@/lib/quota/usage";
 
 export async function getMockCurrentUser() {
   const cookieStore = await cookies();
@@ -139,13 +138,17 @@ export function mockDashboardSummaryResponse(_request: Request) {
     },
     logStats: { rpm: 3, tpm: 128, status: "ready" },
     checkin: {
+      enabled: true,
       checkedInToday: Boolean(state.checkedInOn),
-      checkedInOn: state.checkedInOn,
+      checkedInOn: state.checkedInOn ?? dateKey(todayDateOnly()),
       status: state.checkedInOn ? "CLAIMED" : "AVAILABLE",
-      checkinId: state.checkedInOn ? `mock-checkin-${state.checkedInOn}` : null,
-      createdAt: state.checkedInOn ? new Date().toISOString() : null,
+      totalCheckins: state.checkedInOn ? 1 : 0,
+      monthlyCheckins: state.checkedInOn ? 1 : 0,
+      totalQuotaAwarded: state.checkedInOn ? 1000 : 0,
+      monthlyRecords: state.checkedInOn
+        ? [{ date: state.checkedInOn, quotaAwarded: 1000 }]
+        : [],
       quotaApplied: state.checkedInOn ? true : null,
-      quotaPending: false,
     },
   });
 }
@@ -319,7 +322,7 @@ export function mockLogsRouteResponse(request: Request) {
 }
 
 export function mockBillingOrdersResponse() {
-  return jsonOk({ orders: getMockState().orders });
+  return jsonOk({ orders: [] });
 }
 
 export async function mockBillingRedeemResponse(request: Request) {
@@ -331,20 +334,17 @@ export async function mockBillingRedeemResponse(request: Request) {
 export async function mockBillingEpayCreateResponse(request: Request) {
   const body = await request.json().catch(() => ({}));
   const amountCents = parseAmountCents(body);
-  const order = createMockOrder({
-    amountCents,
-    productCode: typeof body.productCode === "string" ? body.productCode : "quota",
-  });
-  const action = new URL("/dashboard/billing?payment=mock-return", new URL(request.url).origin).toString();
+  const action = new URL("/dashboard/billing?payment=return", new URL(request.url).origin).toString();
   return jsonOk(
     {
-      order,
       payment: {
         method: "GET",
         action,
         params: {},
         url: action,
       },
+      amountCents,
+      paymentMethod: "alipay",
     },
     { status: 201 },
   );

@@ -12,8 +12,6 @@ import {
 import { upsertPortalUserFromNewApiIdentity } from "@/lib/auth/newapi-user";
 import { db } from "@/lib/db";
 import { isDevMockEnabled, mockRegisterResponse } from "@/lib/dev-mock";
-import { getServerEnv } from "@/lib/env";
-import { adminAddQuota } from "@/lib/newapi";
 import {
   NewApiNativeAuthError,
   registerNewApiUser,
@@ -25,6 +23,12 @@ import {
 
 export const runtime = "nodejs";
 
+const affiliateCodeSchema = z
+  .string()
+  .trim()
+  .max(64)
+  .optional();
+
 const registerSchema = z.object({
   username: z.string().trim().min(2).max(64),
   email: z
@@ -34,12 +38,8 @@ const registerSchema = z.object({
     .max(320)
     .transform((value) => value.toLowerCase()),
   password: z.string().min(8).max(20),
-  inviteCode: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z0-9_-]{6,32}$/)
-    .optional(),
+  affCode: affiliateCodeSchema,
+  inviteCode: affiliateCodeSchema,
   verificationCode: z.string().trim().max(32).optional(),
   turnstile: z.string().trim().max(2048).optional(),
 });
@@ -51,6 +51,7 @@ export async function POST(request: Request) {
 
   try {
     const input = await readJson(request, registerSchema);
+    const affCode = normalizeAffCode(input.affCode ?? input.inviteCode);
     const existingPortalUser = await db.user.findUnique({
       where: { email: input.email },
       select: { id: true, newApiUserId: true },
@@ -66,23 +67,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const referrer = input.inviteCode
-      ? await db.user.findUnique({
-          where: { inviteCode: input.inviteCode },
-          select: { id: true, inviteCode: true },
-        })
-      : null;
-
-    if (input.inviteCode && !referrer) {
-      return jsonError(
-        {
-          code: "INVALID_INVITE_CODE",
-          message: "Invite code is invalid.",
-        },
-        400,
-      );
-    }
-
     try {
       await registerNewApiUser({
         username: input.username,
@@ -90,7 +74,7 @@ export async function POST(request: Request) {
         password: input.password,
         verificationCode: input.verificationCode,
         turnstile: input.turnstile,
-        affCode: input.inviteCode,
+        affCode,
       });
     } catch (error) {
       if (error instanceof NewApiNativeAuthError) {
@@ -131,18 +115,6 @@ export async function POST(request: Request) {
       accessToken: newApiLogin.accessToken,
     });
 
-    if (referrer) {
-      await db.referral.upsert({
-        where: { referredUserId: user.id },
-        update: {},
-        create: {
-          referrerId: referrer.id,
-          referredUserId: user.id,
-          inviteCodeUsed: referrer.inviteCode,
-        },
-      });
-    }
-
     await db.auditLog.create({
       data: {
         actorType: "USER",
@@ -152,14 +124,12 @@ export async function POST(request: Request) {
         targetId: user.id,
         metadata: {
           newApiBinding: "ready",
-          signupCreditLedger: "pending",
-          referredByUserId: referrer?.id ?? null,
+          affCode: affCode ?? null,
           source: "newapi_native",
         },
       },
     });
 
-    const signupCreditLedger = await grantSignupCredit(user.id, newApiLogin.userId);
     const session = await createSession(user.id, request);
 
     return jsonOk(
@@ -170,7 +140,6 @@ export async function POST(request: Request) {
           expiresAt: session.expiresAt.toISOString(),
         },
         newApiBinding: "ready",
-        signupCreditLedger,
       },
       { status: 201 },
     );
@@ -186,7 +155,7 @@ export async function POST(request: Request) {
       return jsonError(
         {
           code: "REGISTER_CONFLICT",
-          message: "Email, invite code, or NewAPI binding already exists.",
+          message: "Email or NewAPI binding already exists.",
         },
         409,
       );
@@ -201,6 +170,11 @@ export async function POST(request: Request) {
       500,
     );
   }
+}
+
+function normalizeAffCode(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
 }
 
 function newApiRegisterErrorResponse(error: NewApiNativeAuthError) {
@@ -232,45 +206,4 @@ function newApiRegisterErrorResponse(error: NewApiNativeAuthError) {
     },
     error.status >= 400 && error.status < 500 ? error.status : 502,
   );
-}
-
-async function grantSignupCredit(
-  portalUserId: string,
-  newApiUserId: string,
-): Promise<"done" | "pending" | "failed"> {
-  const env = getServerEnv();
-  const quotaAmount = env.REGISTER_QUOTA;
-
-  try {
-    await db.walletLedger.upsert({
-      where: { idempotencyKey: `signup:${portalUserId}` },
-      update: {},
-      create: {
-        userId: portalUserId,
-        type: "CREDIT",
-        amount: quotaAmount,
-        reason: "signup_bonus",
-        idempotencyKey: `signup:${portalUserId}`,
-        metadata: {
-          source: "register",
-          newApiUserId,
-          quotaAmount,
-        },
-      },
-    });
-
-    try {
-      await adminAddQuota({
-        userId: newApiUserId,
-        value: quotaAmount,
-      });
-      return "done";
-    } catch (quotaError) {
-      console.error("register: adminAddQuota failed", quotaError);
-      return "pending";
-    }
-  } catch (ledgerError) {
-    console.error("register: signup ledger failed", ledgerError);
-    return "failed";
-  }
 }

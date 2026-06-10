@@ -33,9 +33,6 @@ RUN DATABASE_URL="postgresql://postgres:postgres@localhost:5432/newapi_portal?sc
     NEWAPI_BASE_URL="http://localhost:3001" \
     NEWAPI_ADMIN_TOKEN="build-only-placeholder" \
     NEWAPI_ADMIN_USER_ID="1" \
-    REGISTER_QUOTA="100000" \
-    CHECKIN_QUOTA="1000" \
-    INVITE_REWARD_QUOTA="5000" \
     pnpm build
 
 FROM node:22-alpine AS runner

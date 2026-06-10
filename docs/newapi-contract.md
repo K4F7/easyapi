@@ -21,6 +21,7 @@ This document tracks the NewAPI surface that `newapi-portal` currently depends o
   - `quota_per_unit`: number of NewAPI quota units equivalent to one USD (default upstream value is `500000`).
   - `usd_exchange_rate`: USD-to-CNY rate used for user-facing balance display.
   - `quota_display_type`: optional upstream display mode (`USD`, `CNY`, `TOKENS`, `CUSTOM`).
+  - `checkin_enabled`: when false, the portal hides check-in UI and `POST /api/checkin` returns `CHECKIN_DISABLED`.
 - Portal behavior:
   - Computes user-facing CNY as `quota / quota_per_unit * usd_exchange_rate`.
   - Exposes the derived config to the browser through `GET /api/quota/config` and `GET /api/dashboard/summary` as `quotaConfig`.
@@ -76,6 +77,24 @@ This document tracks the NewAPI surface that `newapi-portal` currently depends o
   - `id`, `username`, `display_name`, `role`, `status`, `email`, `group`.
   - `quota`, `used_quota`, `request_count`.
   - `quota` is the user's **remaining** balance; `used_quota` is lifetime consumption. The portal must not subtract `used_quota` from `quota`.
+  - `aff_code`, `aff_count`, `aff_quota`, `aff_history_quota` for invite/rebate UI.
+
+### Check-in
+
+- Status: `GET /api/user/checkin?month=YYYY-MM`
+- Action: `POST /api/user/checkin` (optional query `turnstile`)
+- Public feature flag: `GET /api/status` → `checkin_enabled`
+- Portal BFF:
+  - `POST /api/checkin` proxies upstream check-in.
+  - `GET /api/dashboard/summary` derives `checkin` from upstream stats (not Portal DB).
+- Duplicate same-day check-in returns upstream idempotent error (e.g. `今日已签到`).
+
+### Affiliate
+
+- Info: `GET /api/user/aff` → `aff_code` (string or generated code).
+- Transfer rebate quota: `POST /api/user/aff_transfer`.
+- Portal BFF: `GET/POST /api/aff`.
+- Registration passes `aff_code`; legacy `inviteCode` query param is accepted one release cycle.
 
 ## Admin user and quota
 
@@ -91,7 +110,7 @@ This document tracks the NewAPI surface that `newapi-portal` currently depends o
   - Created user id in `id`, `user_id`, or `userId`.
   - Optional username, display name, and access token.
 
-### Add quota
+### Add quota (ops-only)
 
 - Endpoint: `POST /api/user/manage`
 - Request headers:
@@ -102,8 +121,10 @@ This document tracks the NewAPI surface that `newapi-portal` currently depends o
   - `action`: `add_quota`.
   - `mode`: `add` by default; portal types also allow `subtract` and `override`.
   - `value`: integer quota amount.
+- Portal usage:
+  - **Not used** by portal user flows (check-in, redeem, payment, registration). Reserved for manual ops / seed scripts via `NEWAPI_ADMIN_TOKEN`.
 - Expected response:
-  - Any successful NewAPI response is accepted and stored as upstream data.
+  - Any successful NewAPI response is accepted.
 
 ## Token management
 
@@ -219,7 +240,7 @@ The response envelope is:
   - `return_url`: portal return URL.
 - Expected response:
   - `message` is absent or `success`.
-  - Payment URL or form data is present in the response. The portal stores the upstream payment metadata with the local order.
+  - Payment URL or form data is present in the response. The portal returns the upstream payment URL to the browser and does not persist local order records.
 - EPay notify callbacks belong to NewAPI. Payment gateway callback URLs should target `/api/user/epay/notify` on the public NewAPI deployment, not the portal.
 
 ## Usage and logs

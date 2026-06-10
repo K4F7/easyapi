@@ -18,7 +18,6 @@ export type PortalUserForApi = {
   id: string;
   email: string;
   username: string | null;
-  inviteCode: string;
   newApiUserId: string | null;
   newApiAccessTokenCiphertext: string | null;
   createdAt: Date;
@@ -46,7 +45,6 @@ export async function getPortalUserForApi(
       id: true,
       email: true,
       username: true,
-      inviteCode: true,
       newApiUserId: true,
       newApiAccessTokenCiphertext: true,
       createdAt: true,
@@ -108,7 +106,6 @@ export function publicUserFromPortalUser(user: PortalUserForApi): PublicUser {
     id: user.id,
     email: user.email,
     username: user.username,
-    inviteCode: user.inviteCode,
     newApiUserId: user.newApiUserId,
     newApiBinding: user.newApiUserId ? "ready" : "pending",
     createdAt: user.createdAt.toISOString(),

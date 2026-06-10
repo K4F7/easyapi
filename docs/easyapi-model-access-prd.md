@@ -95,8 +95,15 @@
 
 ---
 
+## 后续方向
+
+Portal 将按 **[portal-ui-shell-prd.md](./portal-ui-shell-prd.md)** 推进纯 UI 壳化：业务真源统一至 NewAPI，收缩本地 Prisma 职责。本 MVP PRD 中的渠道、Token、Playground 行为在壳化后保持不变。
+
+---
+
 ## 参考
 
+- [Portal UI Shell PRD](./portal-ui-shell-prd.md)
 - [MVP Changelog](./changelog-model-access-mvp.md)
 - [签到诊断验收](./checkin-diagnostics.md)
 - [NewAPI Contract](./newapi-contract.md)

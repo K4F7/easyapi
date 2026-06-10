@@ -2,7 +2,6 @@ import "server-only";
 
 import { randomBytes, createHmac, createHash } from "node:crypto";
 
-import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { PrismaClient, User } from "@prisma/client";
@@ -23,15 +22,12 @@ export const authRoutes = {
 export const sessionCookieName = "portal_session";
 export const sessionMaxAgeSeconds = 60 * 60 * 24 * 30;
 
-const passwordHashRounds = 12;
-
 type DbClient = PrismaClient;
 
 export type PublicUser = {
   id: string;
   email: string;
   username: string | null;
-  inviteCode: string;
   newApiUserId: string | null;
   newApiBinding: "ready" | "pending";
   createdAt: string;
@@ -47,28 +43,17 @@ export class AuthError extends Error {
   }
 }
 
-export function toPublicUser(user: Pick<User, "id" | "email" | "username" | "inviteCode" | "newApiUserId" | "createdAt">): PublicUser {
+export function toPublicUser(
+  user: Pick<User, "id" | "email" | "username" | "newApiUserId" | "createdAt">,
+): PublicUser {
   return {
     id: user.id,
     email: user.email,
     username: user.username,
-    inviteCode: user.inviteCode,
     newApiUserId: user.newApiUserId,
     newApiBinding: user.newApiUserId ? "ready" : "pending",
     createdAt: user.createdAt.toISOString(),
   };
-}
-
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, passwordHashRounds);
-}
-
-export async function verifyPassword(password: string, passwordHash: string): Promise<boolean> {
-  return bcrypt.compare(password, passwordHash);
-}
-
-export function generateInviteCode(): string {
-  return randomBytes(6).toString("base64url").toUpperCase();
 }
 
 function generateSessionToken(): string {

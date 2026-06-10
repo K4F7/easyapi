@@ -1,12 +1,11 @@
-import { jsonOk } from "@/lib/auth";
+import { NextResponse } from "next/server";
+
+import { getServerEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  return jsonOk({
-    payment: {
-      returned: true,
-      message: "Payment status is handled by NewAPI. Return to billing to refresh your balance and order history.",
-    },
-  });
+  const env = getServerEnv();
+  const target = new URL("/dashboard/billing?payment=return", env.APP_URL);
+  return NextResponse.redirect(target, 302);
 }

@@ -17,7 +17,6 @@ async function mockDashboardSummary(page: Page) {
         data: {
           user: {
             email: "onboarding@example.com",
-            inviteCode: "INVITE",
             newApiBinding: "ready",
           },
           newApi: {
@@ -55,11 +54,11 @@ async function mockDashboardSummary(page: Page) {
             status: "ready",
           },
           checkin: {
+            enabled: true,
             checkedInToday: false,
             checkedInOn: "2026-06-08",
             status: "AVAILABLE",
             quotaApplied: null,
-            quotaPending: false,
           },
         },
       }),

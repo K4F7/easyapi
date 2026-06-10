@@ -377,7 +377,7 @@ describe("dev mock API routes", () => {
 
     expect(response.status).toBe(201);
     expect(body.data?.payment).toMatchObject({
-      url: "http://localhost/dashboard/billing?payment=mock-return",
+      url: "http://localhost/dashboard/billing?payment=return",
     });
   });
 

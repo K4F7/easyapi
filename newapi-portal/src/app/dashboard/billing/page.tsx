@@ -1,18 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Wallet,
-  Gift,
-  CreditCard,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-} from "lucide-react";
+import { Wallet, Gift, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/page-state";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,52 +16,23 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { apiFetch, apiPost } from "@/lib/client/api";
-import {
-  formatCurrencyCny,
-  formatDateTime,
-  statusText,
-} from "@/lib/client/format";
 import { useQuotaFormat } from "@/hooks/use-quota-format";
 import {
   remainingQuotaFromSelf,
   type QuotaDisplayConfig,
 } from "@/lib/quota/display-config.shared";
 
-type Order = {
-  id: string;
-  status: string;
-  amountCents: number;
-  currency: string;
-  productCode: string;
-  quotaAmount: number | null;
-  provider: string;
-  paidAt: string | null;
-  expiresAt: string | null;
-  createdAt: string;
-};
-
-type OrdersResponse = { orders: Order[] };
-
 type CreatePaymentResponse = {
-  order: Order;
   payment: { method: "GET"; url: string };
+  amountCents?: number;
+  paymentMethod?: string;
 };
 
 type RedeemResponse = {
   redeemed: boolean;
   duplicate: boolean;
   quotaAmount?: number;
-  ledger?: { amount: number; createdAt: string };
 };
 
 type BalanceSummary = {
@@ -118,8 +81,6 @@ function StatItem({
 export default function BillingPage() {
   const { formatBalance, applyConfig, refresh } = useQuotaFormat();
 
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
   const [balance, setBalance] = useState<BalanceSummary["newApi"] | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [amount, setAmount] = useState("50");
@@ -138,24 +99,18 @@ export default function BillingPage() {
   const remaining = remainingQuotaFromSelf(balance?.self);
 
   async function loadData() {
-    setOrdersLoading(true);
     setBalanceLoading(true);
 
-    Promise.allSettled([
-      apiFetch<OrdersResponse>("/api/billing/orders")
-        .then((d) => setOrders(d.orders))
-        .catch(() => {}),
-      apiFetch<BalanceSummary>("/api/dashboard/summary")
-        .then((d) => {
-          setBalance(d.newApi);
-          if (d.quotaConfig) applyConfig(d.quotaConfig);
-        })
-        .catch(() => {}),
-      refresh(),
-    ]).finally(() => {
-      setOrdersLoading(false);
+    try {
+      const data = await apiFetch<BalanceSummary>("/api/dashboard/summary");
+      setBalance(data.newApi);
+      if (data.quotaConfig) applyConfig(data.quotaConfig);
+      await refresh();
+    } catch {
+      // balance stays stale; user can retry via payment return toast
+    } finally {
       setBalanceLoading(false);
-    });
+    }
   }
 
   useEffect(() => {
@@ -163,7 +118,7 @@ export default function BillingPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("payment") === "return") {
-        toast.info("正在刷新余额与充值记录…");
+        toast.info("支付已返回，正在刷新余额…");
         loadData();
         params.delete("payment");
         const next =
@@ -189,10 +144,9 @@ export default function BillingPage() {
           payType,
           productCode: "quota",
           name: "EasyAPI 余额充值",
-          idempotencyKey: crypto.randomUUID(),
         },
       );
-      toast.success("订单已创建，正在前往支付");
+      toast.success("支付链接已生成，正在前往支付");
       window.location.href = data.payment.url;
     } catch (createError) {
       toast.error(
@@ -210,9 +164,7 @@ export default function BillingPage() {
       const result = await apiPost<RedeemResponse>("/api/billing/redeem", {
         code: redeemCode.trim(),
       });
-      const amountText = formatBalance(
-        result.quotaAmount ?? result.ledger?.amount,
-      );
+      const amountText = formatBalance(result.quotaAmount);
       toast.success(
         result.duplicate ? "兑换码已处理过" : `兑换成功：+${amountText}`,
       );
@@ -238,7 +190,7 @@ export default function BillingPage() {
             <CardDescription>查看可用余额并完成充值。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border/60 bg-muted/30 p-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border/60 bg-muted/30 p-3 sm:grid-cols-2">
               <StatItem
                 label="可用余额"
                 value={formatBalance(remaining)}
@@ -248,11 +200,6 @@ export default function BillingPage() {
                 label="历史消费"
                 value={formatBalance(usedQuota)}
                 loading={balanceLoading}
-              />
-              <StatItem
-                label="充值次数"
-                value={orders.length}
-                loading={ordersLoading}
               />
             </div>
 
@@ -352,86 +299,14 @@ export default function BillingPage() {
           <CardTitle>充值记录</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {ordersLoading ? (
-            <div className="space-y-3 px-6 pb-6">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="px-6 pb-6">
-              <EmptyState
-                title="暂无充值记录"
-                description="发起充值后，订单会出现在这里。"
-              />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>时间</TableHead>
-                    <TableHead>金额</TableHead>
-                    <TableHead>支付方式</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead className="text-right">到账金额</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="whitespace-nowrap font-mono text-sm text-muted-foreground">
-                        {formatDateTime(order.createdAt)}
-                      </TableCell>
-                      <TableCell className="font-mono tabular-nums">
-                        {formatCurrencyCny(order.amountCents)}
-                      </TableCell>
-                      <TableCell>
-                        {order.provider?.includes("alipay") ||
-                        order.provider?.includes("epay")
-                          ? "支付宝"
-                          : order.provider?.includes("wechat")
-                            ? "微信"
-                            : order.provider || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <OrderStatusBadge status={order.status} />
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-success tabular-nums">
-                        {order.quotaAmount !== null
-                          ? `+${formatBalance(order.quotaAmount)}`
-                          : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <div className="px-6 pb-6">
+            <EmptyState
+              title="暂无充值记录"
+              description="发起充值后，订单会出现在这里。"
+            />
+          </div>
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function OrderStatusBadge({ status }: { status: string }) {
-  const normalized = status.toUpperCase();
-  const variant =
-    normalized === "PAID"
-      ? "success"
-      : normalized === "PENDING"
-        ? "warning"
-        : "error";
-
-  return (
-    <Badge variant={variant} className="gap-1">
-      {normalized === "PAID" ? (
-        <CheckCircle2 className="h-3 w-3" />
-      ) : normalized === "PENDING" ? (
-        <Clock className="h-3 w-3" />
-      ) : (
-        <AlertCircle className="h-3 w-3" />
-      )}
-      {statusText(status)}
-    </Badge>
   );
 }

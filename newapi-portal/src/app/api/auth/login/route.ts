@@ -6,12 +6,10 @@ import {
   jsonOk,
   readJson,
   toPublicUser,
-  verifyPassword,
   zodErrorResponse,
 } from "@/lib/auth";
 import { resolveNewApiLoginUsernames } from "@/lib/auth/login-identifier";
 import { upsertPortalUserFromNewApiIdentity } from "@/lib/auth/newapi-user";
-import { db } from "@/lib/db";
 import { isDevMockEnabled, mockLoginResponse } from "@/lib/dev-mock";
 import {
   loginNewApiWithPassword,
@@ -56,30 +54,18 @@ export async function POST(request: Request) {
       password: input.password,
     });
 
-    if (newApiLogin.ok) {
-      const session = await createSession(newApiLogin.user.id, request);
-
-      return jsonOk({
-        user: toPublicUser(newApiLogin.user),
-        session: {
-          expiresAt: session.expiresAt.toISOString(),
-        },
-      });
+    if (!newApiLogin.ok) {
+      return newApiLogin.response;
     }
 
-    const localLogin = newApiLogin.allowLocalCompatibility
-      ? await loginWithLocalCompatibility({
-          identifier,
-          password: input.password,
-          request,
-        })
-      : { ok: false as const };
+    const session = await createSession(newApiLogin.user.id, request);
 
-    if (localLogin.ok) {
-      return localLogin.response;
-    }
-
-    return newApiLogin.response;
+    return jsonOk({
+      user: toPublicUser(newApiLogin.user),
+      session: {
+        expiresAt: session.expiresAt.toISOString(),
+      },
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return zodErrorResponse(error);
@@ -104,60 +90,6 @@ function invalidCredentials() {
     },
     401,
   );
-}
-
-async function findUserByLoginIdentifier(identifier: string) {
-  if (identifier.includes("@")) {
-    return db.user.findUnique({
-      where: { email: identifier },
-    });
-  }
-
-  const users = await db.user.findMany({
-    where: {
-      email: {
-        startsWith: `${identifier}@`,
-      },
-    },
-    take: 2,
-  });
-
-  return users.length === 1 ? users[0] : null;
-}
-
-async function loginWithLocalCompatibility(input: {
-  identifier: string;
-  password: string;
-  request: Request;
-}) {
-  const user = await findUserByLoginIdentifier(input.identifier);
-
-  if (!user || user.newApiUserId) {
-    return { ok: false as const };
-  }
-
-  const passwordMatches = await verifyPassword(input.password, user.passwordHash);
-
-  if (!passwordMatches) {
-    return { ok: false as const };
-  }
-
-  const updatedUser = await db.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date() },
-  });
-  const session = await createSession(user.id, input.request);
-
-  return {
-    ok: true as const,
-    response: jsonOk({
-      user: toPublicUser(updatedUser),
-      session: {
-        expiresAt: session.expiresAt.toISOString(),
-      },
-      authSource: "portal_legacy",
-    }),
-  };
 }
 
 async function loginWithNewApi(input: {
@@ -200,7 +132,6 @@ async function loginWithNewApi(input: {
     lastFailure ?? {
       ok: false as const,
       response: invalidCredentials(),
-      allowLocalCompatibility: true,
     }
   );
 }
@@ -208,7 +139,6 @@ async function loginWithNewApi(input: {
 type NewApiLoginFailure = {
   ok: false;
   response: ReturnType<typeof jsonError>;
-  allowLocalCompatibility: boolean;
 };
 
 function shouldRetryNewApiLogin(
@@ -235,7 +165,6 @@ function mapNewApiLoginError(error: NewApiPasswordLoginError): NewApiLoginFailur
         },
         403,
       ),
-      allowLocalCompatibility: false,
     };
   }
 
@@ -250,7 +179,6 @@ function mapNewApiLoginError(error: NewApiPasswordLoginError): NewApiLoginFailur
         },
         403,
       ),
-      allowLocalCompatibility: false,
     };
   }
 
@@ -264,7 +192,6 @@ function mapNewApiLoginError(error: NewApiPasswordLoginError): NewApiLoginFailur
         },
         503,
       ),
-      allowLocalCompatibility: true,
     };
   }
 
@@ -272,11 +199,10 @@ function mapNewApiLoginError(error: NewApiPasswordLoginError): NewApiLoginFailur
     return {
       ok: false as const,
       response: invalidCredentials(),
-      allowLocalCompatibility: true,
     };
   }
 
-  console.error("NewAPI fallback login failed", {
+  console.error("NewAPI login failed", {
     code: error.code,
     status: error.status,
     message: error.message,
@@ -291,6 +217,5 @@ function mapNewApiLoginError(error: NewApiPasswordLoginError): NewApiLoginFailur
       },
       502,
     ),
-    allowLocalCompatibility: false,
   };
 }

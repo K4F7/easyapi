@@ -1,5 +1,4 @@
 import { AuthError, jsonError, jsonOk, requireUser } from "@/lib/auth";
-import { db } from "@/lib/db";
 import { isDevMockEnabled, mockBillingOrdersResponse } from "@/lib/dev-mock";
 
 export const runtime = "nodejs";
@@ -10,38 +9,12 @@ export async function GET() {
   }
 
   try {
-    const user = await requireUser();
-    const orders = await db.order.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      select: {
-        id: true,
-        status: true,
-        amountCents: true,
-        currency: true,
-        productCode: true,
-        quotaAmount: true,
-        provider: true,
-        paidAt: true,
-        expiresAt: true,
-        createdAt: true,
-      },
-    });
+    await requireUser();
 
     return jsonOk({
-      orders: orders.map((order) => ({
-        id: order.id,
-        status: order.status,
-        amountCents: order.amountCents,
-        currency: order.currency,
-        productCode: order.productCode,
-        quotaAmount: order.quotaAmount,
-        provider: order.provider,
-        paidAt: order.paidAt?.toISOString() ?? null,
-        expiresAt: order.expiresAt?.toISOString() ?? null,
-        createdAt: order.createdAt.toISOString(),
-      })),
+      orders: [],
+      message:
+        "支付记录以 NewAPI 余额为准；请刷新余额确认到账。历史订单列表暂未对接上游。",
     });
   } catch (error) {
     if (error instanceof AuthError) {

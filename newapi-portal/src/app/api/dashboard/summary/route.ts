@@ -1,234 +1,191 @@
-import { jsonOk, requireUser } from "@/lib/auth";
-import { isCheckinQuotaApplied } from "@/lib/checkin/quota";
-import { isDevMockEnabled, mockDashboardSummaryResponse } from "@/lib/dev-mock";
-import { getServerEnv } from "@/lib/env";
-import {
-  getUserNewApiAuth,
-  handleApiError,
-  publicUserFromPortalUser,
-  sanitizeNewApiErrorForLog,
-} from "@/lib/api/bff";
-import { db } from "@/lib/db";
-import {
-  getLogStats,
-  getSelf,
-  getUsageData,
-  listTokens,
-  NewApiError,
-  type NewApiToken,
-} from "@/lib/newapi";
-import {
-  getQuotaDisplayConfig,
-  quotaDisplayConfigForClient,
-} from "@/lib/quota/get-display-config";
-import {
-  dateKey,
-  normalizePage,
-  nowTimestamp,
-  startOfTodayTimestamp,
-  startOfWeekTimestamp,
-  summarizeUsage,
-  todayDateOnly,
-} from "@/lib/quota/usage";
-
-export const runtime = "nodejs";
-
-const DASHBOARD_UPSTREAM_ERROR_MESSAGE =
-  "暂时无法获取 NewAPI 仪表盘数据，请稍后重试";
-
-export async function GET(request: Request) {
-  if (isDevMockEnabled()) {
-    return mockDashboardSummaryResponse(request);
-  }
-
-  try {
-    const user = await requireUser();
-    const authResult = await getUserNewApiAuth(user);
-    const portalUser = authResult.user;
-    const checkinQuota = getServerEnv().CHECKIN_QUOTA;
-    const quotaConfig = quotaDisplayConfigForClient(await getQuotaDisplayConfig());
-    const [checkin] = await Promise.all([
-      db.checkin.findUnique({
-        where: {
-          userId_checkedInOn: {
-            userId: portalUser.id,
-            checkedInOn: todayDateOnly(),
-          },
-        },
-        select: {
-          id: true,
-          status: true,
-          checkedInOn: true,
-          createdAt: true,
-          ledgerEntries: {
-            select: { metadata: true },
-            take: 1,
-          },
-        },
-      }),
-    ]);
-
-    if (!authResult.ok) {
-      return jsonOk({
-        quotaConfig,
-        user: publicUserFromPortalUser(portalUser),
-        newApi: {
-          binding: "pending",
-          status: authResult.code,
-          message: authResult.message,
-          self: null,
-        },
-        tokens: {
-          count: null,
-          status: "pending",
-        },
-        usage: emptyUsageSummary(),
-        logStats: pendingLogStats(),
-        checkin: formatCheckin(checkin, checkinQuota),
-      });
-    }
-
-    const now = nowTimestamp();
-    const todayStart = startOfTodayTimestamp();
-    const weekStart = startOfWeekTimestamp();
-
-    try {
-      const [self, tokensPageRaw, todayUsage, weekUsage, logStatsRaw] =
-        await Promise.all([
-          getSelf(authResult.auth),
-          listTokens(authResult.auth, { p: 1, size: 1 }),
-          getUsageData(authResult.auth, {
-            start_timestamp: todayStart,
-            end_timestamp: now,
-            default_time: "day",
-          }),
-          getUsageData(authResult.auth, {
-            start_timestamp: weekStart,
-            end_timestamp: now,
-            default_time: "day",
-          }),
-          getLogStats(authResult.auth, {
-            start_timestamp: todayStart,
-            end_timestamp: now,
-          }),
-        ]);
-      const tokensPage = normalizePage<NewApiToken>(tokensPageRaw, 1, 1);
-
-      return jsonOk({
-        quotaConfig,
-        user: publicUserFromPortalUser(portalUser),
-        newApi: {
-          binding: "ready",
-          status: "ready",
-          self,
-        },
-        tokens: {
-          count: tokensPage.total,
-          status: "ready",
-        },
-        usage: {
-          today: {
-            totals: summarizeUsage(todayUsage),
-            start_timestamp: todayStart,
-            end_timestamp: now,
-          },
-          week: {
-            totals: summarizeUsage(weekUsage),
-            start_timestamp: weekStart,
-            end_timestamp: now,
-          },
-        },
-        logStats: formatLogStats(logStatsRaw),
-        checkin: formatCheckin(checkin, checkinQuota),
-      });
-    } catch (error) {
-      if (!(error instanceof NewApiError)) {
-        throw error;
-      }
-
-      console.error(
-        "Failed to load dashboard NewAPI summary",
-        sanitizeNewApiErrorForLog(error),
-      );
-
-      return jsonOk({
-        quotaConfig,
-        user: publicUserFromPortalUser(portalUser),
-        newApi: {
-          binding: "ready",
-          status: "upstream_error",
-          message: DASHBOARD_UPSTREAM_ERROR_MESSAGE,
-          self: null,
-        },
-        tokens: {
-          count: null,
-          status: "upstream_error",
-        },
-        usage: emptyUsageSummary(),
-        logStats: errorLogStats(),
-        checkin: formatCheckin(checkin, checkinQuota),
-      });
-    }
-  } catch (error) {
-    return handleApiError(error, "Failed to load dashboard summary");
-  }
-}
-
-function pendingLogStats() {
-  return { rpm: null, tpm: null, status: "pending" };
-}
-
-function errorLogStats() {
-  return { rpm: null, tpm: null, status: "upstream_error" };
-}
-
-function formatLogStats(stats: { rpm?: number; tpm?: number }) {
-  return {
-    rpm: stats.rpm ?? null,
-    tpm: stats.tpm ?? null,
-    status: "ready",
-  };
-}
-
-function emptyUsageSummary() {
-  return {
-    today: {
-      totals: { quota: 0, count: 0, tokenUsed: 0 },
-      start_timestamp: startOfTodayTimestamp(),
-      end_timestamp: nowTimestamp(),
-    },
-    week: {
-      totals: { quota: 0, count: 0, tokenUsed: 0 },
-      start_timestamp: startOfWeekTimestamp(),
-      end_timestamp: nowTimestamp(),
-    },
-  };
-}
-
-function formatCheckin(
-  checkin: {
-    id: string;
-    status: "CLAIMED" | "REVERSED";
-    checkedInOn: Date;
-    createdAt: Date;
-    ledgerEntries: Array<{ metadata: unknown }>;
-  } | null,
-  checkinQuota: number,
-) {
-  const ledgerMetadata = checkin?.ledgerEntries[0]?.metadata;
-  const quotaApplied = checkin
-    ? isCheckinQuotaApplied(ledgerMetadata)
-    : null;
-
-  return {
-    checkedInToday: Boolean(checkin),
-    checkedInOn: checkin ? dateKey(checkin.checkedInOn) : dateKey(todayDateOnly()),
-    status: checkin?.status ?? "AVAILABLE",
-    checkinId: checkin?.id ?? null,
-    createdAt: checkin?.createdAt.toISOString() ?? null,
-    quotaApplied,
-    quotaPending:
-      Boolean(checkin) && checkinQuota > 0 && quotaApplied === false,
-  };
-}
-
+import { jsonOk, requireUser } from "@/lib/auth";
+import { formatDashboardCheckin } from "@/lib/checkin/format";
+import { isDevMockEnabled, mockDashboardSummaryResponse } from "@/lib/dev-mock";
+import {
+  getUserNewApiAuth,
+  handleApiError,
+  publicUserFromPortalUser,
+  sanitizeNewApiErrorForLog,
+} from "@/lib/api/bff";
+import { getCheckinStatus } from "@/lib/newapi/checkin";
+import {
+  getLogStats,
+  getSelf,
+  getUsageData,
+  listTokens,
+  NewApiError,
+  type NewApiToken,
+} from "@/lib/newapi";
+import { getNewApiStatus } from "@/lib/newapi/status";
+import {
+  getQuotaDisplayConfig,
+  quotaDisplayConfigForClient,
+} from "@/lib/quota/get-display-config";
+import {
+  normalizePage,
+  nowTimestamp,
+  startOfTodayTimestamp,
+  startOfWeekTimestamp,
+  summarizeUsage,
+} from "@/lib/quota/usage";
+
+export const runtime = "nodejs";
+
+const DASHBOARD_UPSTREAM_ERROR_MESSAGE =
+  "暂时无法获取 NewAPI 仪表盘数据，请稍后重试";
+
+export async function GET(request: Request) {
+  if (isDevMockEnabled()) {
+    return mockDashboardSummaryResponse(request);
+  }
+
+  try {
+    const user = await requireUser();
+    const authResult = await getUserNewApiAuth(user);
+    const portalUser = authResult.user;
+    const quotaConfig = quotaDisplayConfigForClient(await getQuotaDisplayConfig());
+    const publicStatus = await getNewApiStatus();
+    const checkinEnabled = publicStatus?.checkinEnabled ?? false;
+
+    if (!authResult.ok) {
+      return jsonOk({
+        quotaConfig,
+        user: publicUserFromPortalUser(portalUser),
+        newApi: {
+          binding: "pending",
+          status: authResult.code,
+          message: authResult.message,
+          self: null,
+        },
+        tokens: {
+          count: null,
+          status: "pending",
+        },
+        usage: emptyUsageSummary(),
+        logStats: pendingLogStats(),
+        checkin: formatDashboardCheckin(null, { enabled: checkinEnabled }),
+      });
+    }
+
+    const now = nowTimestamp();
+    const todayStart = startOfTodayTimestamp();
+    const weekStart = startOfWeekTimestamp();
+
+    try {
+      const [self, tokensPageRaw, todayUsage, weekUsage, logStatsRaw, checkinStatus] =
+        await Promise.all([
+          getSelf(authResult.auth),
+          listTokens(authResult.auth, { p: 1, size: 1 }),
+          getUsageData(authResult.auth, {
+            start_timestamp: todayStart,
+            end_timestamp: now,
+            default_time: "day",
+          }),
+          getUsageData(authResult.auth, {
+            start_timestamp: weekStart,
+            end_timestamp: now,
+            default_time: "day",
+          }),
+          getLogStats(authResult.auth, {
+            start_timestamp: todayStart,
+            end_timestamp: now,
+          }),
+          checkinEnabled
+            ? getCheckinStatus(authResult.auth).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+      const tokensPage = normalizePage<NewApiToken>(tokensPageRaw, 1, 1);
+
+      return jsonOk({
+        quotaConfig,
+        user: publicUserFromPortalUser(portalUser),
+        newApi: {
+          binding: "ready",
+          status: "ready",
+          self,
+        },
+        tokens: {
+          count: tokensPage.total,
+          status: "ready",
+        },
+        usage: {
+          today: {
+            totals: summarizeUsage(todayUsage),
+            start_timestamp: todayStart,
+            end_timestamp: now,
+          },
+          week: {
+            totals: summarizeUsage(weekUsage),
+            start_timestamp: weekStart,
+            end_timestamp: now,
+          },
+        },
+        logStats: formatLogStats(logStatsRaw),
+        checkin: formatDashboardCheckin(checkinStatus, {
+          enabled: checkinEnabled,
+        }),
+      });
+    } catch (error) {
+      if (!(error instanceof NewApiError)) {
+        throw error;
+      }
+
+      console.error(
+        "Failed to load dashboard NewAPI summary",
+        sanitizeNewApiErrorForLog(error),
+      );
+
+      return jsonOk({
+        quotaConfig,
+        user: publicUserFromPortalUser(portalUser),
+        newApi: {
+          binding: "ready",
+          status: "upstream_error",
+          message: DASHBOARD_UPSTREAM_ERROR_MESSAGE,
+          self: null,
+        },
+        tokens: {
+          count: null,
+          status: "upstream_error",
+        },
+        usage: emptyUsageSummary(),
+        logStats: errorLogStats(),
+        checkin: formatDashboardCheckin(null, { enabled: checkinEnabled }),
+      });
+    }
+  } catch (error) {
+    return handleApiError(error, "Failed to load dashboard summary");
+  }
+}
+
+function pendingLogStats() {
+  return { rpm: null, tpm: null, status: "pending" };
+}
+
+function errorLogStats() {
+  return { rpm: null, tpm: null, status: "upstream_error" };
+}
+
+function formatLogStats(stats: { rpm?: number; tpm?: number }) {
+  return {
+    rpm: stats.rpm ?? null,
+    tpm: stats.tpm ?? null,
+    status: "ready",
+  };
+}
+
+function emptyUsageSummary() {
+  return {
+    today: {
+      totals: { quota: 0, count: 0, tokenUsed: 0 },
+      start_timestamp: startOfTodayTimestamp(),
+      end_timestamp: nowTimestamp(),
+    },
+    week: {
+      totals: { quota: 0, count: 0, tokenUsed: 0 },
+      start_timestamp: startOfWeekTimestamp(),
+      end_timestamp: nowTimestamp(),
+    },
+  };
+}
+

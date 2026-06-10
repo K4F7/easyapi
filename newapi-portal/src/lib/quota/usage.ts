@@ -6,8 +6,11 @@ import type {
   NewApiToken,
   NewApiUsageDataItem,
 } from "@/lib/newapi";
-
-const appTimeZone = "Asia/Shanghai";
+import {
+  appTimeZone,
+  dateKey,
+  todayDateOnly,
+} from "@/lib/quota/usage.shared";
 
 export type UsageTotals = {
   quota: number;
@@ -15,13 +18,7 @@ export type UsageTotals = {
   tokenUsed: number;
 };
 
-export function todayDateOnly(): Date {
-  return dateOnlyInTimeZone(new Date(), appTimeZone);
-}
-
-export function dateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
+export { appTimeZone, dateKey, todayDateOnly };
 
 export function startOfTodayTimestamp(): number {
   return Math.floor(todayDateOnly().getTime() / 1000);
@@ -138,21 +135,6 @@ export function maskTokenKey(key: string): string {
   return `sk-${first4}${NEWAPI_MASK_MIDDLE}${last4}`;
 }
 
-function dateOnlyInTimeZone(date: Date, timeZone: string): Date {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const part = (type: string) =>
-    parts.find((item) => item.type === type)?.value ?? "01";
-
-  return new Date(
-    Date.UTC(Number(part("year")), Number(part("month")) - 1, Number(part("day"))),
-  );
-}
-
 function findArray<T>(
   record: Record<string, unknown>,
   keys: string[],
@@ -187,5 +169,3 @@ function numberValue(value: unknown, fallback = 0): number {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-
-export { appTimeZone };

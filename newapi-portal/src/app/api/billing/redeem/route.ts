@@ -1,6 +1,3 @@
-import { createHash } from "node:crypto";
-
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { AuthError, jsonError, jsonOk, readJson, requireUser, zodErrorResponse } from "@/lib/auth";
@@ -43,24 +40,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const idempotencyKey = `redeem:${user.id}:${hashRedeemCode(input.code)}`;
-    const existingLedger = await db.walletLedger.findUnique({
-      where: { idempotencyKey },
-      select: { id: true, amount: true, createdAt: true },
-    });
-
-    if (existingLedger) {
-      return jsonOk({
-        redeemed: true,
-        duplicate: true,
-        ledger: {
-          id: existingLedger.id,
-          amount: existingLedger.amount,
-          createdAt: existingLedger.createdAt.toISOString(),
-        },
-      });
-    }
-
     const accessToken = await resolveAccessToken(user.newApiAccessTokenCiphertext);
 
     const result = await redeemTopup(
@@ -71,30 +50,11 @@ export async function POST(request: Request) {
       input.code,
     );
     const quotaAmount = extractQuotaAmount(result.data) ?? 0;
-    const ledger = await db.walletLedger.create({
-      data: {
-        userId: user.id,
-        type: "CREDIT",
-        amount: quotaAmount,
-        reason: "redeem_topup",
-        idempotencyKey,
-        metadata: {
-          provider: "newapi",
-          source: "redeem",
-          quotaDetected: quotaAmount > 0,
-        },
-      },
-    });
 
     return jsonOk({
       redeemed: true,
       duplicate: false,
       quotaAmount,
-      ledger: {
-        id: ledger.id,
-        amount: ledger.amount,
-        createdAt: ledger.createdAt.toISOString(),
-      },
       upstream: result.data,
     });
   } catch (error) {
@@ -116,23 +76,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return jsonError(
-        {
-          code: "REDEEM_ALREADY_RECORDED",
-          message: "Redemption was already recorded",
-        },
-        409,
-      );
-    }
-
     console.error("billing redeem failed", error);
     return jsonError({ code: "INTERNAL_ERROR", message: "Failed to redeem code" }, 500);
   }
-}
-
-function hashRedeemCode(code: string): string {
-  return createHash("sha256").update(code.trim(), "utf8").digest("hex");
 }
 
 function extractQuotaAmount(value: unknown): number | null {

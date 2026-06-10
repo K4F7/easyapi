@@ -21,7 +21,6 @@ async function mockDashboardApis(page: import("@playwright/test").Page) {
           quotaConfig: { quotaPerCny: 500_000, source: "default" },
           user: {
             email: "theme-light@example.com",
-            inviteCode: "THEMELIGHT",
             newApiBinding: "ready",
           },
           newApi: {
@@ -40,11 +39,11 @@ async function mockDashboardApis(page: import("@playwright/test").Page) {
           },
           logStats: { rpm: 1, tpm: 64, status: "ready" },
           checkin: {
+            enabled: true,
             checkedInToday: false,
             checkedInOn: "2026-06-07",
             status: "AVAILABLE",
             quotaApplied: null,
-            quotaPending: false,
           },
         },
       }),

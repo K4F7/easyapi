@@ -5,30 +5,15 @@ import type { NewApiToken } from "@/lib/newapi";
 import { defaultChannelGroup } from "@/lib/channels/tiers";
 import { dateKey, todayDateOnly } from "@/lib/quota/usage";
 
-type MockOrder = {
-  id: string;
-  status: string;
-  amountCents: number;
-  currency: string;
-  productCode: string | null;
-  quotaAmount: number | null;
-  provider: string | null;
-  paidAt: string | null;
-  expiresAt: string | null;
-  createdAt: string;
-};
-
 type MockState = {
   sessionToken: string;
   user: PublicUser;
   tokens: NewApiToken[];
-  orders: MockOrder[];
   quota: number;
   usedQuota: number;
   checkedInOn: string | null;
-  redeemedCodes: Map<string, { ledgerId: string; amount: number; createdAt: string }>;
+  redeemedCodes: Set<string>;
   nextTokenId: number;
-  nextOrderId: number;
 };
 
 const globalForMock = globalThis as unknown as {
@@ -42,7 +27,6 @@ function createInitialState(): MockState {
       id: "dev-mock-user",
       email: "scr@qq.com",
       username: "dev-mock",
-      inviteCode: "DEVMOCK",
       newApiUserId: "10001",
       newApiBinding: "ready",
       createdAt: "2026-06-01T00:00:00.000Z",
@@ -71,13 +55,11 @@ function createInitialState(): MockState {
         group: defaultChannelGroup,
       },
     ],
-    orders: [],
     quota: 500_000,
     usedQuota: 17_200,
     checkedInOn: null,
-    redeemedCodes: new Map(),
+    redeemedCodes: new Set(),
     nextTokenId: 200,
-    nextOrderId: 300,
   };
 }
 
@@ -201,62 +183,31 @@ export function checkInMockUser() {
     checkedInOn,
     quotaAmount,
     quotaApplied: true,
-    checkinId: `mock-checkin-${checkedInOn}`,
-    ledgerId: `mock-ledger-checkin-${checkedInOn}`,
   };
 }
 
 export function redeemMockCode(code: string) {
   const state = getMockState();
   const normalized = code.trim().toUpperCase();
-  const existing = state.redeemedCodes.get(normalized);
+  const duplicate = state.redeemedCodes.has(normalized);
 
-  if (existing) {
+  if (duplicate) {
     return {
       redeemed: true,
       duplicate: true,
-      quotaAmount: existing.amount,
-      ledger: {
-        id: existing.ledgerId,
-        amount: existing.amount,
-        createdAt: existing.createdAt,
-      },
+      quotaAmount: 20_000,
       upstream: { mock: true, code: normalized },
     };
   }
 
-  const createdAt = new Date().toISOString();
+  state.redeemedCodes.add(normalized);
   const amount = 20_000;
-  const ledgerId = `mock-ledger-redeem-${state.redeemedCodes.size + 1}`;
-  state.redeemedCodes.set(normalized, { ledgerId, amount, createdAt });
   state.quota += amount;
 
   return {
     redeemed: true,
     duplicate: false,
     quotaAmount: amount,
-    ledger: { id: ledgerId, amount, createdAt },
     upstream: { mock: true, code: normalized },
   };
-}
-
-export function createMockOrder(input: {
-  amountCents: number;
-  productCode?: string;
-}) {
-  const state = getMockState();
-  const order: MockOrder = {
-    id: `mock-order-${state.nextOrderId++}`,
-    status: "PENDING",
-    amountCents: input.amountCents,
-    currency: "CNY",
-    productCode: input.productCode ?? "quota",
-    quotaAmount: null,
-    provider: "dev-mock:epay",
-    paidAt: null,
-    expiresAt: null,
-    createdAt: new Date().toISOString(),
-  };
-  state.orders.unshift(order);
-  return order;
 }
