@@ -9,9 +9,9 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=scripts/staging-backup.sh
-source "${SCRIPT_DIR}/staging-backup.sh"
+STAGING_BACKUP_FILENAME="${STAGING_BACKUP_FILENAME:-xbh-new-api-2026-06-09-174203.sql.gz}"
+STAGING_REMOTE_DIR="${STAGING_REMOTE_DIR:-/opt/easyapi-portal-test}"
+STAGING_BACKUP_SQL_GZ="${STAGING_BACKUP_SQL_GZ:-${STAGING_REMOTE_DIR}/${STAGING_BACKUP_FILENAME}}"
 
 REMOTE_DIR="${REMOTE_DIR:-${STAGING_REMOTE_DIR}}"
 COMPOSE_PROJECT="${COMPOSE_PROJECT:-easyapi-portal}"
