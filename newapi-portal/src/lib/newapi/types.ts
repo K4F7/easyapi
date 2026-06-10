@@ -9,6 +9,8 @@ export type NewApiJson =
 export interface NewApiAuth {
   accessToken: string;
   userId: string | number;
+  /** Set by Portal BFF to enable automatic refresh on upstream 401. */
+  _portalRefresh?: () => Promise<NewApiAuth>;
 }
 
 export interface NewApiEnvelope<T = unknown> {

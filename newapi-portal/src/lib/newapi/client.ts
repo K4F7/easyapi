@@ -15,6 +15,8 @@ interface NewApiRequestOptions extends Omit<RequestInit, "body" | "headers"> {
   query?: Record<string, QueryValue>;
   timeoutMs?: number;
   unwrap?: boolean;
+  /** Internal: prevents infinite 401 refresh loops. */
+  _retried401?: boolean;
 }
 
 interface NewApiErrorOptions {
@@ -82,6 +84,7 @@ export async function newApiRequest<T = unknown>(
     timeoutMs = DEFAULT_TIMEOUT_MS,
     unwrap = true,
     signal,
+    _retried401 = false,
     ...init
   } = options;
   const url = buildUrl(path, query);
@@ -121,6 +124,23 @@ export async function newApiRequest<T = unknown>(
     const payload = await parseResponseBody(response);
 
     if (!response.ok) {
+      if (
+        response.status === 401 &&
+        auth?._portalRefresh &&
+        !_retried401
+      ) {
+        try {
+          const refreshedAuth = await auth._portalRefresh();
+          return newApiRequest<T>(path, {
+            ...options,
+            auth: refreshedAuth,
+            _retried401: true,
+          });
+        } catch (refreshError) {
+          throw newApiHttpError(response, payload, refreshError);
+        }
+      }
+
       throw newApiHttpError(response, payload);
     }
 
@@ -225,12 +245,17 @@ function isEnvelope(payload: unknown): payload is NewApiEnvelope {
   return isRecord(payload) && "success" in payload;
 }
 
-function newApiHttpError(response: Response, payload: unknown): NewApiError {
+function newApiHttpError(
+  response: Response,
+  payload: unknown,
+  cause?: unknown,
+): NewApiError {
   return new NewApiError(extractMessage(payload) ?? response.statusText, {
     status: response.status,
     statusText: response.statusText,
     code: extractCode(payload),
     payload,
+    cause,
   });
 }
 

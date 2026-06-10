@@ -10,9 +10,10 @@ import {
   zodErrorResponse,
   type PublicUser,
 } from "@/lib/auth";
+import { updatePortalUserAccessToken } from "@/lib/auth/newapi-user";
 import { db } from "@/lib/db";
-import { getAuthSecret } from "@/lib/env";
-import { NewApiError, type NewApiAuth } from "@/lib/newapi";
+import { getAuthSecret, getNewApiAccessTokenRefreshAfterMs } from "@/lib/env";
+import { NewApiError, refreshUserAccessToken, type NewApiAuth } from "@/lib/newapi";
 
 export type PortalUserForApi = {
   id: string;
@@ -20,6 +21,7 @@ export type PortalUserForApi = {
   username: string | null;
   newApiUserId: string | null;
   newApiAccessTokenCiphertext: string | null;
+  newApiAccessTokenUpdatedAt: Date | null;
   createdAt: Date;
 };
 
@@ -47,6 +49,7 @@ export async function getPortalUserForApi(
       username: true,
       newApiUserId: true,
       newApiAccessTokenCiphertext: true,
+      newApiAccessTokenUpdatedAt: true,
       createdAt: true,
     },
   });
@@ -81,14 +84,97 @@ export async function getUserNewApiAuth(
     };
   }
 
-  const accessToken = await resolveAccessToken(user.newApiAccessTokenCiphertext);
+  let accessToken = await resolveAccessToken(user.newApiAccessTokenCiphertext);
+
+  if (shouldProactivelyRefreshAccessToken(user.newApiAccessTokenUpdatedAt)) {
+    accessToken = await tryProactiveAccessTokenRefresh({
+      portalUserId: user.id,
+      newApiUserId: user.newApiUserId,
+      accessToken,
+    });
+  }
 
   return {
     ok: true,
     user,
-    auth: {
-      userId: user.newApiUserId,
+    auth: buildNewApiAuthWithRefresh({
+      portalUserId: user.id,
+      newApiUserId: user.newApiUserId,
       accessToken,
+    }),
+  };
+}
+
+function shouldProactivelyRefreshAccessToken(updatedAt: Date | null): boolean {
+  if (!updatedAt) {
+    return true;
+  }
+
+  const refreshAfterMs = getNewApiAccessTokenRefreshAfterMs();
+  return Date.now() - updatedAt.getTime() >= refreshAfterMs;
+}
+
+async function tryProactiveAccessTokenRefresh(input: {
+  portalUserId: string;
+  newApiUserId: string;
+  accessToken: string;
+}): Promise<string> {
+  try {
+    return await refreshAndPersistPortalAccessToken(input);
+  } catch (error) {
+    console.warn("NewAPI access token proactive refresh failed", {
+      portalUserId: input.portalUserId,
+      newApiUserId: input.newApiUserId,
+      error: error instanceof Error ? error.name : "unknown",
+    });
+    return input.accessToken;
+  }
+}
+
+async function refreshAndPersistPortalAccessToken(input: {
+  portalUserId: string;
+  newApiUserId: string;
+  accessToken: string;
+}): Promise<string> {
+  const freshToken = await refreshUserAccessToken({
+    userId: input.newApiUserId,
+    accessToken: input.accessToken,
+  });
+
+  await updatePortalUserAccessToken(input.portalUserId, freshToken);
+
+  return freshToken;
+}
+
+function buildNewApiAuthWithRefresh(input: {
+  portalUserId: string;
+  newApiUserId: string;
+  accessToken: string;
+}): NewApiAuth {
+  return {
+    userId: input.newApiUserId,
+    accessToken: input.accessToken,
+    _portalRefresh: async () => {
+      const latestUser = await getPortalUserForApi(input.portalUserId);
+
+      if (!latestUser.newApiUserId || !latestUser.newApiAccessTokenCiphertext) {
+        throw new Error("Portal user no longer has NewAPI credentials");
+      }
+
+      const currentToken = await resolveAccessToken(
+        latestUser.newApiAccessTokenCiphertext,
+      );
+      const freshToken = await refreshAndPersistPortalAccessToken({
+        portalUserId: input.portalUserId,
+        newApiUserId: latestUser.newApiUserId,
+        accessToken: currentToken,
+      });
+
+      return buildNewApiAuthWithRefresh({
+        portalUserId: input.portalUserId,
+        newApiUserId: latestUser.newApiUserId,
+        accessToken: freshToken,
+      });
     },
   };
 }

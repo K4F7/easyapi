@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Wallet, Gift, CreditCard } from "lucide-react";
+import { Wallet, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 
+import { RedeemAffCard } from "@/components/dashboard/redeem-aff-card";
+import { StatItem } from "@/components/dashboard/stat-item";
 import { EmptyState } from "@/components/page-state";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,12 +32,6 @@ type CreatePaymentResponse = {
   paymentMethod?: string;
 };
 
-type RedeemResponse = {
-  redeemed: boolean;
-  duplicate: boolean;
-  quotaAmount?: number;
-};
-
 type BalanceSummary = {
   quotaConfig?: QuotaDisplayConfig;
   newApi: {
@@ -52,32 +49,6 @@ const PAY_METHODS = [
 
 const AMOUNT_PRESETS = [10, 50, 100, 200] as const;
 
-function StatItem({
-  label,
-  value,
-  loading,
-}: {
-  label: string;
-  value: React.ReactNode;
-  loading?: boolean;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="mt-0.5 truncate text-lg font-semibold tabular-nums">
-        {loading ? (
-          <span
-            aria-hidden="true"
-            className="inline-block h-7 w-20 animate-pulse rounded-md bg-muted align-middle"
-          />
-        ) : (
-          value
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function BillingPage() {
   const { formatBalance, applyConfig, refresh } = useQuotaFormat();
 
@@ -86,8 +57,6 @@ export default function BillingPage() {
   const [amount, setAmount] = useState("50");
   const [payType, setPayType] = useState<string>(PAY_METHODS[0].value);
   const [creating, setCreating] = useState(false);
-  const [redeemCode, setRedeemCode] = useState("");
-  const [redeeming, setRedeeming] = useState(false);
   const amountValue = useMemo(() => {
     const normalized = amount.trim();
     if (!/^\d+$/.test(normalized)) return null;
@@ -154,28 +123,6 @@ export default function BillingPage() {
       );
     } finally {
       setCreating(false);
-    }
-  }
-
-  async function handleRedeem() {
-    if (!redeemCode.trim()) return;
-    setRedeeming(true);
-    try {
-      const result = await apiPost<RedeemResponse>("/api/billing/redeem", {
-        code: redeemCode.trim(),
-      });
-      const amountText = formatBalance(result.quotaAmount);
-      toast.success(
-        result.duplicate ? "兑换码已处理过" : `兑换成功：+${amountText}`,
-      );
-      setRedeemCode("");
-      loadData();
-    } catch (redeemError) {
-      toast.error(
-        redeemError instanceof Error ? redeemError.message : "兑换失败",
-      );
-    } finally {
-      setRedeeming(false);
     }
   }
 
@@ -263,35 +210,11 @@ export default function BillingPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
-          <CardHeader className="pb-3">
-            <CardTitle>兑换码</CardTitle>
-            <CardDescription>输入兑换码获取余额。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Label htmlFor="redeemCode">兑换码</Label>
-            <div className="flex gap-2">
-              <Input
-                id="redeemCode"
-                className="font-mono"
-                placeholder="请输入兑换码"
-                value={redeemCode}
-                onChange={(e) => setRedeemCode(e.target.value)}
-              />
-              <Button
-                className="shrink-0"
-                disabled={redeeming || !redeemCode}
-                onClick={handleRedeem}
-              >
-                <Gift className="mr-1.5 h-3.5 w-3.5" />
-                兑换
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              兑换成功后余额会即时加入可用余额。
-            </p>
-          </CardContent>
-        </Card>
+        <RedeemAffCard
+          onBalanceChange={loadData}
+          redeemInputId="billingRedeemCode"
+          inviteLinkInputId="billingInviteLink"
+        />
       </div>
 
       <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">

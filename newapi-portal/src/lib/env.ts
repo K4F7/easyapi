@@ -84,3 +84,21 @@ function formatZodIssues(error: z.ZodError, prefix?: string): string {
 }
 
 export const plannedServerEnvKeys = serverEnvSchema.keyof().options;
+
+const defaultNewApiAccessTokenRefreshAfterMs = 6 * 60 * 60 * 1000;
+
+export function getNewApiAccessTokenRefreshAfterMs(): number {
+  const raw = process.env.NEWAPI_ACCESS_TOKEN_REFRESH_AFTER_MS;
+
+  if (!raw) {
+    return defaultNewApiAccessTokenRefreshAfterMs;
+  }
+
+  const parsed = Number(raw);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return defaultNewApiAccessTokenRefreshAfterMs;
+  }
+
+  return parsed;
+}

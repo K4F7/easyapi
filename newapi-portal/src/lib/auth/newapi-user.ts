@@ -113,11 +113,30 @@ async function resolvePortalEmail(
   return `newapi-user-${identity.userId}@newapi.local`;
 }
 
+export async function updatePortalUserAccessToken(
+  portalUserId: string,
+  accessToken: string,
+) {
+  const encryptedToken = await encryptSecret(accessToken, getAuthSecret());
+  const now = new Date();
+
+  return db.user.update({
+    where: { id: portalUserId },
+    data: accessTokenUpdateData(encryptedToken, now),
+  });
+}
+
 function tokenUpdateData(encryptedToken: string, now: Date) {
+  return {
+    ...accessTokenUpdateData(encryptedToken, now),
+    lastLoginAt: now,
+  };
+}
+
+function accessTokenUpdateData(encryptedToken: string, now: Date) {
   return {
     newApiAccessTokenCiphertext: encryptedToken,
     newApiAccessTokenKeyId: "auth-secret-v1",
     newApiAccessTokenUpdatedAt: now,
-    lastLoginAt: now,
   };
 }

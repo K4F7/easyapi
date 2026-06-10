@@ -31,7 +31,8 @@ export type {
   NewApiCheckinStatus,
   NewApiDoCheckinResult,
 } from "./checkin";
-export { adminAddQuota, adminCreateUser, getSelf } from "./users";
+export { getSelf } from "./users";
+export { extractAccessToken, refreshUserAccessToken } from "./access-token";
 export {
   clearNewApiStatusCacheForTests,
   getNewApiStatus,

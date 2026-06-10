@@ -49,6 +49,15 @@ export async function ensureDashboardSession(
   ).toBeVisible({ timeout: 15_000 });
 }
 
+export async function ensureBillingSession(page: Page) {
+  await applyOnboardingState(page, "skipped");
+  await ensureAuthenticatedContext(page);
+  await page.goto("/dashboard/billing");
+  await expect(page.getByRole("heading", { name: "充值", level: 1 })).toBeVisible(
+    { timeout: 15_000 },
+  );
+}
+
 export async function loginThroughPortalForm(
   page: Page,
   { onboarding = "skipped" }: { onboarding?: OnboardingMode } = {},

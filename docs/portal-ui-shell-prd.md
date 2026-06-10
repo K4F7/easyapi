@@ -94,7 +94,7 @@ PostgreSQL `newapi_portal` schema **仅允许**：
 | 签到 Toast | ✅ 成功时展示本次获得额度（`formatBalance(quotaAmount)`）；重复签到「今日已签到」 |
 | 充值页 | ✅ 去掉本地订单表格；余额以 NewAPI 为准 |
 | 注册页 | ✅ URL/body 使用 `aff_code` / `affCode`；文案保持重构前样式 |
-| 邀请返利控制台 | ⏳ **未做**（BFF 已有，Dashboard 无 UI） |
+| 邀请返利控制台 | ✅ 概览页与充值页兑换码卡片内嵌（邀请链接 / 可划转返利 / 划转按钮） |
 | 签到日历 / Turnstile 控件 | ⏳ **未做**（非壳化阻塞项） |
 
 ### 4.4 测试与 Staging（✅）
@@ -125,7 +125,7 @@ PostgreSQL `newapi_portal` schema **仅允许**：
 
 - 注册链接：`/register?aff_code={code}`。
 - BFF：`GET /api/aff`（统计 + code）、`POST /api/aff`（划转）。
-- **Backlog**：Dashboard 展示链接、`aff_count`、`aff_quota`、划转按钮。
+- **已交付（充值页）**：邀请链接、`aff_count`、`aff_history_quota`、`aff_quota`、划转按钮。
 
 ### 5.4 计费
 
@@ -151,7 +151,7 @@ PostgreSQL `newapi_portal` schema **仅允许**：
 | 6 | 根目录 README 架构约束与实现一致 | ✅ |
 
 **架构层「纯 UI 壳」：达标。**  
-**产品层完整度**：邀请返利 Dashboard UI、支付订单历史依赖上游 API — 见 §8 backlog。
+**产品层完整度**：支付订单历史依赖上游 API — 见 §8 backlog；邀请返利 Dashboard UI **已做**。
 
 ---
 
@@ -175,11 +175,11 @@ PostgreSQL `newapi_portal` schema **仅允许**：
 
 | 优先级 | 项 | 说明 |
 |--------|-----|------|
-| P1 | 邀请返利 Dashboard UI | 消费已有 `/api/aff` |
+| ~~P1~~ | ~~邀请返利 Dashboard UI~~ | **已做** — 概览页与充值页兑换码卡片内嵌邀请链接 / 可划转返利 / 划转按钮，消费 `/api/aff` |
 | P2 | 支付订单历史 | 需 NewAPI 订单列表 API，或继续「仅刷新余额」 |
-| P2 | Access token 定期刷新 | 评估 `GET /api/user/token` |
+| P2 | Access token 定期刷新 | **已做**（另一 agent）— proactive refresh via `GET /api/user/token` |
 | P3 | 签到日历 / Turnstile UI | 体验增强；BFF 已支持 turnstile |
-| P3 | 清理 dead export | `adminAddQuota`、`loginUser` 移入 scripts 或标注 ops-only |
+| ~~P3~~ | ~~清理 dead export~~ | **已做** — `adminAddQuota` 移入 `admin-ops.ts`（ops-only）；`loginUser` 已移除；不再从 `index.ts` 导出 |
 
 ---
 

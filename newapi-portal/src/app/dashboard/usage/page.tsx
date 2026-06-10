@@ -5,7 +5,6 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  Calendar,
   Download,
   RefreshCw,
 } from "lucide-react";
@@ -242,24 +241,25 @@ export default function UsagePage() {
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  function queryString() {
-    const start = Math.floor(
-      new Date(`${startDate}T00:00:00`).getTime() / 1000,
-    );
-    const end = Math.floor(new Date(`${endDate}T23:59:59`).getTime() / 1000);
+  function buildQueryString(start: string, end: string) {
+    const startTs = Math.floor(new Date(`${start}T00:00:00`).getTime() / 1000);
+    const endTs = Math.floor(new Date(`${end}T23:59:59`).getTime() / 1000);
     const params = new URLSearchParams({
-      start_timestamp: String(start),
-      end_timestamp: String(end),
+      start_timestamp: String(startTs),
+      end_timestamp: String(endTs),
     });
     return params.toString();
   }
 
-  async function loadData() {
+  async function loadData(range?: { start: string; end: string }) {
     setError(null);
     setLoading(true);
 
     try {
-      const query = queryString();
+      const query = buildQueryString(
+        range?.start ?? startDate,
+        range?.end ?? endDate,
+      );
       const [usageData, logsData] = await Promise.all([
         apiFetch<UsageResponse>(`/api/usage?${query}&default_time=day`),
         // Request contract unchanged; pull a larger page so the table can
@@ -285,11 +285,6 @@ export default function UsagePage() {
     setActivePreset(key);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void loadData();
-  }
-
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
@@ -301,9 +296,8 @@ export default function UsagePage() {
 
   useEffect(() => {
     void loadData();
-    // Initial load only; date changes are applied by the form / presets.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [startDate, endDate]);
 
   const toCnySeries = useCallback(
     (series: { label: string; value: number }[]) =>
@@ -353,10 +347,7 @@ export default function UsagePage() {
               </Button>
             ))}
           </div>
-          <form
-            className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
-            onSubmit={handleSubmit}
-          >
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
             <div className="space-y-2">
               <Label htmlFor="startDate">开始日期</Label>
               <Input
@@ -383,15 +374,7 @@ export default function UsagePage() {
                 }}
               />
             </div>
-            <div className="flex items-end gap-2">
-              <Button
-                className="w-full sm:w-auto"
-                disabled={loading}
-                type="submit"
-              >
-                <Calendar className="h-4 w-4" />
-                应用日期
-              </Button>
+            <div className="flex items-end">
               <Button
                 aria-label="刷新当前范围数据"
                 title="刷新当前范围数据"
@@ -406,7 +389,7 @@ export default function UsagePage() {
                 />
               </Button>
             </div>
-          </form>
+          </div>
           <p className="text-xs text-muted-foreground">
             时间按 Asia/Shanghai（北京时间）统计。
           </p>
