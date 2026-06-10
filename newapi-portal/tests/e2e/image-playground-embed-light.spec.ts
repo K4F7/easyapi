@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const shouldExpectImagePlayground = () =>
-  process.env.EXPECT_IMAGE_PLAYGROUND === "true" ||
-  Boolean(process.env.IMAGE_PLAYGROUND_INTERNAL_URL?.trim()) ||
-  Boolean(process.env.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL?.trim());
+import { shouldExpectImagePlayground } from "./mock-api";
 
 const sessionToken = "portal-image-session-v1.payload.sig";
 const baseUrl = process.env.E2E_BASE_URL ?? "https://test.easyapi.work";

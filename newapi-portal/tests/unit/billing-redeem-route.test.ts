@@ -3,8 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   MockNewApiError,
   mockRequireUser,
-  mockDbFindUnique,
-  mockResolveAccessToken,
+  mockGetUserNewApiAuth,
   mockRedeemTopup,
 } = vi.hoisted(() => {
   class MockNewApiError extends Error {
@@ -20,8 +19,7 @@ const {
   return {
     MockNewApiError,
     mockRequireUser: vi.fn(),
-    mockDbFindUnique: vi.fn(),
-    mockResolveAccessToken: vi.fn(),
+    mockGetUserNewApiAuth: vi.fn(),
     mockRedeemTopup: vi.fn(),
   };
 });
@@ -43,15 +41,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/api/bff", () => ({
-  resolveAccessToken: (...args: unknown[]) => mockResolveAccessToken(...args),
-}));
-
-vi.mock("@/lib/db", () => ({
-  db: {
-    user: {
-      findUnique: (...args: unknown[]) => mockDbFindUnique(...args),
-    },
-  },
+  getUserNewApiAuth: (...args: unknown[]) => mockGetUserNewApiAuth(...args),
 }));
 
 vi.mock("@/lib/dev-mock", () => ({
@@ -92,12 +82,17 @@ describe("POST /api/billing/redeem", () => {
       id: "portal-user-1",
       email: "user@example.com",
     });
-    mockDbFindUnique.mockResolvedValue({
-      id: "portal-user-1",
-      newApiUserId: "99",
-      newApiAccessTokenCiphertext: "encrypted-token",
+    mockGetUserNewApiAuth.mockResolvedValue({
+      ok: true,
+      user: {
+        id: "portal-user-1",
+        newApiUserId: "99",
+      },
+      auth: {
+        userId: "99",
+        accessToken: "access-token",
+      },
     });
-    mockResolveAccessToken.mockResolvedValue("access-token");
     mockRedeemTopup.mockResolvedValue({
       data: { quota_amount: 2500 },
     });
@@ -121,17 +116,21 @@ describe("POST /api/billing/redeem", () => {
   });
 
   it("returns 409 when NewAPI binding is missing", async () => {
-    mockDbFindUnique.mockResolvedValue({
-      id: "portal-user-1",
-      newApiUserId: null,
-      newApiAccessTokenCiphertext: null,
+    mockGetUserNewApiAuth.mockResolvedValue({
+      ok: false,
+      user: {
+        id: "portal-user-1",
+        newApiUserId: null,
+      },
+      code: "NEWAPI_BINDING_PENDING",
+      message: "NewAPI 账号绑定仍在处理中",
     });
 
     const response = await POST(redeemRequest("REDEEM-CODE-1"));
     const body = await parseResponse(response);
 
     expect(response.status).toBe(409);
-    expect(body.error?.code).toBe("NEWAPI_BINDING_REQUIRED");
+    expect(body.error?.code).toBe("NEWAPI_BINDING_PENDING");
     expect(mockRedeemTopup).not.toHaveBeenCalled();
   });
 

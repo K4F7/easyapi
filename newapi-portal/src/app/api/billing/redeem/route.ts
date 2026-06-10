@@ -1,8 +1,14 @@
 import { z } from "zod";
 
-import { AuthError, jsonError, jsonOk, readJson, requireUser, zodErrorResponse } from "@/lib/auth";
-import { resolveAccessToken } from "@/lib/api/bff";
-import { db } from "@/lib/db";
+import {
+  AuthError,
+  jsonError,
+  jsonOk,
+  readJson,
+  requireUser,
+  zodErrorResponse,
+} from "@/lib/auth";
+import { getUserNewApiAuth } from "@/lib/api/bff";
 import { isDevMockEnabled, mockBillingRedeemResponse } from "@/lib/dev-mock";
 import { redeemTopup } from "@/lib/newapi";
 import { NewApiError } from "@/lib/newapi/client";
@@ -21,41 +27,25 @@ export async function POST(request: Request) {
   try {
     const publicUser = await requireUser();
     const input = await readJson(request, redeemSchema);
-    const user = await db.user.findUnique({
-      where: { id: publicUser.id },
-      select: {
-        id: true,
-        newApiUserId: true,
-        newApiAccessTokenCiphertext: true,
-      },
-    });
+    const authResult = await getUserNewApiAuth(publicUser);
 
-    if (!user?.newApiUserId || !user.newApiAccessTokenCiphertext) {
+    if (!authResult.ok) {
       return jsonError(
         {
-          code: "NEWAPI_BINDING_REQUIRED",
-          message: "NewAPI user binding is not ready for this account",
+          code: authResult.code,
+          message: authResult.message,
         },
         409,
       );
     }
 
-    const accessToken = await resolveAccessToken(user.newApiAccessTokenCiphertext);
-
-    const result = await redeemTopup(
-      {
-        userId: user.newApiUserId,
-        accessToken,
-      },
-      input.code,
-    );
+    const result = await redeemTopup(authResult.auth, input.code);
     const quotaAmount = extractQuotaAmount(result.data) ?? 0;
 
     return jsonOk({
       redeemed: true,
       duplicate: false,
       quotaAmount,
-      upstream: result.data,
     });
   } catch (error) {
     if (error instanceof AuthError) {
@@ -87,7 +77,13 @@ function extractQuotaAmount(value: unknown): number | null {
   }
 
   const queue: unknown[] = [value];
-  const quotaKeys = new Set(["quota", "quota_amount", "quotaAmount", "topup_quota", "topupQuota"]);
+  const quotaKeys = new Set([
+    "quota",
+    "quota_amount",
+    "quotaAmount",
+    "topup_quota",
+    "topupQuota",
+  ]);
 
   while (queue.length > 0) {
     const current = queue.shift();

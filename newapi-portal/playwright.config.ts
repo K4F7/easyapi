@@ -46,6 +46,7 @@ const authenticatedSpecs = [
   /.*\/billing-aff\.spec\.ts/,
 ];
 const checkinDiagnosticsSpec = /.*\/checkin-diagnostics\.spec\.ts/;
+const liveNewApiSmokeSpec = /.*\/live-newapi-smoke\.spec\.ts/;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -73,7 +74,11 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: [/.*\/auth\.setup\.ts/, checkinDiagnosticsSpec],
+      testIgnore: [
+        /.*\/auth\.setup\.ts/,
+        checkinDiagnosticsSpec,
+        process.env.E2E_LIVE_SMOKE === "1" ? undefined : liveNewApiSmokeSpec,
+      ].filter((pattern): pattern is RegExp => Boolean(pattern)),
     },
     {
       name: "checkin-diagnostics",

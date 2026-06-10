@@ -1,84 +1,22 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import {
-  E2E_IDENTIFIER,
-  E2E_PASSWORD,
   ensureDashboardSession,
   mockChatSseBody,
-  shouldSkipUnauthenticatedCiProject,
+  skipUnlessAuthenticatedPortalAvailable,
 } from "./helpers";
-
-const PLAYGROUND_CHAT_TOKEN_ID = 101;
-const PLAYGROUND_IMAGE_TOKEN_ID = 202;
-
-const CHAT_POLISH_MODELS = {
-  models: [
-    { id: "gpt-test-model" },
-    { id: "claude-3-5-sonnet-latest" },
-    { id: "o3-mini-eval" },
-  ],
-  fallback: false,
-};
-
-async function mockPlaygroundToken(page: Page) {
-  await page.route("**/api/playground/token**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        ok: true,
-        data: {
-          chatTokenId: PLAYGROUND_CHAT_TOKEN_ID,
-          imageTokenId: PLAYGROUND_IMAGE_TOKEN_ID,
-          tokenId: PLAYGROUND_CHAT_TOKEN_ID,
-        },
-      }),
-    });
-  });
-}
-
-async function mockModels(page: Page) {
-  await page.route("**/api/playground/models?*", async (route) => {
-    const url = new URL(route.request().url());
-    expect(url.searchParams.get("tokenId")).toBe(
-      String(PLAYGROUND_CHAT_TOKEN_ID),
-    );
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ ok: true, data: CHAT_POLISH_MODELS }),
-    });
-  });
-}
-
-async function openPlaygroundChat(page: Page) {
-  await mockPlaygroundToken(page);
-  await mockModels(page);
-  await page.goto("/dashboard/playground?tab=chat");
-  await expect(
-    page.getByRole("button", { name: /gpt-test-model|选择模型/ }),
-  ).toBeVisible({
-    timeout: 15_000,
-  });
-}
+import { openMockedPlaygroundChat } from "./mock-api";
 
 test.describe("Chat polish", () => {
   test.setTimeout(90_000);
 
   test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(
-      shouldSkipUnauthenticatedCiProject(testInfo.project.name),
-      "Authenticated specs run in authenticated-chromium on CI.",
-    );
-    test.skip(
-      !E2E_IDENTIFIER || !E2E_PASSWORD,
-      "Set E2E_PORTAL_IDENTIFIER and E2E_PORTAL_PASSWORD.",
-    );
+    skipUnlessAuthenticatedPortalAvailable(test, testInfo.project.name);
     await ensureDashboardSession(page);
   });
 
   test("model selector search filters model names", async ({ page }) => {
-    await openPlaygroundChat(page);
+    await openMockedPlaygroundChat(page);
 
     await page.getByRole("button", { name: "gpt-test-model" }).click();
     const search = page.getByLabel("搜索模型");
@@ -103,7 +41,7 @@ test.describe("Chat polish", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await openPlaygroundChat(page);
+    await openMockedPlaygroundChat(page);
 
     const longText =
       "mobile-overflow-check-" + "abcdefghijklmnopqrstuvwxyz".repeat(12);

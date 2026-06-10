@@ -5,33 +5,12 @@ import {
   assertNoClientErrors,
   loginThroughPortalForm,
 } from "./helpers";
+import { routePlaygroundModels, routePlaygroundToken } from "./mock-api";
 import { AUTH_ROUTES, routeLocator } from "./routes";
 
 const identifier = process.env.E2E_PORTAL_IDENTIFIER;
 const password = process.env.E2E_PORTAL_PASSWORD;
 
-async function mockPlaygroundSmokeApis(page: import("@playwright/test").Page) {
-  await page.route("**/api/playground/token**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ ok: true, data: { tokenId: 101 } }),
-    });
-  });
-  await page.route("**/api/playground/models?*", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        ok: true,
-        data: {
-          models: [{ id: "gpt-test-model" }],
-          fallback: false,
-        },
-      }),
-    });
-  });
-}
 
 test.describe("NewAPI Portal smoke", () => {
   test("health endpoint reports the portal service as OK", async ({
@@ -224,7 +203,8 @@ test.describe("NewAPI Portal smoke", () => {
         continue;
       }
       if (route.path === "/dashboard/playground") {
-        await mockPlaygroundSmokeApis(page);
+        await routePlaygroundToken(page);
+        await routePlaygroundModels(page);
       }
       await page.goto(route.path);
       await expect(routeLocator(page, route.marker)).toBeVisible();

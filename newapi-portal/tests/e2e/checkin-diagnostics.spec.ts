@@ -3,19 +3,15 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 import {
-  E2E_IDENTIFIER,
-  E2E_PASSWORD,
   ensureDashboardSession,
+  skipWithoutPortalCredentials,
 } from "./helpers";
 
 test.describe("check-in diagnostics", () => {
   test("applies check-in quota and prints correlated diagnostics", async ({
     page,
   }) => {
-    test.skip(
-      !E2E_IDENTIFIER || !E2E_PASSWORD,
-      "Set E2E_PORTAL_IDENTIFIER and E2E_PORTAL_PASSWORD.",
-    );
+    skipWithoutPortalCredentials(test);
 
     await ensureDashboardSession(page);
 

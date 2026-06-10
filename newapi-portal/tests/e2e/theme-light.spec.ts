@@ -1,65 +1,17 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  E2E_IDENTIFIER,
-  E2E_PASSWORD,
   ensureDashboardSession,
   shouldSkipAuthenticatedProject,
-  shouldSkipUnauthenticatedCiProject,
+  skipUnlessAuthenticatedPortalAvailable,
 } from "./helpers";
+import { routeDashboardSummary, routeQuotaConfig } from "./mock-api";
 
 const LIGHT_BACKGROUND_MIN_LUMINANCE = 0.85;
 
 async function mockDashboardApis(page: import("@playwright/test").Page) {
-  await page.route("**/api/dashboard/summary", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        ok: true,
-        data: {
-          quotaConfig: { quotaPerCny: 500_000, source: "default" },
-          user: {
-            email: "theme-light@example.com",
-            newApiBinding: "ready",
-          },
-          newApi: {
-            binding: "ready",
-            status: "ready",
-            self: {
-              quota: 1_000_000,
-              used_quota: 100_000,
-              request_count: 12,
-            },
-          },
-          tokens: { count: 1, status: "ready" },
-          usage: {
-            today: { totals: { quota: 10_000, count: 2, tokenUsed: 256 } },
-            week: { totals: { quota: 70_000, count: 14, tokenUsed: 1024 } },
-          },
-          logStats: { rpm: 1, tpm: 64, status: "ready" },
-          checkin: {
-            enabled: true,
-            checkedInToday: false,
-            checkedInOn: "2026-06-07",
-            status: "AVAILABLE",
-            quotaApplied: null,
-          },
-        },
-      }),
-    });
-  });
-
-  await page.route("**/api/quota/config", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        ok: true,
-        data: { config: { quotaPerCny: 500_000, source: "default" } },
-      }),
-    });
-  });
+  await routeDashboardSummary(page);
+  await routeQuotaConfig(page);
 }
 
 function rgbChannels(color: string) {
@@ -122,14 +74,7 @@ test.describe("Portal light theme", () => {
   test("keeps dashboard pages and toast light under dark OS", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      shouldSkipUnauthenticatedCiProject(testInfo.project.name),
-      "Authenticated specs run in authenticated-chromium on CI.",
-    );
-    test.skip(
-      !E2E_IDENTIFIER || !E2E_PASSWORD,
-      "Set E2E_PORTAL_IDENTIFIER and E2E_PORTAL_PASSWORD.",
-    );
+    skipUnlessAuthenticatedPortalAvailable(test, testInfo.project.name);
 
     await mockDashboardApis(page);
     await ensureDashboardSession(page);

@@ -2,7 +2,7 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 
 import {
   ensureDashboardSession,
-  shouldSkipUnauthenticatedCiProject,
+  skipUnlessAuthenticatedPortalAvailable,
 } from "./helpers";
 
 const identifier = process.env.E2E_PORTAL_IDENTIFIER;
@@ -95,14 +95,11 @@ const envMappedTiers: MockTier[] = [
 
 test.describe("Token channel tier UI", () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(
-      shouldSkipUnauthenticatedCiProject(testInfo.project.name),
-      "Authenticated specs run in authenticated-chromium on CI.",
-    );
-    test.skip(
-      !devMockEnabled && (!identifier || !password),
-      "Set PORTAL_DEV_MOCK=1 or E2E_PORTAL_IDENTIFIER/E2E_PORTAL_PASSWORD to run token channel UI tests.",
-    );
+    skipUnlessAuthenticatedPortalAvailable(test, testInfo.project.name, {
+      allowDevMock: true,
+      message:
+        "Set PORTAL_DEV_MOCK=1 or E2E_PORTAL_IDENTIFIER/E2E_PORTAL_PASSWORD to run token channel UI tests.",
+    });
 
     await page.route("**/api/quota/config", async (route) => {
       await route.fulfill({

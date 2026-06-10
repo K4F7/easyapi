@@ -3,23 +3,20 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   attachPageDiagnostics,
   assertNoClientErrors,
-  E2E_IDENTIFIER,
-  E2E_PASSWORD,
   ensureDashboardSession,
   mockChatSseBody,
-  shouldSkipUnauthenticatedCiProject,
+  skipUnlessAuthenticatedPortalAvailable,
 } from "./helpers";
+import {
+  PLAYGROUND_CHAT_TOKEN_ID,
+  PLAYGROUND_IMAGE_TOKEN_ID,
+  openMockedPlaygroundChat,
+  routeImageEmbedConfig,
+  routePlaygroundModels,
+  routePlaygroundToken,
+  shouldExpectImagePlayground,
+} from "./mock-api";
 
-const identifier = E2E_IDENTIFIER;
-const password = E2E_PASSWORD;
-
-const MODELS_A = {
-  models: [{ id: "gpt-test-model" }, { id: "claude-test-model" }],
-  fallback: false,
-};
-
-const PLAYGROUND_CHAT_TOKEN_ID = 101;
-const PLAYGROUND_IMAGE_TOKEN_ID = 202;
 
 const imagePlaygroundReadySignal = (page: Page) =>
   page
@@ -27,71 +24,6 @@ const imagePlaygroundReadySignal = (page: Page) =>
     .or(page.getByText("生图 Playground 加载中"))
     .or(page.locator('iframe[title="生图 Playground"]'));
 
-const shouldExpectImagePlayground = () =>
-  process.env.EXPECT_IMAGE_PLAYGROUND === "true" ||
-  Boolean(process.env.IMAGE_PLAYGROUND_INTERNAL_URL?.trim()) ||
-  Boolean(process.env.STAGING_IMAGE_PLAYGROUND_INTERNAL_URL?.trim());
-
-async function mockPlaygroundToken(
-  page: Page,
-  tokenIds = {
-    chatTokenId: PLAYGROUND_CHAT_TOKEN_ID,
-    imageTokenId: PLAYGROUND_IMAGE_TOKEN_ID,
-  },
-  options?: { status?: number },
-) {
-  await page.route("**/api/playground/token**", async (route) => {
-    const status = options?.status ?? 200;
-    await route.fulfill({
-      status,
-      contentType: "application/json",
-      body:
-        status === 200
-          ? JSON.stringify({
-              ok: true,
-              data: {
-                ...tokenIds,
-                tokenId: tokenIds.chatTokenId,
-              },
-            })
-          : JSON.stringify({
-              ok: false,
-              error: { message: "操练场初始化失败" },
-            }),
-    });
-  });
-}
-
-async function mockModels(page: Page) {
-  await page.route("**/api/playground/models?*", async (route) => {
-    const url = new URL(route.request().url());
-    expect(url.searchParams.get("tokenId")).toBe(
-      String(PLAYGROUND_CHAT_TOKEN_ID),
-    );
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ ok: true, data: MODELS_A }),
-    });
-  });
-}
-
-async function mockImageEmbedConfig(
-  page: Page,
-  options?: { configured?: boolean },
-) {
-  const configured = options?.configured ?? shouldExpectImagePlayground();
-  await page.route("**/api/playground/images/embed-config**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        ok: true,
-        data: { configured, theme: "light" },
-      }),
-    });
-  });
-}
 
 async function mockChatStream(page: Page, options?: { totalTokens?: number }) {
   await page.route("**/api/playground/chat", async (route) => {
@@ -119,16 +51,6 @@ async function mockChatStream(page: Page, options?: { totalTokens?: number }) {
   });
 }
 
-async function openPlaygroundChat(page: Page) {
-  await mockPlaygroundToken(page);
-  await mockModels(page);
-  await page.goto("/dashboard/playground?tab=chat");
-  await expect(
-    page.getByRole("button", { name: /gpt-test-model|选择模型/ }),
-  ).toBeVisible({
-    timeout: 15_000,
-  });
-}
 
 test.describe.configure({ mode: "serial" });
 
@@ -136,14 +58,7 @@ test.describe("Playground", () => {
   test.setTimeout(90_000);
 
   test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(
-      shouldSkipUnauthenticatedCiProject(testInfo.project.name),
-      "Authenticated specs run in authenticated-chromium on CI.",
-    );
-    test.skip(
-      !identifier || !password,
-      "Set E2E_PORTAL_IDENTIFIER and E2E_PORTAL_PASSWORD.",
-    );
+    skipUnlessAuthenticatedPortalAvailable(test, testInfo.project.name);
     await ensureDashboardSession(page);
   });
 
@@ -176,9 +91,9 @@ test.describe("Playground", () => {
   test("defaults to chat tab; tab switches update URL without full reload", async ({
     page,
   }) => {
-    await mockPlaygroundToken(page);
-    await mockModels(page);
-    await mockImageEmbedConfig(page);
+    await routePlaygroundToken(page);
+    await routePlaygroundModels(page);
+    await routeImageEmbedConfig(page);
 
     const loadEvents: number[] = [];
     page.on("load", () => loadEvents.push(1));
@@ -206,8 +121,8 @@ test.describe("Playground", () => {
   test("image tab passes portal token marker and token identifiers to the iframe", async ({
     page,
   }) => {
-    await mockPlaygroundToken(page);
-    await mockImageEmbedConfig(page);
+    await routePlaygroundToken(page);
+    await routeImageEmbedConfig(page);
     await page.goto("/dashboard/playground?tab=image");
     await expect(imagePlaygroundReadySignal(page)).toBeVisible();
     expect(page.url()).not.toMatch(/sk-|api[_-]?key=/i);
@@ -260,8 +175,8 @@ test.describe("Playground", () => {
       "IMAGE_PLAYGROUND_INTERNAL_URL is required for live embed proxy HTML.",
     );
 
-    await mockPlaygroundToken(page);
-    await mockImageEmbedConfig(page, { configured: true });
+    await routePlaygroundToken(page);
+    await routeImageEmbedConfig(page, { configured: true });
     await page.goto("/dashboard/playground?tab=image");
 
     const iframe = page.locator('iframe[title="生图 Playground"]');
@@ -287,14 +202,7 @@ test.describe("Playground", () => {
   test("playground token provisioning failure shows error", async ({
     page,
   }) => {
-    await mockPlaygroundToken(
-      page,
-      {
-        chatTokenId: PLAYGROUND_CHAT_TOKEN_ID,
-        imageTokenId: PLAYGROUND_IMAGE_TOKEN_ID,
-      },
-      { status: 500 },
-    );
+    await routePlaygroundToken(page, { status: 500 });
     await page.goto("/dashboard/playground");
     await expect(page.getByText("操练场初始化失败")).toBeVisible();
     await expect(page.getByRole("button", { name: /E2E Token/ })).toHaveCount(
@@ -305,7 +213,7 @@ test.describe("Playground", () => {
   test("chat: suggestions, pills, multiline input, stream and usage", async ({
     page,
   }) => {
-    await openPlaygroundChat(page);
+    await openMockedPlaygroundChat(page);
     await mockChatStream(page);
 
     await page
@@ -336,7 +244,7 @@ test.describe("Playground", () => {
   test("chat: stop keeps partial content; clear needs confirmation", async ({
     page,
   }) => {
-    await openPlaygroundChat(page);
+    await openMockedPlaygroundChat(page);
     await page.unroute("**/api/playground/chat");
     await page.route("**/api/playground/chat", async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 5_000));
@@ -374,7 +282,7 @@ test.describe("Playground", () => {
   });
 
   test("chat: upstream errors are sanitized", async ({ page }) => {
-    await openPlaygroundChat(page);
+    await openMockedPlaygroundChat(page);
     await page.route("**/api/playground/chat", async (route) => {
       await route.fulfill({
         status: 502,
@@ -414,8 +322,8 @@ test.describe("Playground", () => {
       browserErrors,
     );
 
-    await openPlaygroundChat(page);
-    await mockImageEmbedConfig(page);
+    await openMockedPlaygroundChat(page);
+    await routeImageEmbedConfig(page);
     await page.reload();
     await expect(
       page.getByRole("tab", { name: "对话", selected: true }),

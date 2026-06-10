@@ -1,82 +1,23 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  E2E_IDENTIFIER,
-  E2E_PASSWORD,
   ensureBillingSession,
-  shouldSkipUnauthenticatedCiProject,
+  skipUnlessAuthenticatedPortalAvailable,
 } from "./helpers";
+import { DEFAULT_BILLING_AFF, routeBillingAffApis } from "./mock-api";
 
 const devMockEnabled = process.env.PORTAL_DEV_MOCK === "1";
-
-const MOCK_AFF = {
-  aff_code: "E2ETEST01",
-  aff_count: 3,
-  aff_quota: 500_000,
-  aff_history_quota: 1_500_000,
-};
-
-async function mockBillingAffApis(page: import("@playwright/test").Page) {
-  await page.route("**/api/dashboard/summary", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        ok: true,
-        data: {
-          quotaConfig: { quotaPerCny: 500_000, source: "default" },
-          newApi: {
-            binding: "ready",
-            status: "ready",
-            self: {
-              quota: 2_000_000,
-              used_quota: 100_000,
-            },
-          },
-        },
-      }),
-    });
-  });
-
-  await page.route("**/api/quota/config", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        ok: true,
-        data: { config: { quotaPerCny: 500_000, source: "default" } },
-      }),
-    });
-  });
-
-  await page.route("**/api/aff", async (route) => {
-    if (route.request().method() === "GET") {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ ok: true, data: MOCK_AFF }),
-      });
-      return;
-    }
-
-    await route.continue();
-  });
-}
 
 test.describe("Billing affiliate section", () => {
   test("shows affiliate stats and invite link after login", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      shouldSkipUnauthenticatedCiProject(testInfo.project.name),
-      "Authenticated specs run in authenticated-chromium on CI.",
-    );
-    test.skip(
-      !devMockEnabled && (!E2E_IDENTIFIER || !E2E_PASSWORD),
-      "Set PORTAL_DEV_MOCK=1 or E2E_PORTAL_IDENTIFIER/E2E_PORTAL_PASSWORD.",
-    );
+    skipUnlessAuthenticatedPortalAvailable(test, testInfo.project.name, {
+      allowDevMock: true,
+      message: "Set PORTAL_DEV_MOCK=1 or E2E_PORTAL_IDENTIFIER/E2E_PORTAL_PASSWORD.",
+    });
 
-    await mockBillingAffApis(page);
+    await routeBillingAffApis(page);
     if (devMockEnabled) {
       await page.request.post("/api/auth/login", {
         data: { identifier: "e2e@example.com", password: "any-password" },
@@ -108,7 +49,7 @@ test.describe("Billing affiliate section", () => {
     const inviteLink = await inviteInput.inputValue();
     expect(inviteLink).toContain("/register?aff_code=");
     expect(inviteLink).toContain(
-      `aff_code=${encodeURIComponent(MOCK_AFF.aff_code)}`,
+      `aff_code=${encodeURIComponent(DEFAULT_BILLING_AFF.aff_code)}`,
     );
 
     await expect(
@@ -118,63 +59,16 @@ test.describe("Billing affiliate section", () => {
   });
 
   test("disables transfer when aff_quota is zero", async ({ page }, testInfo) => {
-    test.skip(
-      shouldSkipUnauthenticatedCiProject(testInfo.project.name),
-      "Authenticated specs run in authenticated-chromium on CI.",
-    );
-    test.skip(
-      !devMockEnabled && (!E2E_IDENTIFIER || !E2E_PASSWORD),
-      "Set PORTAL_DEV_MOCK=1 or E2E_PORTAL_IDENTIFIER/E2E_PORTAL_PASSWORD.",
-    );
-
-    await page.route("**/api/dashboard/summary", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          ok: true,
-          data: {
-            quotaConfig: { quotaPerCny: 500_000, source: "default" },
-            newApi: {
-              binding: "ready",
-              status: "ready",
-              self: { quota: 2_000_000, used_quota: 100_000 },
-            },
-          },
-        }),
-      });
+    skipUnlessAuthenticatedPortalAvailable(test, testInfo.project.name, {
+      allowDevMock: true,
+      message: "Set PORTAL_DEV_MOCK=1 or E2E_PORTAL_IDENTIFIER/E2E_PORTAL_PASSWORD.",
     });
 
-    await page.route("**/api/quota/config", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          ok: true,
-          data: { config: { quotaPerCny: 500_000, source: "default" } },
-        }),
-      });
-    });
-
-    await page.route("**/api/aff", async (route) => {
-      if (route.request().method() !== "GET") {
-        await route.continue();
-        return;
-      }
-
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          ok: true,
-          data: {
-            aff_code: "ZEROQUOTA",
-            aff_count: 0,
-            aff_quota: 0,
-            aff_history_quota: 0,
-          },
-        }),
-      });
+    await routeBillingAffApis(page, {
+      aff_code: "ZEROQUOTA",
+      aff_count: 0,
+      aff_quota: 0,
+      aff_history_quota: 0,
     });
 
     if (devMockEnabled) {

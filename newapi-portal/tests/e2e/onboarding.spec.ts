@@ -1,10 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import {
-  E2E_IDENTIFIER,
-  E2E_PASSWORD,
   ensureDashboardSession,
-  shouldSkipUnauthenticatedCiProject,
+  skipUnlessAuthenticatedPortalAvailable,
 } from "./helpers";
 
 async function mockDashboardSummary(page: Page) {
@@ -70,14 +68,9 @@ async function loginWithFreshOnboarding(
   page: Page,
   projectName: string,
 ) {
-  test.skip(
-    shouldSkipUnauthenticatedCiProject(projectName),
-    "Authenticated specs run in authenticated-chromium on CI.",
-  );
-  test.skip(
-    !E2E_IDENTIFIER || !E2E_PASSWORD,
-    "Set E2E_PORTAL_IDENTIFIER and E2E_PORTAL_PASSWORD to run onboarding E2E.",
-  );
+  skipUnlessAuthenticatedPortalAvailable(test, projectName, {
+    message: "Set E2E_PORTAL_IDENTIFIER and E2E_PORTAL_PASSWORD to run onboarding E2E.",
+  });
 
   await mockDashboardSummary(page);
   await ensureDashboardSession(page, { onboarding: "fresh" });

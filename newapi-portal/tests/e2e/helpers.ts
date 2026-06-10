@@ -25,6 +25,37 @@ export function shouldSkipAuthenticatedProject(projectName: string) {
   return projectName === AUTHENTICATED_PROJECT;
 }
 
+export function skipWithoutPortalCredentials(
+  test: { skip: (condition: boolean, description: string) => void },
+  message = "Set E2E_PORTAL_IDENTIFIER and E2E_PORTAL_PASSWORD.",
+) {
+  test.skip(!E2E_IDENTIFIER || !E2E_PASSWORD, message);
+}
+
+export function skipUnauthenticatedProject(
+  test: { skip: (condition: boolean, description: string) => void },
+  projectName: string,
+) {
+  test.skip(
+    shouldSkipUnauthenticatedCiProject(projectName),
+    "Authenticated specs run in authenticated-chromium on CI.",
+  );
+}
+
+export function skipUnlessAuthenticatedPortalAvailable(
+  test: { skip: (condition: boolean, description: string) => void },
+  projectName: string,
+  options?: { allowDevMock?: boolean; message?: string },
+) {
+  skipUnauthenticatedProject(test, projectName);
+
+  if (options?.allowDevMock && process.env.PORTAL_DEV_MOCK === "1") {
+    return;
+  }
+
+  skipWithoutPortalCredentials(test, options?.message);
+}
+
 export async function ensureDashboardSession(
   page: Page,
   { onboarding = "skipped" }: { onboarding?: OnboardingMode } = {},
