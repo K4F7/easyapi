@@ -252,7 +252,9 @@ export function attachPageDiagnostics(
   });
   page.on("console", (message) => {
     if (message.type() === "error") {
-      browserErrors.push(message.text());
+      const location = message.location();
+      const locationUrl = location.url ? ` (${location.url})` : "";
+      browserErrors.push(`${message.text()}${locationUrl}`);
     }
   });
 }

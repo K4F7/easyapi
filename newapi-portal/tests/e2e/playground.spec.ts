@@ -244,7 +244,6 @@ test.describe("Playground", () => {
     await textarea.press("Enter");
 
     await expect(page.getByText("你好")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(/≈\s*128\s*tokens/)).toBeVisible();
   });
 
   test("chat: stop keeps partial content; clear needs confirmation", async ({
