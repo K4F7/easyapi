@@ -60,6 +60,21 @@ export async function assertPlaygroundTokenAccess(
   await resolvePlaygroundKey(auth, tokenId);
 }
 
+export async function resolvePlaygroundImageKey(
+  auth: NewApiAuth,
+): Promise<string> {
+  const tokenId = await ensurePlaygroundImageTokenId(auth);
+  return resolvePlaygroundKey(auth, tokenId);
+}
+
+export async function resetPlaygroundImageTokenKey(
+  auth: NewApiAuth,
+): Promise<string> {
+  await deleteAllPlaygroundTokensByName(auth, PLAYGROUND_IMAGE_TOKEN_NAME);
+  const tokenId = await ensurePlaygroundImageTokenId(auth);
+  return resolvePlaygroundKey(auth, tokenId, { allowRecovery: false });
+}
+
 export async function resolvePlaygroundKey(
   auth: NewApiAuth,
   tokenId: number,

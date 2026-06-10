@@ -4,7 +4,8 @@ const {
   mockRequireUser,
   mockGetUserNewApiAuth,
   mockGetPortalUserForApi,
-  mockResolvePlaygroundKey,
+  mockResolvePlaygroundImageKey,
+  mockResetPlaygroundImageTokenKey,
   mockAssertPlaygroundTokenAccess,
   mockEnsurePlaygroundImageTokenId,
   mockCreateImageGeneration,
@@ -13,7 +14,8 @@ const {
   mockRequireUser: vi.fn(),
   mockGetUserNewApiAuth: vi.fn(),
   mockGetPortalUserForApi: vi.fn(),
-  mockResolvePlaygroundKey: vi.fn(),
+  mockResolvePlaygroundImageKey: vi.fn(),
+  mockResetPlaygroundImageTokenKey: vi.fn(),
   mockAssertPlaygroundTokenAccess: vi.fn(),
   mockEnsurePlaygroundImageTokenId: vi.fn(),
   mockCreateImageGeneration: vi.fn(),
@@ -109,8 +111,10 @@ vi.mock("@/lib/newapi/playground", async () => {
     PlaygroundError: actual.PlaygroundError,
     assertPlaygroundTokenAccess: (...args: unknown[]) =>
       mockAssertPlaygroundTokenAccess(...args),
-    resolvePlaygroundKey: (...args: unknown[]) =>
-      mockResolvePlaygroundKey(...args),
+    resolvePlaygroundImageKey: (...args: unknown[]) =>
+      mockResolvePlaygroundImageKey(...args),
+    resetPlaygroundImageTokenKey: (...args: unknown[]) =>
+      mockResetPlaygroundImageTokenKey(...args),
     createImageGeneration: (...args: unknown[]) =>
       mockCreateImageGeneration(...args),
   };
@@ -283,7 +287,8 @@ describe("POST playground image generations", () => {
       newApiAccessTokenCiphertext: "newapi-access-token",
       createdAt: new Date("2026-06-01T00:00:00.000Z"),
     });
-    mockResolvePlaygroundKey.mockResolvedValue("sk-real-secret");
+    mockResolvePlaygroundImageKey.mockResolvedValue("sk-real-secret");
+    mockResetPlaygroundImageTokenKey.mockResolvedValue("sk-reset-secret");
     mockCreateImageGeneration.mockResolvedValue(
       Response.json({
         created: 1,
@@ -312,10 +317,10 @@ describe("POST playground image generations", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockResolvePlaygroundKey).toHaveBeenCalledWith(
-      { userId: "99", accessToken: "newapi-access-token" },
-      303,
-    );
+    expect(mockResolvePlaygroundImageKey).toHaveBeenCalledWith({
+      userId: "99",
+      accessToken: "newapi-access-token",
+    });
     expect(mockCreateImageGeneration).toHaveBeenCalledWith(
       "https://newapi.example.test",
       "sk-real-secret",
@@ -349,10 +354,10 @@ describe("POST playground image generations", () => {
     );
     expect(mockRequireUser).not.toHaveBeenCalled();
     expect(mockGetPortalUserForApi).toHaveBeenCalledWith("portal-user-1");
-    expect(mockResolvePlaygroundKey).toHaveBeenCalledWith(
-      { userId: "99", accessToken: "newapi-access-token" },
-      303,
-    );
+    expect(mockResolvePlaygroundImageKey).toHaveBeenCalledWith({
+      userId: "99",
+      accessToken: "newapi-access-token",
+    });
     expect(mockCreateImageGeneration).toHaveBeenCalledWith(
       "https://newapi.example.test",
       "sk-real-secret",
@@ -415,7 +420,7 @@ describe("POST playground image generations", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
     expect(body.error?.code).toBe("IMAGE_SESSION_TOKEN_REQUIRED");
     expect(mockRequireUser).not.toHaveBeenCalled();
-    expect(mockResolvePlaygroundKey).not.toHaveBeenCalled();
+    expect(mockResolvePlaygroundImageKey).not.toHaveBeenCalled();
     expect(mockCreateImageGeneration).not.toHaveBeenCalled();
   });
 
@@ -434,10 +439,10 @@ describe("POST playground image generations", () => {
       created: 1,
       data: [{ url: "https://cdn.example.test/image.png" }],
     });
-    expect(mockResolvePlaygroundKey).toHaveBeenCalledWith(
-      { userId: "99", accessToken: "newapi-access-token" },
-      101,
-    );
+    expect(mockResolvePlaygroundImageKey).toHaveBeenCalledWith({
+      userId: "99",
+      accessToken: "newapi-access-token",
+    });
     expect(mockCreateImageGeneration).toHaveBeenCalledWith(
       "https://newapi.example.test",
       "sk-real-secret",
@@ -458,9 +463,8 @@ describe("POST playground image generations", () => {
       ),
     );
 
-    expect(mockResolvePlaygroundKey).toHaveBeenCalledWith(
-      expect.any(Object),
-      202,
+    expect(mockResolvePlaygroundImageKey).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "99" }),
     );
   });
 
@@ -486,10 +490,10 @@ describe("POST playground image generations", () => {
 
     expect(response.status).toBe(401);
     expect(body.error?.code).toBe("INVALID_IMAGE_SESSION_TOKEN");
-    expect(mockResolvePlaygroundKey).not.toHaveBeenCalled();
+    expect(mockResolvePlaygroundImageKey).not.toHaveBeenCalled();
   });
 
-  it("falls back to same-origin portal session auth when a signed token has drifted origins", async () => {
+  it("accepts a same-origin signed token when portalOrigin drifted behind a proxy", async () => {
     const driftedToken = signPlaygroundImageSessionToken({
       userId: "portal-user-1",
       tokenId: 303,
@@ -507,7 +511,7 @@ describe("POST playground image generations", () => {
       jsonRequest("https://portal.example.test/v1/images/generations", {
         prompt: "draw with drifted signed token",
         playgroundSessionToken: driftedToken,
-        tokenId: 303,
+        tokenId: 101,
       }),
     );
     const body = await parseResponse(response);
@@ -517,9 +521,57 @@ describe("POST playground image generations", () => {
       created: 1,
       data: [{ url: "https://cdn.example.test/image.png" }],
     });
-    expect(mockResolvePlaygroundKey).toHaveBeenCalledWith(
-      { userId: "99", accessToken: "newapi-access-token" },
-      303,
+    expect(mockRequireUser).not.toHaveBeenCalled();
+    expect(mockGetPortalUserForApi).toHaveBeenCalledWith("portal-user-1");
+    expect(mockResolvePlaygroundImageKey).toHaveBeenCalledWith({
+      userId: "99",
+      accessToken: "newapi-access-token",
+    });
+  });
+
+  it("retries image generation once after upstream rejects the managed image token", async () => {
+    mockCreateImageGeneration
+      .mockResolvedValueOnce(
+        Response.json({ error: "invalid key" }, { status: 403 }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          created: 1,
+          data: [{ url: "https://cdn.example.test/image.png" }],
+        }),
+      );
+
+    const response = await handleImageGeneration(
+      jsonRequest("https://portal.example.test/v1/images/generations", {
+        tokenId: 101,
+        prompt: "draw after token reset",
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      created: 1,
+      data: [{ url: "https://cdn.example.test/image.png" }],
+    });
+    expect(mockResolvePlaygroundImageKey).toHaveBeenCalledTimes(1);
+    expect(mockResetPlaygroundImageTokenKey).toHaveBeenCalledWith({
+      userId: "99",
+      accessToken: "newapi-access-token",
+    });
+    expect(mockCreateImageGeneration).toHaveBeenNthCalledWith(
+      1,
+      "https://newapi.example.test",
+      "sk-real-secret",
+      { prompt: "draw after token reset" },
+      expect.any(AbortSignal),
+    );
+    expect(mockCreateImageGeneration).toHaveBeenNthCalledWith(
+      2,
+      "https://newapi.example.test",
+      "sk-reset-secret",
+      { prompt: "draw after token reset" },
+      expect.any(AbortSignal),
     );
   });
 
@@ -544,7 +596,7 @@ describe("POST playground image generations", () => {
 
     expect(response.status).toBe(401);
     expect(body.error?.code).toBe("EXPIRED_IMAGE_SESSION_TOKEN");
-    expect(mockResolvePlaygroundKey).not.toHaveBeenCalled();
+    expect(mockResolvePlaygroundImageKey).not.toHaveBeenCalled();
     expect(mockCreateImageGeneration).not.toHaveBeenCalled();
   });
 
@@ -559,7 +611,7 @@ describe("POST playground image generations", () => {
     expect(response.status).toBe(400);
     expect(body.error?.code).toBe("INVALID_TOKEN_ID");
     expect(JSON.stringify(body)).not.toMatch(/sk-/);
-    expect(mockResolvePlaygroundKey).not.toHaveBeenCalled();
+    expect(mockResolvePlaygroundImageKey).not.toHaveBeenCalled();
     expect(mockCreateImageGeneration).not.toHaveBeenCalled();
   });
 
@@ -589,7 +641,7 @@ describe("POST playground image generations", () => {
   });
 
   it("sanitizes token resolution errors before returning them", async () => {
-    mockResolvePlaygroundKey.mockRejectedValue(
+    mockResolvePlaygroundImageKey.mockRejectedValue(
       new MockNewApiError("provider leaked sk-live-token in details", {
         status: 500,
         code: "upstream_secret_trace",

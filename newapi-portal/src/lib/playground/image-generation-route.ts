@@ -18,7 +18,8 @@ import { getNewApiConfig, NewApiError, type NewApiAuth } from "@/lib/newapi";
 import {
   createImageGeneration,
   PlaygroundError,
-  resolvePlaygroundKey,
+  resetPlaygroundImageTokenKey,
+  resolvePlaygroundImageKey,
 } from "@/lib/newapi/playground";
 import {
   assertImageSessionTokenOrigins,
@@ -61,11 +62,10 @@ export async function handleImageGeneration(request: Request) {
     delete upstreamBody.tokenId;
     delete upstreamBody.playgroundSessionToken;
     delete upstreamBody.apiKey;
-    const key = await resolvePlaygroundKey(context.auth, context.tokenId);
     const { baseUrl } = getNewApiConfig();
-    const upstream = await createImageGeneration(
+    const upstream = await createImageGenerationWithRecovery(
+      context.auth,
       baseUrl,
-      key,
       upstreamBody,
       request.signal,
     );
@@ -171,16 +171,18 @@ async function resolveImageRequestContext(
       return await resolveSignedImageRequestContext(request, signedToken);
     } catch (error) {
       if (
-        !(
-          error instanceof PlaygroundImageSessionTokenError &&
-          error.code === "INVALID_IMAGE_SESSION_TOKEN" &&
-          isSameOriginRequest(request)
-        )
+        error instanceof PlaygroundImageSessionTokenError &&
+        error.code === "INVALID_IMAGE_SESSION_TOKEN" &&
+        isSameOriginRequest(request)
       ) {
-        throw error;
+        // Reverse-proxy / APP_URL drift can mismatch portalOrigin while the
+        // signature and expiry are still valid for this same-origin embed.
+        return resolveSignedImageRequestContext(request, signedToken, {
+          skipOriginCheck: true,
+        });
       }
-      // Proxy/origin drift can invalidate an otherwise legitimate embed session.
-      // Fall back to the same-origin portal session path below.
+
+      throw error;
     }
   }
 
@@ -235,9 +237,12 @@ async function resolveImageRequestContext(
 async function resolveSignedImageRequestContext(
   request: Request,
   signedToken: string,
+  options?: { skipOriginCheck?: boolean },
 ): Promise<ImageRequestContext> {
   const payload = verifyPlaygroundImageSessionToken(signedToken);
-  assertImageSessionTokenOrigins(payload, request);
+  if (!options?.skipOriginCheck) {
+    assertImageSessionTokenOrigins(payload, request);
+  }
   const portalUser = await getPortalUserForApi(payload.userId);
   const authResult = await getUserNewApiAuth(
     publicUserFromPortalUser(portalUser),
@@ -261,6 +266,31 @@ async function resolveSignedImageRequestContext(
     auth: authResult.auth,
     tokenId: payload.tokenId,
   };
+}
+
+async function createImageGenerationWithRecovery(
+  auth: NewApiAuth,
+  baseUrl: string,
+  upstreamBody: Record<string, unknown>,
+  signal: AbortSignal,
+): Promise<Response> {
+  let key = await resolvePlaygroundImageKey(auth);
+  let upstream = await createImageGeneration(
+    baseUrl,
+    key,
+    upstreamBody,
+    signal,
+  );
+
+  if (
+    !upstream.ok &&
+    (upstream.status === 401 || upstream.status === 403)
+  ) {
+    key = await resetPlaygroundImageTokenKey(auth);
+    upstream = await createImageGeneration(baseUrl, key, upstreamBody, signal);
+  }
+
+  return upstream;
 }
 
 function resolveSignedSessionToken(

@@ -27,6 +27,8 @@ vi.mock("@/lib/playground/ensure-token", () => ({
 
 import {
   PlaygroundError,
+  resetPlaygroundImageTokenKey,
+  resolvePlaygroundImageKey,
   resolvePlaygroundKey,
 } from "@/lib/newapi/playground";
 import { clearPlaygroundKeyCacheForTests } from "@/lib/playground/key-cache";
@@ -190,5 +192,53 @@ describe("resolvePlaygroundKey", () => {
       "操练场-Chat",
     );
     expect(mockEnsurePlaygroundChatTokenId).toHaveBeenCalledWith(auth);
+  });
+});
+
+describe("resolvePlaygroundImageKey", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearPlaygroundKeyCacheForTests();
+  });
+
+  it("always resolves the managed image token", async () => {
+    mockEnsurePlaygroundImageTokenId.mockResolvedValue(36);
+    mockGetToken.mockResolvedValue({
+      id: 36,
+      name: "操练场-Image",
+      status: 1,
+      key: "sk-image-key",
+    });
+
+    await expect(resolvePlaygroundImageKey(auth)).resolves.toBe("sk-image-key");
+    expect(mockEnsurePlaygroundImageTokenId).toHaveBeenCalledWith(auth);
+    expect(mockGetToken).toHaveBeenCalledWith(auth, 36);
+  });
+});
+
+describe("resetPlaygroundImageTokenKey", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearPlaygroundKeyCacheForTests();
+  });
+
+  it("recreates the managed image token before resolving a fresh key", async () => {
+    mockDeleteAllPlaygroundTokensByName.mockResolvedValue(undefined);
+    mockEnsurePlaygroundImageTokenId.mockResolvedValue(404);
+    mockGetToken.mockResolvedValue({
+      id: 404,
+      name: "操练场-Image",
+      status: 1,
+      key: "sk-reset-image-key",
+    });
+
+    await expect(resetPlaygroundImageTokenKey(auth)).resolves.toBe(
+      "sk-reset-image-key",
+    );
+    expect(mockDeleteAllPlaygroundTokensByName).toHaveBeenCalledWith(
+      auth,
+      "操练场-Image",
+    );
+    expect(mockEnsurePlaygroundImageTokenId).toHaveBeenCalledWith(auth);
   });
 });
