@@ -25,9 +25,9 @@ test.describe("live NewAPI smoke", () => {
     const runId = randomUUID().slice(0, 8);
     const account = buildLiveAccount(runId);
 
-    await registerWithInternalCode(page, account);
+    const registration = await registerWithInternalCode(page, account);
     await logout(page);
-    await login(page, account);
+    await login(page, account, registration);
 
     await assertAuthenticated(page, account.email);
     await checkIn(page);
@@ -88,7 +88,15 @@ function expandTemplate(value: string, runId: string): string {
     .replaceAll("{timestamp}", timestamp);
 }
 
-async function registerWithInternalCode(page: Page, account: LiveAccount) {
+type RegistrationResult = {
+  status: number;
+  body: unknown;
+};
+
+async function registerWithInternalCode(
+  page: Page,
+  account: LiveAccount,
+): Promise<RegistrationResult> {
   await page.goto(`/register?aff_code=${encodeURIComponent(account.affCode)}`);
   await expect(
     page.getByRole("heading", { name: "免费创建账户" }),
@@ -123,6 +131,8 @@ async function registerWithInternalCode(page: Page, account: LiveAccount) {
   } else {
     await expect(page.getByRole("link", { name: "登录" })).toBeVisible();
   }
+
+  return { status: response.status(), body };
 }
 
 async function logout(page: Page) {
@@ -130,11 +140,32 @@ async function logout(page: Page) {
   await page.context().clearCookies();
 }
 
-async function login(page: Page, account: LiveAccount) {
+async function login(
+  page: Page,
+  account: LiveAccount,
+  registration: RegistrationResult,
+) {
   await page.goto("/login");
-  await page.getByLabel(/邮箱|用户名|邮箱或用户名/).fill(account.email);
+  await page.getByLabel(/邮箱|用户名|邮箱或用户名/).fill(account.username);
   await page.getByLabel("密码", { exact: true }).fill(account.password);
+
+  const loginResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/auth/login") &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: /登录|进入/ }).click();
+
+  const response = await loginResponse;
+  const body = await readResponseBody(response);
+  expect(
+    response.ok(),
+    `POST /api/auth/login failed: ${JSON.stringify({
+      login: body,
+      registration,
+    })}`,
+  ).toBe(true);
+
   await page.waitForURL(/\/dashboard(?:$|[/?#])/, { timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "概览" })).toBeVisible({
     timeout: 15_000,
