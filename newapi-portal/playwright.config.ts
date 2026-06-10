@@ -76,6 +76,7 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       testIgnore: [
         /.*\/auth\.setup\.ts/,
+        ...authenticatedSpecs,
         checkinDiagnosticsSpec,
         process.env.E2E_LIVE_SMOKE === "1" ? undefined : liveNewApiSmokeSpec,
       ].filter((pattern): pattern is RegExp => Boolean(pattern)),

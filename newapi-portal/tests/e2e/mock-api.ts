@@ -78,6 +78,33 @@ export async function routeDashboardSummary(page: Page) {
   });
 }
 
+export async function routeUsageApi(page: Page) {
+  await page.route("**/api/usage?*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [],
+        totals: { quota: 0, count: 0, tokenUsed: 0 },
+      }),
+    });
+  });
+}
+
+export async function routeLogsApi(page: Page) {
+  await page.route("**/api/logs?*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [],
+        total: 0,
+        totals: { quota: 0, count: 0, tokenUsed: 0 },
+      }),
+    });
+  });
+}
+
 export async function routeBillingAffApis(
   page: Page,
   aff = DEFAULT_BILLING_AFF,

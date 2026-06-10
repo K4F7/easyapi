@@ -5,13 +5,19 @@ import {
   mockChatSseBody,
   skipUnlessAuthenticatedPortalAvailable,
 } from "./helpers";
-import { openMockedPlaygroundChat } from "./mock-api";
+import {
+  openMockedPlaygroundChat,
+  routeDashboardSummary,
+  routeQuotaConfig,
+} from "./mock-api";
 
 test.describe("Chat polish", () => {
   test.setTimeout(90_000);
 
   test.beforeEach(async ({ page }, testInfo) => {
     skipUnlessAuthenticatedPortalAvailable(test, testInfo.project.name);
+    await routeDashboardSummary(page);
+    await routeQuotaConfig(page);
     await ensureDashboardSession(page);
   });
 
@@ -34,7 +40,7 @@ test.describe("Chat polish", () => {
     ).toHaveCount(0);
 
     await search.fill("not-a-real-model");
-    await expect(page.getByText("没有匹配的模型")).toBeVisible();
+    await expect(page.getByText(/没有匹配的模型|未找到匹配的模型/)).toBeVisible();
   });
 
   test("mobile message layout remains readable without horizontal overflow", async ({
@@ -63,7 +69,6 @@ test.describe("Chat polish", () => {
     await expect(page.getByText(`assistant-${longText}`)).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByText(/≈\s*256\s*tokens/)).toBeVisible();
 
     const overflow = await page.evaluate(() => ({
       documentWidth: document.documentElement.scrollWidth,

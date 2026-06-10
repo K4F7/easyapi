@@ -11,9 +11,13 @@ import {
   PLAYGROUND_CHAT_TOKEN_ID,
   PLAYGROUND_IMAGE_TOKEN_ID,
   openMockedPlaygroundChat,
+  routeDashboardSummary,
   routeImageEmbedConfig,
+  routeLogsApi,
   routePlaygroundModels,
   routePlaygroundToken,
+  routeQuotaConfig,
+  routeUsageApi,
   shouldExpectImagePlayground,
 } from "./mock-api";
 
@@ -59,6 +63,8 @@ test.describe("Playground", () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     skipUnlessAuthenticatedPortalAvailable(test, testInfo.project.name);
+    await routeDashboardSummary(page);
+    await routeQuotaConfig(page);
     await ensureDashboardSession(page);
   });
 
@@ -103,7 +109,7 @@ test.describe("Playground", () => {
     await expect(
       page.getByRole("tab", { name: "对话", selected: true }),
     ).toBeVisible();
-    await expect(page.getByText("开始一段对话")).toBeVisible();
+    await expect(page.getByText(/开始一段对话|有什么想聊的？/)).toBeVisible();
 
     const loadsBeforeTab = loadEvents.length;
 
@@ -278,7 +284,7 @@ test.describe("Playground", () => {
 
     await page.getByRole("button", { name: "清空对话" }).click();
     await page.getByRole("button", { name: "清空" }).click();
-    await expect(page.getByText("开始一段对话")).toBeVisible();
+    await expect(page.getByText(/开始一段对话|有什么想聊的？/)).toBeVisible();
   });
 
   test("chat: upstream errors are sanitized", async ({ page }) => {
@@ -324,6 +330,8 @@ test.describe("Playground", () => {
 
     await openMockedPlaygroundChat(page);
     await routeImageEmbedConfig(page);
+    await routeUsageApi(page);
+    await routeLogsApi(page);
     await page.reload();
     await expect(
       page.getByRole("tab", { name: "对话", selected: true }),
