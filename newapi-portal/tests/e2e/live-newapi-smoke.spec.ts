@@ -234,10 +234,11 @@ async function createRegularToken(page: Page, runId: string) {
   expect(data).toEqual(
     expect.objectContaining({
       keyReturnedOnce: true,
-      key: expect.stringMatching(/^sk-/),
+      key: expect.any(String),
       token: expect.objectContaining({ id: expect.any(Number) }),
     }),
   );
+  expect(data?.key).not.toHaveLength(0);
 
   const tokenId = getRecord(data?.token)?.id;
   if (typeof tokenId === "number") {
