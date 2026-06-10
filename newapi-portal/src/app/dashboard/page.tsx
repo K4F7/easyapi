@@ -17,8 +17,6 @@ import {
 import { toast } from "sonner";
 
 import { ErrorState } from "@/components/page-state";
-import { RedeemAffCard } from "@/components/dashboard/redeem-aff-card";
-import { StatItem } from "@/components/dashboard/stat-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -386,32 +384,6 @@ export default function DashboardPage() {
           }
           hint="今日 token / 请求速率"
           icon={Activity}
-        />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="border-border/60 bg-white/80 shadow-soft backdrop-blur">
-          <CardHeader className="pb-3">
-            <CardTitle>余额充值</CardTitle>
-            <CardDescription>在线支付为账户充值。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
-              <StatItem label="当前可用" value={formatBalance(remaining)} />
-            </div>
-            <Button asChild className="w-full">
-              <Link href="/dashboard/billing">
-                <Coins className="mr-2 h-4 w-4" />
-                前往充值页
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <RedeemAffCard
-          onBalanceChange={loadSummary}
-          redeemInputId="dashboardRedeemCode"
-          inviteLinkInputId="dashboardInviteLink"
         />
       </div>
 
