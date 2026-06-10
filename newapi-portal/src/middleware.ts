@@ -121,6 +121,10 @@ export function middleware(request: NextRequest) {
   const hasSession = request.cookies.has(SESSION_COOKIE);
 
   if (isImagePlaygroundEmbedPath(pathname)) {
+    if (canUseSignedEmbedReferer(request)) {
+      return NextResponse.next();
+    }
+
     const hasEmbedToken = Boolean(
       extractImagePlaygroundSessionToken(request.nextUrl.searchParams),
     );
