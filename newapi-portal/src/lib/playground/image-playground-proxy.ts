@@ -152,7 +152,7 @@ function buildEmbedConfigBootstrapScript(): string {
   const serializedKeys = JSON.stringify(paramKeys);
   const storageKey = IMAGE_PLAYGROUND_CONFIG_STORAGE_KEY;
 
-  return `<script id="ezapi-embed-config-bootstrap">(function(){try{var KEY=${JSON.stringify(storageKey)};var KEYS=${serializedKeys};var params=new URLSearchParams(location.search);var config={};var hasConfig=false;KEYS.forEach(function(k){var v=params.get(k);if(v){config[k]=v;hasConfig=true;}});if(!hasConfig)return;sessionStorage.setItem(KEY,JSON.stringify(config));KEYS.forEach(function(k){params.delete(k);});var qs=params.toString();history.replaceState(null,"",location.pathname+(qs?"?"+qs:"")+location.hash);}catch(e){}})();</script>`;
+  return `<script id="ezapi-embed-config-bootstrap">(function(){try{var KEY=${JSON.stringify(storageKey)};var KEYS=${serializedKeys};var params=new URLSearchParams(location.search);var config={};var hasConfig=false;KEYS.forEach(function(k){var v=params.get(k);if(v){config[k]=v;hasConfig=true;}});if(!hasConfig)return;sessionStorage.setItem(KEY,JSON.stringify(config));}catch(e){}})();</script>`;
 }
 
 function sanitizeProxyRequestHeaders(headers: Headers): Headers {

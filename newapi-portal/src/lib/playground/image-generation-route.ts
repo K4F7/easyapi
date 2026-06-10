@@ -39,6 +39,7 @@ const imageGenerationSchema = z
       )
       .optional(),
     playgroundSessionToken: z.string().trim().min(1).optional(),
+    apiKey: z.string().trim().min(1).optional(),
     prompt: z.string().trim().min(1).max(32_000),
   })
   .passthrough();
@@ -59,6 +60,7 @@ export async function handleImageGeneration(request: Request) {
     const upstreamBody = { ...parsedBody };
     delete upstreamBody.tokenId;
     delete upstreamBody.playgroundSessionToken;
+    delete upstreamBody.apiKey;
     const key = await resolvePlaygroundKey(context.auth, context.tokenId);
     const { baseUrl } = getNewApiConfig();
     const upstream = await createImageGeneration(
@@ -269,6 +271,10 @@ function resolveSignedSessionToken(
     return body.playgroundSessionToken;
   }
 
+  if (isSignedImageSessionToken(body.apiKey)) {
+    return body.apiKey;
+  }
+
   const url = new URL(request.url);
   const queryToken =
     url.searchParams.get(SIGNED_TOKEN_QUERY_PARAM) ??
@@ -278,8 +284,17 @@ function resolveSignedSessionToken(
     return queryToken;
   }
 
+  const queryApiKey = url.searchParams.get("apiKey");
+  if (isSignedImageSessionToken(queryApiKey)) {
+    return queryApiKey;
+  }
+
   const bearer = parseAuthorizationBearer(request.headers.get("authorization"));
   return bearer?.startsWith(imageSessionTokenPrefix) ? bearer : null;
+}
+
+function isSignedImageSessionToken(value: string | null | undefined): value is string {
+  return Boolean(value?.startsWith(imageSessionTokenPrefix));
 }
 
 function isSameOriginRequest(request: Request): boolean {

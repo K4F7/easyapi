@@ -128,14 +128,15 @@ describe("rewritePlaygroundEmbedHtml", () => {
     expect(rewritten).not.toContain("apiKey=portal-image-session-v1.payload.sig");
   });
 
-  it("injects a bootstrap script that persists embed config once", () => {
+  it("injects a bootstrap script that persists embed config without stripping URL params", () => {
     const html = "<html><head></head><body></body></html>";
     const rewritten = rewritePlaygroundEmbedHtml(html);
 
     expect(rewritten).toContain('id="ezapi-embed-config-bootstrap"');
     expect(rewritten).toContain(IMAGE_PLAYGROUND_CONFIG_STORAGE_KEY);
-    expect(rewritten).toContain("history.replaceState");
     expect(rewritten).toContain("sessionStorage.setItem");
+    expect(rewritten).not.toContain("history.replaceState");
+    expect(rewritten).not.toContain("params.delete");
   });
 
   it("does not append session tokens to relative asset references", () => {

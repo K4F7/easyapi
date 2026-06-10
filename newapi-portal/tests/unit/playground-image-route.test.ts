@@ -292,6 +292,38 @@ describe("POST playground image generations", () => {
     );
   });
 
+  it("accepts a signed image session token via apiKey body field", async () => {
+    const sessionToken = signPlaygroundImageSessionToken({
+      userId: "portal-user-1",
+      tokenId: 303,
+      portalOrigin: "https://portal.example.test",
+      playgroundOrigin: "https://portal.example.test",
+    });
+
+    const response = await handleImageGeneration(
+      jsonRequest(
+        "https://portal.example.test/v1/images/generations",
+        {
+          prompt: "draw with apiKey session token",
+          apiKey: sessionToken,
+        },
+        { Origin: "https://portal.example.test" },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockResolvePlaygroundKey).toHaveBeenCalledWith(
+      { userId: "99", accessToken: "newapi-access-token" },
+      303,
+    );
+    expect(mockCreateImageGeneration).toHaveBeenCalledWith(
+      "https://newapi.example.test",
+      "sk-real-secret",
+      { prompt: "draw with apiKey session token" },
+      expect.any(AbortSignal),
+    );
+  });
+
   it("accepts a same-origin signed image session token without requiring iframe cookies", async () => {
     const sessionToken = signPlaygroundImageSessionToken({
       userId: "portal-user-1",
