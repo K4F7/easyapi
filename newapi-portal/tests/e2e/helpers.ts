@@ -257,14 +257,21 @@ export function attachPageDiagnostics(
   });
 }
 
+export type IgnoredBrowserError = (message: string) => boolean;
+
 export async function assertNoClientErrors(
   failedResponses: string[],
   notFoundResponses: string[],
   browserErrors: string[],
+  options: { ignoredBrowserError?: IgnoredBrowserError } = {},
 ) {
+  const unexpectedBrowserErrors = options.ignoredBrowserError
+    ? browserErrors.filter((message) => !options.ignoredBrowserError?.(message))
+    : browserErrors;
+
   expect(failedResponses, "No 5xx responses expected").toEqual([]);
   expect(notFoundResponses, "No unexpected 404 responses expected").toEqual([]);
-  expect(browserErrors, "No browser errors expected").toEqual([]);
+  expect(unexpectedBrowserErrors, "No browser errors expected").toEqual([]);
 }
 
 export function mockChatSseBody({

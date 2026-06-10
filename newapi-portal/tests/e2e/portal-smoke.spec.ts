@@ -219,6 +219,12 @@ test.describe("NewAPI Portal smoke", () => {
       failedResponses,
       notFoundResponses,
       browserErrors,
+      {
+        ignoredBrowserError: (message) =>
+          message.includes("/api/auth/me") &&
+          message.includes("401") &&
+          message.includes("Failed to load resource"),
+      },
     );
   });
 });

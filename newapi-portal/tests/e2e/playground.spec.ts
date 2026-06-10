@@ -223,13 +223,13 @@ test.describe("Playground", () => {
     await mockChatStream(page);
 
     await page
-      .getByRole("button", { name: "解释一下 RESTful API 设计原则" })
+      .getByRole("button", { name: "如何设计一套合理的 API 限流策略？" })
       .click();
     const textarea = page.locator("textarea").first();
-    await expect(textarea).toHaveValue("解释一下 RESTful API 设计原则");
+    await expect(textarea).toHaveValue("如何设计一套合理的 API 限流策略？");
 
     await page.getByRole("button", { name: "写代码" }).click();
-    await expect(textarea).toHaveValue(/帮我写一段代码/);
+    await expect(textarea).toHaveValue("帮我写：");
 
     await textarea.fill("a\nb\nc");
     const h1 = await textarea.evaluate((el) => el.scrollHeight);
