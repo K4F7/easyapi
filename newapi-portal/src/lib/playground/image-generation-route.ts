@@ -165,31 +165,21 @@ async function resolveImageRequestContext(
   const signedToken = resolveSignedSessionToken(request, body);
 
   if (signedToken) {
-    const payload = verifyPlaygroundImageSessionToken(signedToken);
-    assertImageSessionTokenOrigins(payload, request);
-    const portalUser = await getPortalUserForApi(payload.userId);
-    const authResult = await getUserNewApiAuth(
-      publicUserFromPortalUser(portalUser),
-    );
-
-    if (!authResult.ok) {
-      return {
-        ok: false,
-        response: jsonError(
-          {
-            code: authResult.code,
-            message: authResult.message,
-          },
-          409,
-        ),
-      };
+    try {
+      return await resolveSignedImageRequestContext(request, signedToken);
+    } catch (error) {
+      if (
+        !(
+          error instanceof PlaygroundImageSessionTokenError &&
+          error.code === "INVALID_IMAGE_SESSION_TOKEN" &&
+          isSameOriginRequest(request)
+        )
+      ) {
+        throw error;
+      }
+      // Proxy/origin drift can invalidate an otherwise legitimate embed session.
+      // Fall back to the same-origin portal session path below.
     }
-
-    return {
-      ok: true,
-      auth: authResult.auth,
-      tokenId: payload.tokenId,
-    };
   }
 
   if (!isSameOriginRequest(request)) {
@@ -237,6 +227,37 @@ async function resolveImageRequestContext(
     ok: true,
     auth: authResult.auth,
     tokenId,
+  };
+}
+
+async function resolveSignedImageRequestContext(
+  request: Request,
+  signedToken: string,
+): Promise<ImageRequestContext> {
+  const payload = verifyPlaygroundImageSessionToken(signedToken);
+  assertImageSessionTokenOrigins(payload, request);
+  const portalUser = await getPortalUserForApi(payload.userId);
+  const authResult = await getUserNewApiAuth(
+    publicUserFromPortalUser(portalUser),
+  );
+
+  if (!authResult.ok) {
+    return {
+      ok: false,
+      response: jsonError(
+        {
+          code: authResult.code,
+          message: authResult.message,
+        },
+        409,
+      ),
+    };
+  }
+
+  return {
+    ok: true,
+    auth: authResult.auth,
+    tokenId: payload.tokenId,
   };
 }
 

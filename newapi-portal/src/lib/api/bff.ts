@@ -239,13 +239,4 @@ export function maskSecret(value: string | null | undefined): string | null {
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }
 
-export function getRequestBaseUrl(request: Request): string {
-  const forwardedProto = request.headers.get("x-forwarded-proto");
-  const forwardedHost = request.headers.get("x-forwarded-host");
-
-  if (forwardedHost) {
-    return `${forwardedProto ?? "https"}://${forwardedHost}`;
-  }
-
-  return new URL(request.url).origin;
-}
+export { getRequestBaseUrl } from "@/lib/http/request-base-url";

@@ -93,6 +93,10 @@ export function ImagePanel({
           "imageApiUrl",
           `${origin}/api/playground/images/generations`,
         );
+        if (tokenId) {
+          baseUrl.searchParams.set("tokenId", String(tokenId));
+          baseUrl.searchParams.set("portalTokenId", String(tokenId));
+        }
         baseUrl.searchParams.set("theme", "light");
         if (model) {
           baseUrl.searchParams.set("model", model);

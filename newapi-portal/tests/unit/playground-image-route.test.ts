@@ -457,6 +457,40 @@ describe("POST playground image generations", () => {
     expect(mockResolvePlaygroundKey).not.toHaveBeenCalled();
   });
 
+  it("falls back to same-origin portal session auth when a signed token has drifted origins", async () => {
+    const driftedToken = signPlaygroundImageSessionToken({
+      userId: "portal-user-1",
+      tokenId: 303,
+      portalOrigin: "http://127.0.0.1:3000",
+      playgroundOrigin: "http://127.0.0.1:3000",
+    });
+    mockCreateImageGeneration.mockResolvedValue(
+      Response.json(
+        { created: 1, data: [{ url: "https://cdn.example.test/image.png" }] },
+        { status: 200 },
+      ),
+    );
+
+    const response = await handleImageGeneration(
+      jsonRequest("https://portal.example.test/v1/images/generations", {
+        prompt: "draw with drifted signed token",
+        playgroundSessionToken: driftedToken,
+        tokenId: 303,
+      }),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      created: 1,
+      data: [{ url: "https://cdn.example.test/image.png" }],
+    });
+    expect(mockResolvePlaygroundKey).toHaveBeenCalledWith(
+      { userId: "99", accessToken: "newapi-access-token" },
+      303,
+    );
+  });
+
   it("rejects an expired signed image session token", async () => {
     const expiredToken = signPlaygroundImageSessionToken(
       {

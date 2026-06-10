@@ -1,9 +1,11 @@
 import "server-only";
 
+import { getRequestBaseUrl } from "@/lib/http/request-base-url";
+
 export type ImageEmbedTarget = "proxy";
 
 export function getPortalOrigin(request: Request): string {
-  return new URL(request.url).origin;
+  return getRequestBaseUrl(request);
 }
 
 export function resolveImageEmbedTarget(

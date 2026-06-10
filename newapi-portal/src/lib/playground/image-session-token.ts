@@ -4,6 +4,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { z } from "zod";
 
+import { getRequestBaseUrl } from "@/lib/http/request-base-url";
 import { getAuthSecret } from "@/lib/env";
 
 export const imageSessionTokenPrefix = "portal-image-session-v1.";
@@ -107,7 +108,7 @@ export function assertImageSessionTokenOrigins(
   payload: PlaygroundImageSessionPayload,
   request: Request,
 ): void {
-  const portalOrigin = new URL(request.url).origin;
+  const portalOrigin = getRequestBaseUrl(request);
 
   if (payload.portalOrigin !== portalOrigin) {
     throw new PlaygroundImageSessionTokenError(
