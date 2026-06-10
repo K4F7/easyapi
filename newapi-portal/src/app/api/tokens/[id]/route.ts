@@ -13,6 +13,8 @@ import {
   isManagedPlaygroundToken,
   isManagedPlaygroundTokenName,
 } from "@/lib/playground/token-identity";
+import { cnyToQuota } from "@/lib/quota/display-config.shared";
+import { getQuotaDisplayConfig } from "@/lib/quota/get-display-config";
 import { maskToken } from "@/lib/quota/usage";
 
 export const runtime = "nodejs";
@@ -30,6 +32,7 @@ const updateTokenSchema = z
       .optional(),
     expired_time: z.number().int().nonnegative().optional(),
     remain_quota: z.number().int().nonnegative().optional(),
+    remain_quota_cny: z.number().nonnegative().optional(),
     unlimited_quota: z.boolean().optional(),
     model_limits_enabled: z.boolean().optional(),
     model_limits: z.string().max(4000).optional(),
@@ -70,7 +73,11 @@ export async function PUT(request: Request, context: RouteContext) {
       );
     }
 
-    const input = await readJson(request, updateTokenSchema);
+    const quotaConfig = await getQuotaDisplayConfig();
+    const { remain_quota_cny: remainQuotaCny, ...input } = await readJson(
+      request,
+      updateTokenSchema,
+    );
     const targetToken = await getToken(authResult.auth, numericId);
 
     if (isManagedPlaygroundToken(targetToken)) {
@@ -83,9 +90,20 @@ export async function PUT(request: Request, context: RouteContext) {
       );
     }
 
+    const usedQuota = targetToken.used_quota ?? 0;
     const patch = {
       id: numericId,
       ...input,
+      ...(input.remain_quota !== undefined
+        ? { remain_quota: input.remain_quota }
+        : remainQuotaCny !== undefined
+          ? {
+              remain_quota: Math.max(
+                0,
+                cnyToQuota(remainQuotaCny, quotaConfig) - usedQuota,
+              ),
+            }
+          : {}),
     };
     const updated =
       (await updateToken(authResult.auth, patch)) ??

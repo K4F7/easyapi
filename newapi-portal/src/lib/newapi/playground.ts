@@ -20,15 +20,7 @@ import {
   isManagedPlaygroundToken,
   PLAYGROUND_IMAGE_TOKEN_NAME,
 } from "@/lib/playground/token-identity";
-
-function isMaskedTokenKey(key: string): boolean {
-  if (key.includes("...") || key.includes("*")) {
-    return true;
-  }
-
-  const maskedCharCount = (key.match(/[*•·]/g) ?? []).length;
-  return maskedCharCount >= 4 && maskedCharCount / key.length >= 0.3;
-}
+import { isMaskedTokenKey } from "@/lib/quota/usage";
 
 function isInlinePlaygroundKey(key: string): boolean {
   return key.length > 0 && !isMaskedTokenKey(key);

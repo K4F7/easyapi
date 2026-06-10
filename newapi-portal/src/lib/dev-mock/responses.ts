@@ -203,10 +203,24 @@ export async function mockTokenUpdateResponse(request: Request, id: string) {
     return groupResult.response;
   }
 
+  const remainQuotaCny = numberOrUndefined(body.remain_quota_cny);
+  let remainQuota = numberOrUndefined(body.remain_quota);
+
+  if (remainQuota === undefined && remainQuotaCny !== undefined) {
+    const existing = getMockState().tokens.find(
+      (token) => token.id === Number(id),
+    );
+    const usedQuota = existing?.used_quota ?? 0;
+    remainQuota = Math.max(
+      0,
+      cnyToQuota(remainQuotaCny, mockQuotaConfig) - usedQuota,
+    );
+  }
+
   const update = {
     name: typeof body.name === "string" && body.name.trim() ? body.name.trim() : undefined,
     expired_time: numberOrUndefined(body.expired_time),
-    remain_quota: numberOrUndefined(body.remain_quota),
+    remain_quota: remainQuota,
     unlimited_quota: typeof body.unlimited_quota === "boolean" ? body.unlimited_quota : undefined,
     model_limits_enabled:
       typeof body.model_limits_enabled === "boolean" ? body.model_limits_enabled : undefined,
@@ -251,6 +265,23 @@ export async function mockTokenUpdateResponse(request: Request, id: string) {
 export function mockTokenDeleteResponse(id: string) {
   deleteMockToken(id);
   return jsonOk({ deleted: true });
+}
+
+export function mockTokenRevealKeyResponse(id: string) {
+  const numericId = Number(id);
+  const token = getMockState().tokens.find((item) => item.id === numericId);
+
+  if (!token?.key) {
+    return jsonError(
+      {
+        code: "TOKEN_NOT_FOUND",
+        message: "令牌不存在或已被删除",
+      },
+      404,
+    );
+  }
+
+  return jsonOk({ key: token.key });
 }
 
 export function mockChannelTiersResponse() {

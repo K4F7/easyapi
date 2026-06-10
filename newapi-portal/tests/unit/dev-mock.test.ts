@@ -159,6 +159,47 @@ describe("dev mock API routes", () => {
     expect(meBody.data?.user).toMatchObject({ id: "dev-mock-user" });
   });
 
+  it("reveals the full token key while list responses stay masked", async () => {
+    const { GET, POST } = await import("@/app/api/tokens/route");
+    const { POST: revealKey } = await import("@/app/api/tokens/[id]/key/route");
+
+    const createResponse = await POST(
+      new Request("http://localhost/api/tokens", {
+        method: "POST",
+        body: JSON.stringify({ name: "Reveal Token" }),
+      }),
+    );
+    const createBody = await readJson(createResponse);
+    const fullKey = createBody.data?.key as string;
+    const token = createBody.data?.token as { id: number; key: string };
+
+    expect(createResponse.status).toBe(201);
+    expect(fullKey).toMatch(/^sk-dev-mock-/);
+    expect(token.key).not.toBe(fullKey);
+    expect(token.key).toContain("**********");
+
+    const revealResponse = await revealKey(
+      new Request(`http://localhost/api/tokens/${token.id}/key`, {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ id: String(token.id) }) },
+    );
+    const revealBody = await readJson(revealResponse);
+
+    expect(revealResponse.status).toBe(200);
+    expect(revealBody.data).toEqual({ key: fullKey });
+
+    const listBody = await readJson(
+      await GET(new Request("http://localhost/api/tokens?p=1&size=20")),
+    );
+    const listed = (listBody.data?.items as Array<{ id: number; key: string }>).find(
+      (item) => item.id === token.id,
+    );
+
+    expect(listed?.key).toBe(token.key);
+    expect(listed?.key).not.toBe(fullKey);
+  });
+
   it("keeps created and deleted tokens visible in the in-process store", async () => {
     const { GET, POST } = await import("@/app/api/tokens/route");
     const { DELETE } = await import("@/app/api/tokens/[id]/route");
@@ -425,7 +466,7 @@ describe("dev mock API routes", () => {
     expect(token.remain_quota).toBe(142_857);
   });
 
-  it("ignores remain_quota_cny on token update to match the production PUT contract", async () => {
+  it("converts token remain_quota_cny on update", async () => {
     const { POST } = await import("@/app/api/tokens/route");
     const { PUT } = await import("@/app/api/tokens/[id]/route");
 
@@ -448,7 +489,7 @@ describe("dev mock API routes", () => {
       new Request(`http://localhost/api/tokens/${created.id}`, {
         method: "PUT",
         body: JSON.stringify({
-          name: "Renamed Mock Update Contract Token",
+          unlimited_quota: false,
           remain_quota_cny: 2,
         }),
       }),
@@ -456,15 +497,15 @@ describe("dev mock API routes", () => {
     );
     const updateBody = await readJson(updateResponse);
     const updated = updateBody.data?.token as {
-      name: string;
       remain_quota: number;
+      unlimited_quota: boolean;
     };
 
     expect(createResponse.status).toBe(201);
     expect(updateResponse.status).toBe(200);
     expect(updated).toMatchObject({
-      name: "Renamed Mock Update Contract Token",
-      remain_quota: 321,
+      remain_quota: 142_857,
+      unlimited_quota: false,
     });
   });
 

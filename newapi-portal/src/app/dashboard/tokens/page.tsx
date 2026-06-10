@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -93,6 +93,10 @@ type UpdateTokenResponse = {
   token: TokenItem;
 };
 
+type RevealTokenKeyResponse = {
+  key: string;
+};
+
 type TokenStatus = {
   label: string;
   variant: NonNullable<BadgeProps["variant"]>;
@@ -173,6 +177,9 @@ export default function TokensPage() {
   const [updatingGroupIds, setUpdatingGroupIds] = useState<Set<number>>(
     () => new Set(),
   );
+  const [updatingQuotaIds, setUpdatingQuotaIds] = useState<Set<number>>(
+    () => new Set(),
+  );
 
   const [query, setQuery] = useState("");
 
@@ -180,6 +187,20 @@ export default function TokensPage() {
   const [revealOpen, setRevealOpen] = useState(false);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<TokenItem | null>(null);
+  const tokenKeyCacheRef = useRef(new Map<number, string>());
+
+  const revealTokenKeyForCopy = useCallback(async (tokenId: number) => {
+    const cached = tokenKeyCacheRef.current.get(tokenId);
+    if (cached) {
+      return cached;
+    }
+
+    const result = await apiPost<RevealTokenKeyResponse>(
+      `/api/tokens/${encodeURIComponent(String(tokenId))}/key`,
+    );
+    tokenKeyCacheRef.current.set(tokenId, result.key);
+    return result.key;
+  }, []);
 
   const loadTokens = useCallback(async () => {
     setError(null);
@@ -286,6 +307,46 @@ export default function TokensPage() {
       );
     } finally {
       setUpdatingGroupIds((current) => {
+        const next = new Set(current);
+        next.delete(token.id);
+        return next;
+      });
+    }
+  }
+
+  async function handleQuotaChange(
+    token: TokenItem,
+    patch:
+      | { unlimited_quota: true }
+      | { unlimited_quota: false; remain_quota_cny: number },
+  ) {
+    if (isPlaygroundToken(token)) {
+      return;
+    }
+
+    setUpdatingQuotaIds((current) => {
+      const next = new Set(current);
+      next.add(token.id);
+      return next;
+    });
+
+    try {
+      const result = await apiPut<UpdateTokenResponse>(
+        `/api/tokens/${encodeURIComponent(String(token.id))}`,
+        patch,
+      );
+      setTokens((current) =>
+        current.map((item) =>
+          item.id === token.id ? { ...item, ...result.token } : item,
+        ),
+      );
+      toast.success("令牌额度已更新");
+    } catch (updateError) {
+      toast.error(
+        updateError instanceof Error ? updateError.message : "令牌额度更新失败",
+      );
+    } finally {
+      setUpdatingQuotaIds((current) => {
         const next = new Set(current);
         next.delete(token.id);
         return next;
@@ -423,9 +484,12 @@ export default function TokensPage() {
                           channelTiers={channelTiers}
                           channelTiersReady={channelTiersReady}
                           updatingGroup={updatingGroupIds.has(token.id)}
+                          updatingQuota={updatingQuotaIds.has(token.id)}
+                          onRevealKeyForCopy={() => revealTokenKeyForCopy(token.id)}
                           onChannelChange={(group) =>
                             handleChannelChange(token, group)
                           }
+                          onQuotaChange={(patch) => handleQuotaChange(token, patch)}
                           onDelete={() => setPendingDelete(token)}
                         />
                       ))}
@@ -481,7 +545,10 @@ function TokenRow({
   channelTiers,
   channelTiersReady,
   updatingGroup,
+  updatingQuota,
+  onRevealKeyForCopy,
   onChannelChange,
+  onQuotaChange,
   onDelete,
 }: {
   token: TokenItem;
@@ -489,7 +556,14 @@ function TokenRow({
   channelTiers: ChannelTier[];
   channelTiersReady: boolean;
   updatingGroup: boolean;
+  updatingQuota: boolean;
+  onRevealKeyForCopy: () => Promise<string>;
   onChannelChange: (group: string) => void;
+  onQuotaChange: (
+    patch:
+      | { unlimited_quota: true }
+      | { unlimited_quota: false; remain_quota_cny: number },
+  ) => void;
   onDelete: () => void;
 }) {
   const { formatBalance } = useQuotaFormat();
@@ -515,11 +589,11 @@ function TokenRow({
           </span>
           <div className="flex items-center gap-2">
             <code className="rounded-md border border-gray-200 dark:border-border/50 bg-gray-50 dark:bg-muted/50 px-1.5 py-0.5 font-mono text-[11px] font-bold text-muted-foreground">
-              {token.key ?? "sk-••••"}
+              {token.key ?? "sk-••••**********••••"}
             </code>
             {token.key && (
               <CopyButton
-                value={token.key}
+                getValue={onRevealKeyForCopy}
                 variant="ghost"
                 size="icon"
                 aria-label="复制密钥"
@@ -561,42 +635,48 @@ function TokenRow({
         />
       </TableCell>
       <TableCell className="text-right">
-        {unlimited ? (
-          <span className="inline-flex items-center justify-end gap-1 text-sm font-medium text-muted-foreground">
-            <InfinityIcon className="h-3.5 w-3.5" />
-            不限
-          </span>
-        ) : (
-          <div className="ml-auto w-32 space-y-1.5">
-            <div className="flex justify-between gap-2 font-mono text-[11px] font-bold leading-none tabular-nums">
-              <span className="text-gray-900 dark:text-foreground">
-                {formatBalance(used)}
-              </span>
-              <span className="text-muted-foreground">
-                {formatBalance(total)}
-              </span>
-            </div>
-            <div
-              className="h-1.5 w-full overflow-hidden rounded-full border border-gray-200 dark:border-border/50 bg-gray-100 dark:bg-muted/50"
-              role="progressbar"
-              aria-valuenow={usedPct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
+        <div className="ml-auto flex w-36 flex-col items-end gap-2">
+          {!unlimited ? (
+            <div className="w-full space-y-1.5">
+              <div className="flex justify-between gap-2 font-mono text-[11px] font-bold leading-none tabular-nums">
+                <span className="text-gray-900 dark:text-foreground">
+                  {formatBalance(used)}
+                </span>
+                <span className="text-muted-foreground">
+                  {formatBalance(total)}
+                </span>
+              </div>
               <div
-                className={cn(
-                  "h-full rounded-full transition-all duration-500 ease-out",
-                  usedPct >= 100
-                    ? "bg-error shadow-[0_0_8px_rgba(220,38,38,0.5)]"
-                    : usedPct >= 80
-                      ? "bg-warning shadow-[0_0_8px_rgba(245,158,11,0.5)]"
-                      : "bg-success shadow-[0_0_8px_rgba(34,197,94,0.3)] dark:bg-primary dark:shadow-[0_0_8px_rgba(255,255,255,0.3)]",
-                )}
-                style={{ width: `${usedPct}%` }}
-              />
+                className="h-1.5 w-full overflow-hidden rounded-full border border-gray-200 dark:border-border/50 bg-gray-100 dark:bg-muted/50"
+                role="progressbar"
+                aria-valuenow={usedPct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-500 ease-out",
+                    usedPct >= 100
+                      ? "bg-error shadow-[0_0_8px_rgba(220,38,38,0.5)]"
+                      : usedPct >= 80
+                        ? "bg-warning shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                        : "bg-success shadow-[0_0_8px_rgba(34,197,94,0.3)] dark:bg-primary dark:shadow-[0_0_8px_rgba(255,255,255,0.3)]",
+                  )}
+                  style={{ width: `${usedPct}%` }}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          ) : null}
+          <QuotaLimitCell
+            unlimited={unlimited}
+            capQuota={unlimited ? undefined : total}
+            disabled={playgroundToken || updatingQuota}
+            playgroundToken={playgroundToken}
+            updating={updatingQuota}
+            formatBalance={formatBalance}
+            onChange={onQuotaChange}
+          />
+        </div>
       </TableCell>
       <TableCell className="whitespace-nowrap text-right text-sm font-medium text-muted-foreground tabular-nums">
         {isNeverExpire(token.expired_time)
@@ -703,6 +783,146 @@ function ChannelTierCell({
             </span>
           </DropdownMenuItem>
         ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function QuotaLimitCell({
+  unlimited,
+  capQuota,
+  disabled,
+  playgroundToken,
+  updating,
+  formatBalance,
+  onChange,
+}: {
+  unlimited: boolean;
+  capQuota: number | undefined;
+  disabled: boolean;
+  playgroundToken: boolean;
+  updating: boolean;
+  formatBalance: (quota: number | null | undefined) => string;
+  onChange: (
+    patch:
+      | { unlimited_quota: true }
+      | { unlimited_quota: false; remain_quota_cny: number },
+  ) => void;
+}) {
+  const { quotaToCny } = useQuotaFormat();
+  const [open, setOpen] = useState(false);
+  const [capInput, setCapInput] = useState("");
+
+  useEffect(() => {
+    if (open && !unlimited && capQuota !== undefined) {
+      setCapInput(String(quotaToCny(capQuota)));
+    } else if (open && unlimited) {
+      setCapInput("");
+    }
+  }, [capQuota, open, quotaToCny, unlimited]);
+
+  const limitLabel = unlimited
+    ? "不限额度"
+    : capQuota !== undefined
+      ? formatBalance(capQuota)
+      : "未设置";
+
+  function applyCap() {
+    const cny = Number(capInput);
+    if (!Number.isFinite(cny) || cny <= 0) {
+      toast.error("额度上限需为正数（人民币）");
+      return;
+    }
+
+    onChange({ unlimited_quota: false, remain_quota_cny: cny });
+    setOpen(false);
+  }
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn(
+            "h-auto min-h-9 w-full justify-between rounded-xl border-gray-200 bg-gray-50/70 px-3 py-1.5 text-left shadow-sm hover:bg-white dark:border-border/50 dark:bg-background/50 dark:hover:bg-muted/50",
+            disabled && "cursor-not-allowed opacity-70",
+          )}
+          disabled={disabled}
+          aria-label={`当前额度：${limitLabel}`}
+        >
+          <span className="min-w-0">
+            <span className="flex items-center gap-1 truncate text-sm font-extrabold text-gray-900 dark:text-foreground">
+              {unlimited ? (
+                <>
+                  <InfinityIcon className="h-3.5 w-3.5 shrink-0" />
+                  {updating ? "更新中…" : "不限额度"}
+                </>
+              ) : (
+                <span className="truncate tabular-nums">
+                  {updating ? "更新中…" : limitLabel}
+                </span>
+              )}
+            </span>
+            <span className="block truncate text-[11px] font-medium text-muted-foreground">
+              {playgroundToken ? "操练场 Token 不可编辑" : "点击修改额度上限"}
+            </span>
+          </span>
+          <ChevronDown className="ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 rounded-xl p-1.5">
+        <DropdownMenuItem
+          className="items-center gap-2 rounded-lg p-2"
+          onSelect={() => {
+            onChange({ unlimited_quota: true });
+            setOpen(false);
+          }}
+        >
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+            {unlimited ? <Check className="h-3.5 w-3.5" /> : null}
+          </span>
+          <span className="flex items-center gap-1.5 text-sm font-bold">
+            <InfinityIcon className="h-3.5 w-3.5" />
+            不限额度
+          </span>
+        </DropdownMenuItem>
+        <div
+          className="space-y-2 border-t border-gray-100 p-2 dark:border-border/50"
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <Label
+            htmlFor="quota-cap-input"
+            className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground"
+          >
+            设置上限（元）
+          </Label>
+          <Input
+            id="quota-cap-input"
+            autoComplete="off"
+            inputMode="decimal"
+            min={0}
+            className="h-9 rounded-lg font-medium tabular-nums"
+            placeholder="例如：100"
+            type="number"
+            value={capInput}
+            onChange={(event) => setCapInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                applyCap();
+              }
+            }}
+          />
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 w-full rounded-lg font-bold"
+            onClick={applyCap}
+          >
+            应用上限
+          </Button>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -846,6 +1066,7 @@ function CreateTokenDialog({
       const body: {
         name: string;
         remain_quota_cny?: number;
+        unlimited_quota?: boolean;
         expired_time?: number;
         group: string;
       } = {
@@ -860,6 +1081,8 @@ function CreateTokenDialog({
           return;
         }
         body.remain_quota_cny = cny;
+      } else {
+        body.unlimited_quota = true;
       }
 
       // "永不过期" preserves the original contract by omitting expired_time
@@ -933,13 +1156,13 @@ function CreateTokenDialog({
               inputMode="decimal"
               min={0}
               className="h-11 rounded-xl font-medium border-gray-200 dark:border-border/50 bg-gray-50 dark:bg-background/50 tabular-nums transition-all focus-visible:ring-1 focus-visible:ring-primary/50 shadow-sm"
-              placeholder="留空则继承默认"
+              placeholder="留空则不限额度"
               type="number"
               value={remainQuota}
               onChange={(event) => setRemainQuota(event.target.value)}
             />
             <p className="text-xs font-medium text-muted-foreground">
-              留空表示继承上游默认余额上限。
+              留空则不限额度。
             </p>
           </div>
 

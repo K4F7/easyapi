@@ -113,12 +113,29 @@ export function maskToken<T extends NewApiToken>(token: T): T {
   };
 }
 
-export function maskTokenKey(key: string): string {
-  if (key.length <= 10) {
-    return `${key.slice(0, 2)}...${key.slice(-2)}`;
+const NEWAPI_MASK_MIDDLE = "**********";
+
+export function isMaskedTokenKey(key: string): boolean {
+  if (key.includes("...") || key.includes("*")) {
+    return true;
   }
 
-  return `${key.slice(0, 6)}...${key.slice(-4)}`;
+  const maskedCharCount = (key.match(/[*•·]/g) ?? []).length;
+  return maskedCharCount >= 4 && maskedCharCount / key.length >= 0.3;
+}
+
+export function maskTokenKey(key: string): string {
+  const trimmed = key.trim();
+
+  if (isMaskedTokenKey(trimmed)) {
+    return trimmed.startsWith("sk-") ? trimmed : `sk-${trimmed}`;
+  }
+
+  const body = trimmed.startsWith("sk-") ? trimmed.slice(3) : trimmed;
+  const first4 = body.slice(0, 4);
+  const last4 = body.slice(-4);
+
+  return `sk-${first4}${NEWAPI_MASK_MIDDLE}${last4}`;
 }
 
 function dateOnlyInTimeZone(date: Date, timeZone: string): Date {

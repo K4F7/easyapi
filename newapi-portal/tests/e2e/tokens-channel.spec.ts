@@ -134,7 +134,7 @@ test.describe("Token channel tier UI", () => {
       tokenFixture({
         id: 102,
         name: "Frontend Dev",
-        key: "sk-dev...tend",
+        key: "sk-dev-**********tend",
         group: "normal",
         remain_quota: 250000,
         used_quota: 5200,
@@ -142,18 +142,18 @@ test.describe("Token channel tier UI", () => {
       tokenFixture({
         id: 103,
         name: "Legacy Token",
-        key: "sk-leg...oken",
+        key: "sk-leg-**********oken",
       }),
       tokenFixture({
         id: 104,
         name: "操练场-Chat",
-        key: "sk-play...chat",
+        key: "sk-play**********chat",
         group: "normal",
       }),
       tokenFixture({
         id: 105,
         name: "操练场-测试",
-        key: "sk-user...test",
+        key: "sk-user**********test",
         group: "normal",
       }),
     ]);
@@ -179,7 +179,7 @@ test.describe("Token channel tier UI", () => {
             token: {
               id: 200 + createRequests.length,
               name: body.name,
-              key: "sk-new...test",
+              key: "sk-new-**********test",
               status: 1,
               group: body.group,
             },
@@ -226,6 +226,7 @@ test.describe("Token channel tier UI", () => {
       expect.objectContaining({
         name: "Default Channel Token",
         group: "normal",
+        unlimited_quota: true,
       }),
     );
 
@@ -238,6 +239,7 @@ test.describe("Token channel tier UI", () => {
       expect.objectContaining({
         name: "Premium Token",
         group: "stable",
+        unlimited_quota: true,
       }),
     );
 
@@ -250,8 +252,96 @@ test.describe("Token channel tier UI", () => {
       expect.objectContaining({
         name: "Auto Channel Token",
         group: "auto",
+        unlimited_quota: true,
       }),
     );
+  });
+
+  test("updates token quota through the BFF contract", async ({ page }) => {
+    const updateRequests: Array<Record<string, unknown>> = [];
+
+    await routeChannelTiers(page);
+    await routeTokenList(page, [
+      tokenFixture({
+        id: 102,
+        name: "Quota Token",
+        key: "sk-quot**********test",
+        group: "normal",
+        remain_quota: 200_000,
+        used_quota: 50_000,
+        unlimited_quota: false,
+      }),
+    ]);
+
+    await page.route("**/api/tokens/102", async (route) => {
+      expect(route.request().method()).toBe("PUT");
+      const body = JSON.parse(route.request().postData() ?? "{}") as Record<
+        string,
+        unknown
+      >;
+      updateRequests.push(body);
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            token: tokenFixture({
+              id: 102,
+              name: "Quota Token",
+              key: "sk-quot**********test",
+              group: "normal",
+              remain_quota: 1_350_000,
+              used_quota: 50_000,
+              unlimited_quota: false,
+            }),
+          },
+        }),
+      });
+    });
+
+    await authenticate(page);
+    await page.goto("/dashboard/tokens");
+
+    const quotaRow = page.locator("tr", { hasText: "Quota Token" });
+    await quotaRow.getByRole("button", { name: /当前额度：/ }).click();
+    await page.getByLabel("设置上限（元）").fill("3");
+    await page.getByRole("button", { name: "应用上限" }).click();
+
+    await expect(page.getByText("令牌额度已更新").first()).toBeVisible();
+    expect(updateRequests).toEqual([
+      { unlimited_quota: false, remain_quota_cny: 3 },
+    ]);
+
+    await quotaRow.getByRole("button", { name: /当前额度：/ }).click();
+    await page.getByRole("menuitem", { name: /不限额度/ }).click();
+
+    await expect(page.getByText("令牌额度已更新").first()).toBeVisible();
+    expect(updateRequests[1]).toEqual({ unlimited_quota: true });
+  });
+
+  test("disables quota editing for managed playground tokens", async ({
+    page,
+  }) => {
+    await routeChannelTiers(page);
+    await routeTokenList(page, [
+      tokenFixture({
+        id: 104,
+        name: "操练场-Chat",
+        key: "sk-play**********chat",
+        group: "normal",
+        unlimited_quota: true,
+      }),
+    ]);
+
+    await authenticate(page);
+    await page.goto("/dashboard/tokens");
+
+    const playgroundRow = page.locator("tr", { hasText: "操练场-Chat" });
+    await expect(
+      playgroundRow.getByRole("button", { name: /当前额度：不限额度/ }),
+    ).toBeDisabled();
   });
 
   test("submits the BFF returned env-mapped groups on create and update", async ({
@@ -268,7 +358,7 @@ test.describe("Token channel tier UI", () => {
       tokenFixture({
         id: 301,
         name: "Env Token",
-        key: "sk-env...oken",
+        key: "sk-env-**********oken",
         group: "env-stage-mapped",
       }),
     ]);
@@ -294,7 +384,7 @@ test.describe("Token channel tier UI", () => {
             token: {
               id: 401,
               name: body.name,
-              key: "sk-env...new",
+              key: "sk-env-**********new",
               status: 1,
               group: body.group,
             },
@@ -322,7 +412,7 @@ test.describe("Token channel tier UI", () => {
             token: tokenFixture({
               id: 301,
               name: "Env Token",
-              key: "sk-env...oken",
+              key: "sk-env-**********oken",
               group: String(body.group),
             }),
           },
@@ -346,6 +436,7 @@ test.describe("Token channel tier UI", () => {
       expect.objectContaining({
         name: "Env Default Token",
         group: "env-stage-mapped",
+        unlimited_quota: true,
       }),
     ]);
 
@@ -377,7 +468,7 @@ test.describe("Token channel tier UI", () => {
       tokenFixture({
         id: 102,
         name: "Frontend Dev",
-        key: "sk-dev...tend",
+        key: "sk-dev-**********tend",
         group: "normal",
         remain_quota: 250000,
         used_quota: 5200,
@@ -401,7 +492,7 @@ test.describe("Token channel tier UI", () => {
             token: tokenFixture({
               id: 102,
               name: "Frontend Dev",
-              key: "sk-dev...tend",
+              key: "sk-dev-**********tend",
               group: "budget",
               remain_quota: 250000,
               used_quota: 5200,
@@ -434,7 +525,7 @@ test.describe("Token channel tier UI", () => {
       tokenFixture({
         id: 102,
         name: "Frontend Dev",
-        key: "sk-dev...tend",
+        key: "sk-dev-**********tend",
         group: "normal",
       }),
     ]);
@@ -538,7 +629,7 @@ test.describe("Token channel tier UI", () => {
         tokenFixture({
           id: 102,
           name: "Frontend Dev",
-          key: "sk-dev...tend",
+          key: "sk-dev-**********tend",
           group: "normal",
         }),
       ]);
@@ -589,13 +680,13 @@ test.describe("Token channel tier UI", () => {
       tokenFixture({
         id: 102,
         name: "Frontend Dev",
-        key: "sk-dev...tend",
+        key: "sk-dev-**********tend",
         group: "normal",
       }),
       tokenFixture({
         id: 103,
         name: "Production Token",
-        key: "sk-prod...oken",
+        key: "sk-prod**********oken",
         group: "stable",
       }),
     ]);
@@ -667,7 +758,7 @@ function tokenFixture(overrides: Partial<MockToken>): MockToken {
   return {
     id: 1,
     name: "Token",
-    key: "sk-token...test",
+    key: "sk-toke**********test",
     status: 1,
     remain_quota: 100000,
     used_quota: 0,

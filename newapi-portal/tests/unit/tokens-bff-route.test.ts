@@ -8,6 +8,7 @@ const mockCreateTokenAndRevealKey = vi.fn();
 const mockUpdateToken = vi.fn();
 const mockDeleteToken = vi.fn();
 const mockListTokens = vi.fn();
+const mockRevealTokenKey = vi.fn();
 const mockGetQuotaDisplayConfig = vi.fn();
 
 vi.mock("@/lib/auth", () => ({
@@ -57,6 +58,7 @@ vi.mock("@/lib/dev-mock", () => ({
   mockTokenDeleteResponse: vi.fn(),
   mockTokensListResponse: vi.fn(),
   mockTokenUpdateResponse: vi.fn(),
+  mockTokenRevealKeyResponse: vi.fn(),
 }));
 
 vi.mock("@/lib/newapi", () => ({
@@ -66,6 +68,7 @@ vi.mock("@/lib/newapi", () => ({
   listTokens: (...args: unknown[]) => mockListTokens(...args),
   updateToken: (...args: unknown[]) => mockUpdateToken(...args),
   deleteToken: (...args: unknown[]) => mockDeleteToken(...args),
+  revealTokenKey: (...args: unknown[]) => mockRevealTokenKey(...args),
 }));
 
 vi.mock("@/lib/quota/get-display-config", () => ({
@@ -248,7 +251,7 @@ describe("POST /api/tokens", () => {
     expect(body.data?.token).toMatchObject({
       id: 202,
       name: "CNY Token",
-      key: "sk-liv...cret",
+      key: "sk-live**********cret",
       remain_quota: 1_000_000,
       group: "stable",
     });
@@ -267,6 +270,61 @@ describe("POST /api/tokens", () => {
       unknown
     >;
     expect(tokenInput).not.toHaveProperty("remain_quota_cny");
+  });
+
+  it("defaults to unlimited quota when no quota fields are provided", async () => {
+    const { POST } = await import("@/app/api/tokens/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/tokens", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Unlimited Token",
+          group: "normal",
+        }),
+      }),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(201);
+    expect(body.ok).toBe(true);
+    expect(mockCreateTokenAndRevealKey).toHaveBeenCalledWith(
+      { userId: "99", accessToken: "newapi-token" },
+      expect.objectContaining({
+        name: "Unlimited Token",
+        group: "normal",
+        unlimited_quota: true,
+      }),
+    );
+    const tokenInput = mockCreateTokenAndRevealKey.mock.calls.at(-1)?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(tokenInput).not.toHaveProperty("remain_quota");
+  });
+
+  it("forwards explicit unlimited_quota from the client", async () => {
+    const { POST } = await import("@/app/api/tokens/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/tokens", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Explicit Unlimited",
+          unlimited_quota: true,
+          group: "normal",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockCreateTokenAndRevealKey).toHaveBeenCalledWith(
+      { userId: "99", accessToken: "newapi-token" },
+      expect.objectContaining({
+        name: "Explicit Unlimited",
+        unlimited_quota: true,
+      }),
+    );
   });
 
   it.each([
@@ -387,7 +445,7 @@ describe("PUT /api/tokens/:id", () => {
     expect(body.data?.token).toMatchObject({
       id: 101,
       name: "Existing Token",
-      key: "sk-liv...cret",
+      key: "sk-live**********cret",
       group: "stable",
     });
     expect(mockGetToken).toHaveBeenCalledWith(
@@ -403,13 +461,96 @@ describe("PUT /api/tokens/:id", () => {
     );
   });
 
-  it("ignores remain_quota_cny on update and does not forward convenience fields", async () => {
+  it("converts remain_quota_cny before updating a NewAPI token", async () => {
+    mockGetToken.mockResolvedValue({
+      id: 101,
+      name: "Existing Token",
+      key: "sk-live-existing-secret",
+      status: 1,
+      expired_time: 0,
+      remain_quota: 100_000,
+      used_quota: 50_000,
+      unlimited_quota: false,
+      model_limits_enabled: false,
+      model_limits: "",
+      allow_ips: null,
+      group: "normal",
+      cross_group_retry: false,
+    });
+    mockUpdateToken.mockResolvedValue({
+      id: 101,
+      name: "Existing Token",
+      key: "sk-live-existing-secret",
+      status: 1,
+      remain_quota: 950_000,
+      unlimited_quota: false,
+      group: "normal",
+    });
+
+    const { PUT } = await import("@/app/api/tokens/[id]/route");
+
+    const response = await PUT(
+      tokenRequest({
+        unlimited_quota: false,
+        remain_quota_cny: 2,
+      }),
+      routeContext(),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(mockUpdateToken).toHaveBeenCalledWith(
+      { userId: "99", accessToken: "newapi-token" },
+      {
+        id: 101,
+        unlimited_quota: false,
+        remain_quota: 950_000,
+      },
+    );
+    const tokenInput = mockUpdateToken.mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(tokenInput).not.toHaveProperty("remain_quota_cny");
+  });
+
+  it("forwards unlimited_quota on update", async () => {
+    mockUpdateToken.mockResolvedValue({
+      id: 101,
+      name: "Existing Token",
+      key: "sk-live-existing-secret",
+      status: 1,
+      remain_quota: 100_000,
+      unlimited_quota: true,
+      group: "normal",
+    });
+
+    const { PUT } = await import("@/app/api/tokens/[id]/route");
+
+    const response = await PUT(
+      tokenRequest({ unlimited_quota: true }),
+      routeContext(),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(mockUpdateToken).toHaveBeenCalledWith(
+      { userId: "99", accessToken: "newapi-token" },
+      {
+        id: 101,
+        unlimited_quota: true,
+      },
+    );
+  });
+
+  it("does not forward remain_quota_cny when renaming tokens", async () => {
     const { PUT } = await import("@/app/api/tokens/[id]/route");
 
     const response = await PUT(
       tokenRequest({
         name: "Renamed Token",
-        remain_quota_cny: 2,
       }),
       routeContext(),
     );
@@ -521,7 +662,7 @@ describe("PUT /api/tokens/:id", () => {
     expect(body.data?.token).toMatchObject({
       id: 101,
       name: "Legacy Sparse Token",
-      key: "sk-liv...cret",
+      key: "sk-live**********cret",
       remain_quota: 88_000,
     });
     expect(body.data?.token).not.toHaveProperty("group");
@@ -569,6 +710,74 @@ describe("PUT /api/tokens/:id", () => {
     expect(body.error?.code).toBe("NEWAPI_BINDING_PENDING");
     expect(body.error?.message).toBe("NewAPI 账号绑定仍在处理中");
     expect(mockGetToken).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/tokens/:id/key", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequireUser.mockResolvedValue({
+      id: "portal-user-1",
+      email: "user@example.com",
+    });
+    mockGetUserNewApiAuth.mockResolvedValue({
+      ok: true,
+      auth: { userId: "99", accessToken: "newapi-token" },
+    });
+    mockRevealTokenKey.mockResolvedValue("sk-live-existing-secret");
+  });
+
+  it("reveals the full token key for the authenticated user", async () => {
+    const { POST } = await import("@/app/api/tokens/[id]/key/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/tokens/101/key", { method: "POST" }),
+      routeContext(),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data).toEqual({ key: "sk-live-existing-secret" });
+    expect(mockRevealTokenKey).toHaveBeenCalledWith(
+      { userId: "99", accessToken: "newapi-token" },
+      101,
+    );
+  });
+
+  it("returns binding errors before calling NewAPI reveal", async () => {
+    mockGetUserNewApiAuth.mockResolvedValue({
+      ok: false,
+      code: "NEWAPI_BINDING_PENDING",
+      message: "NewAPI 账号绑定仍在处理中",
+    });
+    const { POST } = await import("@/app/api/tokens/[id]/key/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/tokens/101/key", { method: "POST" }),
+      routeContext(),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(409);
+    expect(body.ok).toBe(false);
+    expect(body.error?.code).toBe("NEWAPI_BINDING_PENDING");
+    expect(mockRevealTokenKey).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid token ids", async () => {
+    const { POST } = await import("@/app/api/tokens/[id]/key/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/tokens/abc/key", { method: "POST" }),
+      routeContext("abc"),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.error?.code).toBe("VALIDATION_ERROR");
+    expect(mockRevealTokenKey).not.toHaveBeenCalled();
   });
 });
 

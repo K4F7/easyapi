@@ -100,13 +100,17 @@ export async function POST(request: Request) {
       request,
       createTokenSchema,
     );
+    const remainQuota =
+      input.remain_quota ??
+      (remainQuotaCny === undefined
+        ? undefined
+        : cnyToQuota(remainQuotaCny, await getQuotaDisplayConfig()));
     const tokenInput = {
       ...input,
-      remain_quota:
-        input.remain_quota ??
-        (remainQuotaCny === undefined
-          ? undefined
-          : cnyToQuota(remainQuotaCny, await getQuotaDisplayConfig())),
+      ...(remainQuota !== undefined ? { remain_quota: remainQuota } : {}),
+      ...(remainQuota === undefined && input.unlimited_quota === undefined
+        ? { unlimited_quota: true }
+        : {}),
     };
     const created = await createTokenAndRevealKey(authResult.auth, tokenInput);
 
