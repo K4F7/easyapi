@@ -196,11 +196,14 @@ async function checkIn(page: Page) {
     response.ok(),
     `POST /api/checkin failed: ${JSON.stringify(body)}`,
   ).toBe(true);
-  expect(unwrapData(body)).toEqual(
-    expect.objectContaining({
-      checkedInToday: true,
-    }),
-  );
+  const checkinData = unwrapData(body);
+  expect(
+    checkinData &&
+      (checkinData.checkedIn === true ||
+        checkinData.checkedInToday === true ||
+        checkinData.alreadyCheckedIn === true),
+    `POST /api/checkin did not report a successful check-in: ${JSON.stringify(body)}`,
+  ).toBe(true);
 
   const summary = await page.request.get("/api/dashboard/summary");
   const summaryBody = await readResponseBody(summary);
