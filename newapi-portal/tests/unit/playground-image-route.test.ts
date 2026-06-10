@@ -468,6 +468,32 @@ describe("POST playground image generations", () => {
     );
   });
 
+  it("accepts portal-token marker in body.apiKey for same-origin requests", async () => {
+    mockCreateImageGeneration.mockResolvedValue(
+      Response.json(
+        { created: 1, data: [{ url: "https://cdn.example.test/image.png" }] },
+        { status: 200 },
+      ),
+    );
+
+    const response = await handleImageGeneration(
+      jsonRequest("https://portal.example.test/v1/images/generations", {
+        prompt: "draw with body apiKey marker",
+        apiKey: "portal-token-202",
+      }),
+    );
+    const body = await parseResponse(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      created: 1,
+      data: [{ url: "https://cdn.example.test/image.png" }],
+    });
+    expect(mockResolvePlaygroundImageKey).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "99" }),
+    );
+  });
+
   it("rejects a signed image session token bound to a different playground origin", async () => {
     const sessionToken = signPlaygroundImageSessionToken({
       userId: "portal-user-1",

@@ -28,6 +28,32 @@ const imageSessionTokenPrefix = "portal-image-session-v1.";
 /** Client-side TTL mirror of `imageSessionTokenTtlSeconds` on the server. */
 export const imagePlaygroundSessionTokenTtlMs = 10 * 60 * 1000;
 
+export const PORTAL_TOKEN_MARKER_PREFIX = "portal-token-";
+
+export function buildPortalTokenMarker(tokenId: number | string): string {
+  return `${PORTAL_TOKEN_MARKER_PREFIX}${tokenId}`;
+}
+
+export function parsePortalTokenMarker(
+  value: string | null | undefined,
+): number | null {
+  if (!value?.trim()) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.toLowerCase().startsWith(PORTAL_TOKEN_MARKER_PREFIX)) {
+    return null;
+  }
+
+  const tokenId = Number(trimmed.slice(PORTAL_TOKEN_MARKER_PREFIX.length));
+  return Number.isInteger(tokenId) && tokenId > 0 ? tokenId : null;
+}
+
+export function isPortalTokenMarker(value: string | null | undefined): boolean {
+  return parsePortalTokenMarker(value) !== null;
+}
+
 export function isImagePlaygroundEmbedPath(pathname: string): boolean {
   return (
     pathname === IMAGE_PLAYGROUND_EMBED_PATH ||

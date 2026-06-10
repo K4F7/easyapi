@@ -2,11 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 import {
+  buildPortalTokenMarker,
   extractEmbedConfigFromSearchParams,
   extractImagePlaygroundSessionToken,
   hasImagePlaygroundSessionTokenQuery,
   IMAGE_PLAYGROUND_CONFIG_STORAGE_KEY,
   isImagePlaygroundEmbedPath,
+  isPortalTokenMarker,
+  parsePortalTokenMarker,
 } from "@/lib/playground/image-playground-embed-path";
 import {
   getImagePlaygroundInternalUrl,
@@ -45,6 +48,14 @@ describe("image playground embed path helpers", () => {
 
     expect(extractImagePlaygroundSessionToken(params)).toBeNull();
     expect(hasImagePlaygroundSessionTokenQuery(params)).toBe(false);
+  });
+
+  it("builds and parses fixed portal token markers", () => {
+    expect(buildPortalTokenMarker(202)).toBe("portal-token-202");
+    expect(isPortalTokenMarker("portal-token-202")).toBe(true);
+    expect(parsePortalTokenMarker("portal-token-202")).toBe(202);
+    expect(parsePortalTokenMarker("portal-image-session-v1.payload.sig")).toBeNull();
+    expect(parsePortalTokenMarker("sk-live-secret")).toBeNull();
   });
 
   it("extracts canonical embed config from search params", () => {

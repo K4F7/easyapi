@@ -27,8 +27,7 @@ import {
   PlaygroundImageSessionTokenError,
   verifyPlaygroundImageSessionToken,
 } from "@/lib/playground/image-session-token";
-
-const TOKEN_MARKER_PREFIX = "portal-token-";
+import { parsePortalTokenMarker } from "@/lib/playground/image-playground-embed-path";
 const SIGNED_TOKEN_QUERY_PARAM = "playgroundSessionToken";
 
 const imageGenerationSchema = z
@@ -199,7 +198,7 @@ async function resolveImageRequestContext(
     };
   }
 
-  const tokenId = resolveSessionTokenId(request, body.tokenId);
+  const tokenId = resolveSessionTokenId(request, body.tokenId, body.apiKey);
 
   if (!tokenId) {
     return {
@@ -335,9 +334,15 @@ function isSameOriginRequest(request: Request): boolean {
 function resolveSessionTokenId(
   request: Request,
   bodyTokenId?: number,
+  bodyApiKey?: string,
 ): number | null {
   if (bodyTokenId !== undefined) {
     return bodyTokenId;
+  }
+
+  const bodyApiKeyTokenId = parsePortalTokenMarker(bodyApiKey);
+  if (bodyApiKeyTokenId) {
+    return bodyApiKeyTokenId;
   }
 
   const url = new URL(request.url);
@@ -346,16 +351,18 @@ function resolveSessionTokenId(
     return queryTokenId;
   }
 
+  const queryApiKeyTokenId = parsePortalTokenMarker(
+    url.searchParams.get("apiKey"),
+  );
+  if (queryApiKeyTokenId) {
+    return queryApiKeyTokenId;
+  }
+
   return parseAuthorizationTokenId(request.headers.get("authorization"));
 }
 
 function parseAuthorizationTokenId(value: string | null): number | null {
-  const marker = parseAuthorizationBearer(value);
-  if (!marker?.toLowerCase().startsWith(TOKEN_MARKER_PREFIX)) {
-    return null;
-  }
-
-  return parseTokenId(marker.slice(TOKEN_MARKER_PREFIX.length));
+  return parsePortalTokenMarker(parseAuthorizationBearer(value));
 }
 
 function parseAuthorizationBearer(value: string | null): string | null {

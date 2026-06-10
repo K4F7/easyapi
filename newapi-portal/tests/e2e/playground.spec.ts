@@ -93,32 +93,6 @@ async function mockImageEmbedConfig(
   });
 }
 
-async function mockImageSession(page: Page) {
-  await page.route("**/api/playground/images/session**", async (route) => {
-    const body = JSON.parse(route.request().postData() ?? "{}") as Record<
-      string,
-      unknown
-    >;
-    expect(body).toEqual(
-      expect.objectContaining({ tokenId: PLAYGROUND_IMAGE_TOKEN_ID }),
-    );
-
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        ok: true,
-        data: {
-          token:
-            "portal-image-session-v1.eyJ1c2VySWQiOiJwb3J0YWwtdXNlci0xIiwidG9rZW5JZCI6MTAxfQ.test-signature",
-          tokenType: "Bearer",
-          expiresIn: 600,
-        },
-      }),
-    });
-  });
-}
-
 async function mockChatStream(page: Page, options?: { totalTokens?: number }) {
   await page.route("**/api/playground/chat", async (route) => {
     const body = JSON.parse(route.request().postData() ?? "{}") as Record<
@@ -205,7 +179,6 @@ test.describe("Playground", () => {
     await mockPlaygroundToken(page);
     await mockModels(page);
     await mockImageEmbedConfig(page);
-    await mockImageSession(page);
 
     const loadEvents: number[] = [];
     page.on("load", () => loadEvents.push(1));
@@ -230,12 +203,11 @@ test.describe("Playground", () => {
     expect(loadEvents.length).toBe(loadsBeforeTab);
   });
 
-  test("image tab passes session token and token identifiers to the iframe", async ({
+  test("image tab passes portal token marker and token identifiers to the iframe", async ({
     page,
   }) => {
     await mockPlaygroundToken(page);
     await mockImageEmbedConfig(page);
-    await mockImageSession(page);
     await page.goto("/dashboard/playground?tab=image");
     await expect(imagePlaygroundReadySignal(page)).toBeVisible();
     expect(page.url()).not.toMatch(/sk-|api[_-]?key=/i);
@@ -275,9 +247,9 @@ test.describe("Playground", () => {
     );
     expect(iframeUrl.searchParams.get("theme")).toBe("light");
     const apiKey = iframeUrl.searchParams.get("apiKey");
-    expect(apiKey).toMatch(/^portal-image-session-v1\./);
+    expect(apiKey).toBe(`portal-token-${PLAYGROUND_IMAGE_TOKEN_ID}`);
     expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBeNull();
-    expect(src).not.toMatch(/sk-[a-zA-Z0-9]{8,}|portal-token-101/);
+    expect(src).not.toMatch(/sk-[a-zA-Z0-9]{8,}/);
   });
 
   test("/playground/embed/ HTML contains light theme injection", async ({
@@ -290,7 +262,6 @@ test.describe("Playground", () => {
 
     await mockPlaygroundToken(page);
     await mockImageEmbedConfig(page, { configured: true });
-    await mockImageSession(page);
     await page.goto("/dashboard/playground?tab=image");
 
     const iframe = page.locator('iframe[title="生图 Playground"]');
@@ -445,7 +416,6 @@ test.describe("Playground", () => {
 
     await openPlaygroundChat(page);
     await mockImageEmbedConfig(page);
-    await mockImageSession(page);
     await page.reload();
     await expect(
       page.getByRole("tab", { name: "对话", selected: true }),
@@ -471,7 +441,6 @@ async function expectImageIframeDoesNotExposeRealKey(page: Page) {
   const src = await iframe.first().getAttribute("src");
   expect(src).toBeTruthy();
   expect(src).toContain("/playground/embed");
-  expect(src).not.toMatch(
-    /sk-[a-zA-Z0-9]{8,}|portal-token-\d+|api[_-]?key=sk-/i,
-  );
+  expect(src).not.toMatch(/sk-[a-zA-Z0-9]{8,}|api[_-]?key=sk-/i);
+  expect(src).toMatch(/portal-token-\d+/);
 }
