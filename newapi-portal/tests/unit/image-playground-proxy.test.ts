@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 import {
+  extractEmbedConfigFromSearchParams,
   extractImagePlaygroundSessionToken,
   hasImagePlaygroundSessionTokenQuery,
+  IMAGE_PLAYGROUND_CONFIG_STORAGE_KEY,
   isImagePlaygroundEmbedPath,
 } from "@/lib/playground/image-playground-embed-path";
 import {
@@ -43,6 +45,28 @@ describe("image playground embed path helpers", () => {
 
     expect(extractImagePlaygroundSessionToken(params)).toBeNull();
     expect(hasImagePlaygroundSessionTokenQuery(params)).toBe(false);
+  });
+
+  it("extracts canonical embed config from search params", () => {
+    const params = new URLSearchParams({
+      apiUrl: "https://portal.example.test",
+      apiKey: "portal-image-session-v1.payload.sig",
+      imageApiUrl: "https://portal.example.test/api/playground/images/generations",
+      baseUrl: "https://portal.example.test",
+      tokenId: "42",
+      theme: "light",
+      model: "gpt-image-1",
+    });
+
+    expect(extractEmbedConfigFromSearchParams(params)).toEqual({
+      apiUrl: "https://portal.example.test",
+      apiKey: "portal-image-session-v1.payload.sig",
+      imageApiUrl: "https://portal.example.test/api/playground/images/generations",
+      baseUrl: "https://portal.example.test",
+      tokenId: "42",
+      theme: "light",
+      model: "gpt-image-1",
+    });
   });
 });
 
@@ -93,19 +117,28 @@ describe("rewritePlaygroundEmbedHtml", () => {
     expect(rewritten).toContain('id="ezapi-embed-light-theme"');
   });
 
-  it("adds the signed session token to the injected base href", () => {
+  it("keeps the injected base href free of session tokens", () => {
     const html = "<html><head></head><body></body></html>";
     const rewritten = rewritePlaygroundEmbedHtml(
       html,
       "portal-image-session-v1.payload.sig",
     );
 
-    expect(rewritten).toContain(
-      '<base href="/playground/embed/?apiKey=portal-image-session-v1.payload.sig">',
-    );
+    expect(rewritten).toContain('<base href="/playground/embed/">');
+    expect(rewritten).not.toContain("apiKey=portal-image-session-v1.payload.sig");
   });
 
-  it("adds the signed session token to relative asset references", () => {
+  it("injects a bootstrap script that persists embed config once", () => {
+    const html = "<html><head></head><body></body></html>";
+    const rewritten = rewritePlaygroundEmbedHtml(html);
+
+    expect(rewritten).toContain('id="ezapi-embed-config-bootstrap"');
+    expect(rewritten).toContain(IMAGE_PLAYGROUND_CONFIG_STORAGE_KEY);
+    expect(rewritten).toContain("history.replaceState");
+    expect(rewritten).toContain("sessionStorage.setItem");
+  });
+
+  it("does not append session tokens to relative asset references", () => {
     const html = [
       "<html><head>",
       '<script src="./assets/app.js"></script>',
@@ -119,40 +152,11 @@ describe("rewritePlaygroundEmbedHtml", () => {
       "portal-image-session-v1.payload.sig",
     );
 
-    expect(rewritten).toContain(
-      'src="./assets/app.js?apiKey=portal-image-session-v1.payload.sig"',
-    );
-    expect(rewritten).toContain(
-      'href="./assets/app.css?version=1&apiKey=portal-image-session-v1.payload.sig"',
-    );
-    expect(rewritten).toContain(
-      'src="../assets/logo.png?apiKey=portal-image-session-v1.payload.sig#main"',
-    );
+    expect(rewritten).toContain('src="./assets/app.js"');
+    expect(rewritten).toContain('href="./assets/app.css?version=1"');
+    expect(rewritten).toContain('src="../assets/logo.png#main"');
     expect(rewritten).toContain('href="https://cdn.example.test/app.css"');
-  });
-
-  it("does not add the signed session token to relative navigation links", () => {
-    const html = [
-      "<html><head></head><body>",
-      '<a href="../settings">Settings</a>',
-      '<a href="./history?tab=images">History</a>',
-      '<script src="./assets/app.js"></script>',
-      '<link rel="stylesheet" href="../assets/app.css">',
-      "</body></html>",
-    ].join("");
-    const rewritten = rewritePlaygroundEmbedHtml(
-      html,
-      "portal-image-session-v1.payload.sig",
-    );
-
-    expect(rewritten).toContain('href="../settings"');
-    expect(rewritten).toContain('href="./history?tab=images"');
-    expect(rewritten).toContain(
-      'src="./assets/app.js?apiKey=portal-image-session-v1.payload.sig"',
-    );
-    expect(rewritten).toContain(
-      'href="../assets/app.css?apiKey=portal-image-session-v1.payload.sig"',
-    );
+    expect(rewritten).not.toContain("apiKey=portal-image-session-v1.payload.sig");
   });
 
   it("does not duplicate existing light theme controls", () => {

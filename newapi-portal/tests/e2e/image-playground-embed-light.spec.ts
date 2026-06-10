@@ -102,7 +102,8 @@ test.describe.serial("image playground embed light theme", () => {
     expect(html).toContain('localStorage.setItem("theme","light")');
     expect(html).toContain('querySelectorAll("[class*=dark\\\\:]")');
     expect(html).toContain(`./assets/index-`);
-    expect(html).toContain(`apiKey=${sessionToken}`);
+    expect(html).not.toContain(`apiKey=${sessionToken}`);
+    expect(html).toContain('id="ezapi-embed-config-bootstrap"');
     expect(html).toContain('id="ezapi-embed-light-theme"');
     expect(html).toContain(":root{color-scheme:light}");
     expect(html).toContain("html.light body");

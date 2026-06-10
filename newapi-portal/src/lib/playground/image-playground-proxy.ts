@@ -1,13 +1,17 @@
 import "server-only";
 
 import {
+  IMAGE_PLAYGROUND_CONFIG_STORAGE_KEY,
   IMAGE_PLAYGROUND_EMBED_PATH,
+  IMAGE_PLAYGROUND_EMBED_QUERY_PARAMS,
   extractImagePlaygroundSessionToken,
 } from "@/lib/playground/image-playground-embed-path";
 
 export {
+  extractEmbedConfigFromSearchParams,
   extractImagePlaygroundSessionToken,
   hasImagePlaygroundSessionTokenQuery,
+  IMAGE_PLAYGROUND_CONFIG_STORAGE_KEY,
   IMAGE_PLAYGROUND_EMBED_PATH,
   isImagePlaygroundEmbedPath,
 } from "@/lib/playground/image-playground-embed-path";
@@ -33,9 +37,6 @@ const browserNavigationHeaders = new Set([
   "sec-fetch-user",
   "upgrade-insecure-requests",
 ]);
-
-const relativeStaticAssetPath =
-  /^(?:\.{1,2}\/)?assets\/.+\.(?:css|js|mjs|map|avif|gif|ico|jpe?g|png|svg|webp|woff2?)$/i;
 
 export function isImagePlaygroundProxyConfigured(): boolean {
   return Boolean(getImagePlaygroundInternalUrl());
@@ -113,9 +114,10 @@ export async function proxyImagePlaygroundRequest(
 
 export function rewritePlaygroundEmbedHtml(
   html: string,
-  sessionToken: string | null = null,
+  _sessionToken: string | null = null,
 ): string {
-  const baseHref = buildEmbedBaseHref(sessionToken);
+  const baseHref = buildEmbedBaseHref();
+  const bootstrapScript = buildEmbedConfigBootstrapScript();
   const lightThemeTags = [
     '<meta name="color-scheme" content="light">',
     '<meta name="theme-color" content="#f9fafb">',
@@ -127,57 +129,30 @@ export function rewritePlaygroundEmbedHtml(
     html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}">`);
   }
 
-  if (!/ezapi-embed-light-theme/i.test(html)) {
-    html = html.replace(/<head([^>]*)>/i, `<head$1>${lightThemeTags}`);
+  if (!/ezapi-embed-config-bootstrap/i.test(html)) {
+    html = html.replace(/<head([^>]*)>/i, `<head$1>${bootstrapScript}`);
   }
 
-  if (sessionToken) {
-    html = appendSessionTokenToRelativeAssetReferences(html, sessionToken);
+  if (!/ezapi-embed-light-theme/i.test(html)) {
+    html = html.replace(/<head([^>]*)>/i, `<head$1>${lightThemeTags}`);
   }
 
   return html;
 }
 
-function buildEmbedBaseHref(sessionToken: string | null): string {
-  if (!sessionToken) {
-    return `${IMAGE_PLAYGROUND_EMBED_PATH}/`;
-  }
-
-  const params = new URLSearchParams({ apiKey: sessionToken });
-  return `${IMAGE_PLAYGROUND_EMBED_PATH}/?${params.toString()}`;
+function buildEmbedBaseHref(): string {
+  return `${IMAGE_PLAYGROUND_EMBED_PATH}/`;
 }
 
-function appendSessionTokenToRelativeAssetReferences(
-  html: string,
-  sessionToken: string,
-): string {
-  return html.replace(
-    /\b(src|href)=(["'])([^"']+)\2/gi,
-    (match, attribute: string, quote: string, value: string) => {
-      if (!isRelativeAssetReference(value)) {
-        return match;
-      }
+function buildEmbedConfigBootstrapScript(): string {
+  const paramKeys = [
+    ...IMAGE_PLAYGROUND_EMBED_QUERY_PARAMS,
+    "playgroundSessionToken",
+  ];
+  const serializedKeys = JSON.stringify(paramKeys);
+  const storageKey = IMAGE_PLAYGROUND_CONFIG_STORAGE_KEY;
 
-      const [path, hash = ""] = value.split("#", 2);
-      const [pathname, search = ""] = path.split("?", 2);
-      const params = new URLSearchParams(search);
-      if (!params.has("apiKey") && !params.has("playgroundSessionToken")) {
-        params.set("apiKey", sessionToken);
-      }
-
-      const query = params.toString();
-      return `${attribute}=${quote}${pathname}${query ? `?${query}` : ""}${hash ? `#${hash}` : ""}${quote}`;
-    },
-  );
-}
-
-function isRelativeAssetReference(value: string): boolean {
-  if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#|data:|mailto:|tel:)/i.test(value)) {
-    return false;
-  }
-
-  const [path] = value.split(/[?#]/, 1);
-  return relativeStaticAssetPath.test(path);
+  return `<script id="ezapi-embed-config-bootstrap">(function(){try{var KEY=${JSON.stringify(storageKey)};var KEYS=${serializedKeys};var params=new URLSearchParams(location.search);var config={};var hasConfig=false;KEYS.forEach(function(k){var v=params.get(k);if(v){config[k]=v;hasConfig=true;}});if(!hasConfig)return;sessionStorage.setItem(KEY,JSON.stringify(config));KEYS.forEach(function(k){params.delete(k);});var qs=params.toString();history.replaceState(null,"",location.pathname+(qs?"?"+qs:"")+location.hash);}catch(e){}})();</script>`;
 }
 
 function sanitizeProxyRequestHeaders(headers: Headers): Headers {

@@ -276,7 +276,7 @@ test.describe("Playground", () => {
     expect(iframeUrl.searchParams.get("theme")).toBe("light");
     const apiKey = iframeUrl.searchParams.get("apiKey");
     expect(apiKey).toMatch(/^portal-image-session-v1\./);
-    expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBe(apiKey);
+    expect(iframeUrl.searchParams.get("playgroundSessionToken")).toBeNull();
     expect(src).not.toMatch(/sk-[a-zA-Z0-9]{8,}|portal-token-101/);
   });
 
